@@ -106,6 +106,11 @@ var (
 	cpAmmLogFile       *os.File
 	dateIpLoginLogFile *os.File
 	pushQueueLogFile   *os.File
+
+	fairLaunchLogFile    *os.File
+	feeLogFile           *os.File
+	mintNftLogFile       *os.File
+	scheduledTaskLogFile *os.File
 )
 
 func getLogFile(dirPath string, fileName string) (*os.File, error) {
@@ -178,6 +183,22 @@ func openLogFile() error {
 	if err != nil {
 		return err
 	}
+	fairLaunchLogFile, err = utils.GetLogFile("./logs/trade.fair_launch.log")
+	if err != nil {
+		return err
+	}
+	feeLogFile, err = utils.GetLogFile("./logs/trade.fee.log")
+	if err != nil {
+		return err
+	}
+	mintNftLogFile, err = utils.GetLogFile("./logs/trade.mint_nft.log")
+	if err != nil {
+		return err
+	}
+	scheduledTaskLogFile, err = utils.GetLogFile("./logs/trade.scheduled_task.log")
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -218,11 +239,11 @@ func loadDefaultLog() {
 		CACC = NewLogger("CACC", Level, custErrorLogFile, false, CaccountLogFile)
 	}
 	{
-		FairLaunchDebugLogger = NewLogger("FLDL", Level, nil, true, defaultLogFile)
-		FEE = NewLogger("FEE", Level, nil, true, defaultLogFile)
+		FairLaunchDebugLogger = NewLogger("FLDL", Level, nil, true, defaultLogFile, fairLaunchLogFile)
+		FEE = NewLogger("FEE", Level, nil, true, defaultLogFile, feeLogFile)
 		ScheduledTask = NewLogger("CRON", Level, nil, true, defaultLogFile)
 		PreSale = NewLogger("PRSL", Level, nil, true, defaultLogFile, presaleLogFile)
-		MintNft = NewLogger("MINT", Level, nil, false, mintNftFile)
+		MintNft = NewLogger("MINT", Level, nil, false, mintNftFile, mintNftLogFile)
 		UserData = NewLogger("URDT", Level, nil, true, defaultLogFile, userDataLogFile)
 		UserStats = NewLogger("USTS", Level, nil, true, defaultLogFile, userStatsLogFile)
 		CPAmm = NewLogger("CPAM", Level, nil, true, defaultLogFile, cpAmmLogFile)
