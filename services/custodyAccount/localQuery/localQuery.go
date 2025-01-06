@@ -282,20 +282,50 @@ type GetAssetListResp struct {
 	Amount   float64 `json:"amount" gorm:"column:amount"`
 }
 
+type assetTotal struct {
+	AssetId     string
+	TotalAmount float64
+	LocalTime   time.Time
+}
+
+var balanceMap = make(map[string]*assetTotal)
+
 func GetAssetList(quest GetAssetListQuest) (*[]GetAssetListResp, int64, float64) {
 	db := middleware.DB
 	var assetList []GetAssetListResp
 	var count int64
 	var total float64
+	var err error
 	if quest.AssetId == "" {
 		return &assetList, 0, 0
 	} else if quest.AssetId != "00" {
 		q := db.Where("asset_id =?", quest.AssetId)
+		if _, ok := balanceMap[quest.AssetId]; !ok {
+			var t float64
+			// 查询总金额
+			err = q.Model(&custodyModels.AccountBalance{}).Select("SUM(amount) as total").Scan(&t).Error
+			if err != nil || t == 0 {
+				return nil, 0, 0
+			}
+			balanceMap[quest.AssetId] = &assetTotal{
+				AssetId:     quest.AssetId,
+				TotalAmount: t,
+				LocalTime:   time.Now(),
+			}
+			total = t
+		} else {
+			if balanceMap[quest.AssetId].LocalTime.Sub(time.Now()) > 1*time.Hour {
+				var t float64
+				// 查询总金额
+				err = q.Model(&custodyModels.AccountBalance{}).Select("SUM(amount) as total").Scan(&t).Error
+				if err != nil || t == 0 {
+					return nil, 0, 0
+				}
+				balanceMap[quest.AssetId].TotalAmount = t
+				balanceMap[quest.AssetId].LocalTime = time.Now()
+			}
 
-		// 查询总金额
-		err := q.Model(&custodyModels.AccountBalance{}).Select("SUM(amount) as total").Scan(&total).Error
-		if err != nil || total == 0 {
-			return nil, 0, 0
+			total = balanceMap[quest.AssetId].TotalAmount
 		}
 
 		// 查询总记录数
@@ -311,8 +341,35 @@ func GetAssetList(quest GetAssetListQuest) (*[]GetAssetListResp, int64, float64)
 			Order("user_account_balance.amount DESC").
 			Scan(&assetList)
 	} else {
+		if _, ok := balanceMap[quest.AssetId]; !ok {
+			var t float64
+			// 查询总金额
+			err = db.Model(&custodyModels.AccountBtcBalance{}).Select("SUM(amount) as total").Scan(&t).Error
+			if err != nil || t == 0 {
+				return nil, 0, 0
+			}
+			balanceMap[quest.AssetId] = &assetTotal{
+				AssetId:     quest.AssetId,
+				TotalAmount: t,
+				LocalTime:   time.Now(),
+			}
+			total = t
+		} else {
+			if balanceMap[quest.AssetId].LocalTime.Sub(time.Now()) > 1*time.Hour {
+				var t float64
+				// 查询总金额
+				err = db.Model(&custodyModels.AccountBtcBalance{}).Select("SUM(amount) as total").Scan(&t).Error
+				if err != nil || t == 0 {
+					return nil, 0, 0
+				}
+				balanceMap[quest.AssetId].TotalAmount = t
+				balanceMap[quest.AssetId].LocalTime = time.Now()
+			}
+			total = balanceMap[quest.AssetId].TotalAmount
+		}
+
 		// 查询总金额
-		err := db.Model(&custodyModels.AccountBtcBalance{}).Select("SUM(amount) as total").Scan(&total).Error
+		err = db.Model(&custodyModels.AccountBtcBalance{}).Select("SUM(amount) as total").Scan(&total).Error
 		if err != nil || total == 0 {
 			return nil, 0, 0
 		}
