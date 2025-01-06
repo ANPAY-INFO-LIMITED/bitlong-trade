@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"gorm.io/gorm"
+	"strings"
 	"time"
 	"trade/btlLog"
 	"trade/middleware"
@@ -15,6 +16,7 @@ import (
 	cBase "trade/services/custodyAccount/custodyBase"
 	"trade/services/custodyAccount/custodyBase/custodyFee"
 	"trade/services/custodyAccount/custodyBase/custodyLimit"
+	"trade/services/custodyAccount/custodyBase/custodyPayTN"
 	rpc "trade/services/servicesrpc"
 )
 
@@ -322,6 +324,15 @@ func (e *BtcChannelEvent) GetTransactionHistory(query *cBase.PaymentRequest) (*c
 				r.Invoice = &awardType
 				r.Address = &awardType
 				r.Target = &awardType
+			}
+			if strings.HasPrefix(*v.Invoice, "ptn") {
+				var ptn custodyPayTN.PayToNpubKey
+				err := ptn.Decode(*v.Invoice)
+				if err == nil {
+					r.Invoice = &ptn.NpubKey
+					r.Address = &ptn.NpubKey
+					r.Target = &ptn.NpubKey
+				}
 			}
 			r.Amount = v.Amount
 			btcAssetId := "00"

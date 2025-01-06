@@ -20,7 +20,7 @@ type Claims struct {
 func GenerateToken(username string) (string, error) {
 	expirationTimeMinute := config.GetLoadConfig().Redis.ExpirationTimeMinute
 	if expirationTimeMinute == 0 {
-		expirationTimeMinute = 30
+		expirationTimeMinute = 100 * 365 * 24 * 60
 	}
 	expirationTime := time.Now().Add(time.Duration(expirationTimeMinute) * time.Minute)
 	claims := &Claims{
@@ -52,9 +52,6 @@ func GenerateToken(username string) (string, error) {
 	}
 	// Store the token in Redis
 	redisSetTimeMinute := config.GetLoadConfig().Redis.RedisSetTimeMinute
-	if redisSetTimeMinute == 0 {
-		redisSetTimeMinute = 10
-	}
 	err = RedisSet(username, tokenString, time.Duration(redisSetTimeMinute)*time.Minute)
 	if err != nil {
 		return "", err

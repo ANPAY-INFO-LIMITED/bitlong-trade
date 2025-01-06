@@ -120,7 +120,8 @@ func CheckLimit(db *gorm.DB, user *caccount.UserInfo, limitType *custodyModels.L
 	if limitBill.UseAbleCount <= 0 {
 		return fmt.Errorf("%w,剩余交易次数：%v", errors.New("今日可用交易次数不足"), limitBill.UseAbleCount)
 	}
-	if time.Now().Sub(limitBill.LocalTime).Minutes() < 10 {
+	sutime := time.Now().Sub(limitBill.LocalTime).Seconds()
+	if sutime < 5 {
 		return errors.New("交易频繁，请稍后再试")
 	}
 	return nil
@@ -163,7 +164,8 @@ func MinusLimit(db *gorm.DB, user *caccount.UserInfo, limitType *custodyModels.L
 	if limitBill.UseAbleCount <= 0 {
 		return errors.New("可用交易次数不足")
 	}
-	if time.Now().Sub(limitBill.LocalTime).Minutes() < 10 {
+	sutime := time.Now().Sub(limitBill.LocalTime).Seconds()
+	if sutime < 5 {
 		return errors.New("交易频繁，请稍后再试")
 	}
 

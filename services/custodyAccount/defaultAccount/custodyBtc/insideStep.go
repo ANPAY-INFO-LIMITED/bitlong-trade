@@ -171,7 +171,7 @@ func InsideSteps(usr *account.UserInfo, mission *custodyModels.AccountInsideMiss
 				btlLog.CUST.Error("error PayInsideId:%v", mission.ID)
 			}
 			//取消发票
-			if strings.HasPrefix(i.Invoice, "PTN") {
+			if strings.HasPrefix(i.Invoice, "ptn") {
 				//PTN发票不需要取消
 				return
 			}

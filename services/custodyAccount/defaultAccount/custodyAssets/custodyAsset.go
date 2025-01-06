@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"gorm.io/gorm"
+	"strings"
 	"time"
 	"trade/btlLog"
 	"trade/config"
@@ -18,6 +19,7 @@ import (
 	cBase "trade/services/custodyAccount/custodyBase"
 	"trade/services/custodyAccount/custodyBase/custodyFee"
 	"trade/services/custodyAccount/custodyBase/custodyLimit"
+	"trade/services/custodyAccount/custodyBase/custodyPayTN"
 	"trade/services/custodyAccount/defaultAccount/custodyBtc"
 	"trade/services/custodyAccount/defaultAccount/custodyBtc/mempool"
 	rpc "trade/services/servicesrpc"
@@ -405,6 +407,15 @@ func (e *AssetEvent) GetTransactionHistoryByAsset() (*cBase.PaymentList, error) 
 				r.Invoice = &awardType
 				r.Address = &awardType
 				r.Target = &awardType
+			}
+			if strings.HasPrefix(*v.Invoice, "ptn") {
+				var ptn custodyPayTN.PayToNpubKey
+				err := ptn.Decode(*v.Invoice)
+				if err == nil {
+					r.Invoice = &ptn.NpubKey
+					r.Address = &ptn.NpubKey
+					r.Target = &ptn.NpubKey
+				}
 			}
 			r.Amount = v.Amount
 			r.AssetId = a[i].AssetId
