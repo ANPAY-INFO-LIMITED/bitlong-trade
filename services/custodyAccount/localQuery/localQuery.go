@@ -106,6 +106,8 @@ func BillQuery(quest BillQueryQuest) (*[]BillListWithUser, int64, error) {
 	}
 	if quest.TimeStart != "" {
 		q = q.Where("bill_balance.created_at >=?", quest.TimeStart)
+	} else {
+		q = q.Where("bill_balance.created_at >=?", time.Now().AddDate(0, -1, 0))
 	}
 	if quest.TimeEnd != "" {
 		q = q.Where("bill_balance.created_at <=?", quest.TimeEnd)
@@ -364,8 +366,6 @@ func TotalBillList(quest *TotalBillListQuest) ([]TotalBillListResp, int64, error
 
 	if quest.TimeStart != "" {
 		q = q.Where("bill_balance.created_at >=?", quest.TimeStart)
-	} else {
-		q = q.Where("bill_balance.created_at >=?", time.Now().AddDate(0, -1, 0))
 	}
 
 	if quest.TimeEnd != "" {
