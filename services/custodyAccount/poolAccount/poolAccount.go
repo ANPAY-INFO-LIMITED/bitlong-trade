@@ -20,7 +20,7 @@ const btcId = "00"
 
 var poolAccountMutex = sync.Mutex{}
 
-func CreatePoolAccount(tx *gorm.DB, pairId uint, allowTokens []string) error {
+func CreatePoolAccount(tx *gorm.DB, pairId uint, poolType uint, allowTokens []string) error {
 	if tx == nil {
 		return fmt.Errorf("tx is nil")
 	}
@@ -28,7 +28,7 @@ func CreatePoolAccount(tx *gorm.DB, pairId uint, allowTokens []string) error {
 		return errors.New("allow tokens is empty")
 	}
 	var Account pAccount.PoolAccount
-	err := tx.Where(pAccount.PoolAccount{PairId: pairId}).Attrs(pAccount.PoolAccount{Status: 1}).FirstOrCreate(&Account).Error
+	err := tx.Where(pAccount.PoolAccount{PairId: pairId, Type: poolType}).Attrs(pAccount.PoolAccount{Status: 1}).FirstOrCreate(&Account).Error
 	if err != nil {
 		return err
 	}
@@ -53,12 +53,12 @@ func CreatePoolAccount(tx *gorm.DB, pairId uint, allowTokens []string) error {
 	return err
 }
 
-func GetPoolAccount(tx *gorm.DB, pairId uint) (*pAccount.PoolAccount, error) {
+func GetPoolAccount(tx *gorm.DB, pairId uint, poolType uint) (*pAccount.PoolAccount, error) {
 	if tx == nil {
 		return nil, fmt.Errorf("tx is nil")
 	}
 	var Account pAccount.PoolAccount
-	err := tx.Where(pAccount.PoolAccount{PairId: pairId}).First(&Account).Error
+	err := tx.Where(pAccount.PoolAccount{PairId: pairId, Type: poolType}).First(&Account).Error
 	if err != nil {
 		return nil, err
 	}
@@ -68,14 +68,14 @@ func GetPoolAccount(tx *gorm.DB, pairId uint) (*pAccount.PoolAccount, error) {
 	return &Account, nil
 }
 
-func UserPayToPAccount(tx *gorm.DB, pairId uint, username string, token string, _amount *big.Int, transferDesc string) (uint, error) {
+func UserPayToPAccount(tx *gorm.DB, pairId uint, poolType uint, username string, token string, _amount *big.Int, transferDesc string) (uint, error) {
 	if tx == nil {
 		return 0, fmt.Errorf("tx is nil")
 	}
 
 	amount := bigIntToFloat64(_amount)
 
-	poolAccount, err := GetPoolAccount(tx, pairId)
+	poolAccount, err := GetPoolAccount(tx, pairId, poolType)
 	if err != nil {
 		return 0, err
 	}
@@ -117,13 +117,13 @@ func UserPayToPAccount(tx *gorm.DB, pairId uint, username string, token string, 
 	return addBalance(tx, poolAccount.ID, token, amount, username, transferDesc)
 }
 
-func PAccountToUserPay(tx *gorm.DB, username string, pairId uint, token string, _amount *big.Int, transferDesc string) (uint, error) {
+func PAccountToUserPay(tx *gorm.DB, username string, pairId uint, poolType uint, token string, _amount *big.Int, transferDesc string) (uint, error) {
 	if tx == nil {
 		return 0, fmt.Errorf("tx is nil")
 	}
 	amount := bigIntToFloat64(_amount)
 
-	poolAccount, err := GetPoolAccount(tx, pairId)
+	poolAccount, err := GetPoolAccount(tx, pairId, poolType)
 	if err != nil {
 		return 0, err
 	}
@@ -156,9 +156,9 @@ func PAccountToUserPay(tx *gorm.DB, username string, pairId uint, token string, 
 	return lessBalance(tx, poolAccount.ID, token, amount, username, transferDesc)
 }
 
-func GetAccountRecords(pairId uint, limit, offset int) (*[]pAccount.PAccountBill, error) {
+func GetAccountRecords(pairId uint, poolType uint, limit, offset int) (*[]pAccount.PAccountBill, error) {
 	db := middleware.DB
-	poolAccount, err := GetPoolAccount(db, pairId)
+	poolAccount, err := GetPoolAccount(db, pairId, poolType)
 	if err != nil {
 		return nil, err
 	}
@@ -170,9 +170,9 @@ func GetAccountRecords(pairId uint, limit, offset int) (*[]pAccount.PAccountBill
 	return &bills, nil
 }
 
-func GetAccountRecordCount(pairId uint) (int64, error) {
+func GetAccountRecordCount(pairId uint, poolType uint) (int64, error) {
 	db := middleware.DB
-	poolAccount, err := GetPoolAccount(db, pairId)
+	poolAccount, err := GetPoolAccount(db, pairId, poolType)
 	if err != nil {
 		return 0, err
 	}
@@ -184,18 +184,18 @@ func GetAccountRecordCount(pairId uint) (int64, error) {
 	return total, nil
 }
 
-func LockPoolAccount(tx *gorm.DB, pairId uint) error {
+func LockPoolAccount(tx *gorm.DB, pairId uint, poolType uint) error {
 	if tx == nil {
 		return fmt.Errorf("tx is nil")
 	}
-	return tx.Table("custody_pool_accounts").Where("pair_id = ?", pairId).Update("status", 0).Error
+	return tx.Table("custody_pool_accounts").Where("pair_id = ? and type = ?", pairId, poolType).Update("status", 0).Error
 }
 
-func UnlockPoolAccount(tx *gorm.DB, pairId uint) error {
+func UnlockPoolAccount(tx *gorm.DB, pairId uint, poolType uint) error {
 	if tx == nil {
 		return fmt.Errorf("tx is nil")
 	}
-	return tx.Table("custody_pool_accounts").Where("pair_id = ?", pairId).Update("status", 1).Error
+	return tx.Table("custody_pool_accounts").Where("pair_id = ? and type = ?", pairId, poolType).Update("status", 1).Error
 }
 
 func AwardSat(username string, _amount *big.Int, transferDesc string) (uint, error) {
@@ -217,10 +217,10 @@ type PAccountInfo struct {
 	Balances *[]pAccount.PAccountBalance
 }
 
-func GetPoolAccountInfo(pairId uint) (*PAccountInfo, error) {
+func GetPoolAccountInfo(pairId uint, poolType uint) (*PAccountInfo, error) {
 	db := middleware.DB
 	var info PAccountInfo
-	poolAccount, err := GetPoolAccount(db, pairId)
+	poolAccount, err := GetPoolAccount(db, pairId, poolType)
 	if err != nil {
 		return nil, err
 	}
