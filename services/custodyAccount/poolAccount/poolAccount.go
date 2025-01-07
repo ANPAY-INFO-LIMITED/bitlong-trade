@@ -156,6 +156,30 @@ func PAccountToUserPay(tx *gorm.DB, username string, pairId uint, poolType uint,
 	return lessBalance(tx, poolAccount.ID, token, amount, username, transferDesc)
 }
 
+func PAccountToPAccountPay(tx *gorm.DB, fromPairId uint, fromType uint, toPairId uint, toType uint, token string, _amount *big.Int, transferDesc string) (uint, error) {
+	if tx == nil {
+		return 0, fmt.Errorf("tx is nil")
+	}
+	amount := bigIntToFloat64(_amount)
+
+	payAccount, err := GetPoolAccount(tx, fromPairId, fromType)
+	if err != nil {
+		return 0, err
+	}
+	receiveAccount, err := GetPoolAccount(tx, toPairId, toType)
+	if err != nil {
+		return 0, err
+	}
+	poolAccountMutex.Lock()
+	defer poolAccountMutex.Unlock()
+
+	_, err = lessBalance(tx, payAccount.ID, token, amount, fmt.Sprintf("poolAccount:%d", payAccount.ID), transferDesc)
+	if err != nil {
+		return 0, err
+	}
+	return addBalance(tx, receiveAccount.ID, token, amount, fmt.Sprintf("poolAccount:%d", payAccount.ID), transferDesc)
+}
+
 func GetAccountRecords(pairId uint, poolType uint, limit, offset int) (*[]pAccount.PAccountBill, error) {
 	db := middleware.DB
 	poolAccount, err := GetPoolAccount(db, pairId, poolType)

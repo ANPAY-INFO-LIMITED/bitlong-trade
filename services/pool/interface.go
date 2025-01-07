@@ -35,6 +35,13 @@ func TransferToPoolAccount(tx *gorm.DB, username string, pairId uint, token stri
 	return poolAccount.UserPayToPAccount(tx, pairId, 0, username, token, _amount, transferDescription)
 }
 
+func P2PTransfer(tx *gorm.DB, fromPairId uint, fromType uint, toPairId uint, toType uint, token string, _amount *big.Int, transferDescription string) (recordId uint, err error) {
+	if token == TokenSatTag {
+		token = "00"
+	}
+	return poolAccount.PAccountToPAccountPay(tx, fromPairId, fromType, toPairId, toType, token, _amount, transferDescription)
+}
+
 func GetPoolAccountRecords(pairId uint, limit int, offset int) (records *[]pAccount.PAccountBill, err error) {
 	return poolAccount.GetAccountRecords(pairId, 0, limit, offset)
 }

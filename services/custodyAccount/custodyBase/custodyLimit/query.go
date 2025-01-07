@@ -94,6 +94,8 @@ func SetUserLimitLevel(userName, limitType string, level int) error {
 	err = db.Where("user_id =? and limit_type =?", usr.ID, TypeID).First(&userLimit).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			userLimit.LimitType = TypeID
+			userLimit.UserId = usr.ID
 			userLimit.Level = uint(level)
 			return db.Create(&userLimit).Error
 		}
@@ -124,7 +126,22 @@ func SetUserTodayLimit(userName, limitType string, amount int, count int) error 
 	if err != nil {
 		return err
 	}
-
+	//检查用户的限制等级是否存在
+	userLimit := custodyModels.Limit{}
+	err = db.Where("user_id =? and limit_type =?", usr.ID, TypeID).First(&userLimit).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			userLimit.LimitType = TypeID
+			userLimit.UserId = usr.ID
+			userLimit.Level = uint(1)
+			err = db.Create(&userLimit).Error
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
 	// 获取今日0点的时间
 	todayStart := time.Now().Truncate(24 * time.Hour).Add(-8 * time.Hour)
 
