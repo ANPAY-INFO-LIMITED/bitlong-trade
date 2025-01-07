@@ -234,39 +234,6 @@ func QueryAddresses(c *gin.Context) {
 	c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "", addrs))
 }
 
-func QueryAssetPayment(c *gin.Context) {
-	// 获取登录用户信息
-	userName := c.MustGet("username").(string)
-	invoiceRequest := struct {
-		AssetId string `json:"asset_id"`
-	}{}
-	if err := c.ShouldBindJSON(&invoiceRequest); err != nil {
-		c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.DefaultErr, err.Error(), nil))
-		return
-	}
-	e, err := custodyAssets.NewAssetEvent(userName, invoiceRequest.AssetId)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, models.MakeJsonErrorResultForHttp(models.DefaultErr, "用户不存在", nil))
-		return
-	}
-	// 查询账户交易记录
-	p, err := e.GetTransactionHistoryByAsset()
-	if err != nil {
-		fmt.Println(err.Error())
-		c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.DefaultErr, err.Error(), nil))
-		return
-	}
-	p.Sort()
-	//p2, err := custodyAccount.LockPaymentToPaymentList(e.UserInfo, *e.AssetId)
-	//if err != nil {
-	//	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	//	return
-	//}
-	//result := custodyAccount.MergePaymentList(p, p2)
-
-	c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "", p))
-}
-
 func QueryAssetPayments(c *gin.Context) {
 	// 获取登录用户信息
 	userName := c.MustGet("username").(string)
@@ -275,18 +242,18 @@ func QueryAssetPayments(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, models.MakeJsonErrorResultForHttp(models.DefaultErr, "用户不存在", nil))
 		return
 	}
-	invoiceRequest := custodyBase.PaymentRequest{}
-	if err := c.ShouldBindJSON(&invoiceRequest); err != nil {
+	transferRequest := custodyBase.PaymentRequest{}
+	if err := c.ShouldBindJSON(&transferRequest); err != nil {
 		c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.DefaultErr, err.Error(), nil))
 		return
 	}
-	if invoiceRequest.Page == 0 && invoiceRequest.PageSize == 0 {
-		invoiceRequest.Page = 1
-		invoiceRequest.PageSize = 1000
-		invoiceRequest.Away = 5
+	if transferRequest.Page == 0 && transferRequest.PageSize == 0 {
+		transferRequest.Page = 1
+		transferRequest.PageSize = 1000
+		transferRequest.Away = 5
 	}
 	// 查询账户发票
-	payments, err := e.GetTransactionHistory(&invoiceRequest)
+	payments, err := e.GetTransactionHistory(&transferRequest)
 	if err != nil {
 		fmt.Println(err.Error())
 		c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.DefaultErr, err.Error(), nil))

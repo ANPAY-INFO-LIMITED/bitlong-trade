@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"gorm.io/gorm"
-	"strings"
 	"time"
 	"trade/btlLog"
 	"trade/config"
@@ -19,7 +18,6 @@ import (
 	cBase "trade/services/custodyAccount/custodyBase"
 	"trade/services/custodyAccount/custodyBase/custodyFee"
 	"trade/services/custodyAccount/custodyBase/custodyLimit"
-	"trade/services/custodyAccount/custodyBase/custodyPayTN"
 	"trade/services/custodyAccount/defaultAccount/custodyBtc"
 	"trade/services/custodyAccount/defaultAccount/custodyBtc/mempool"
 	rpc "trade/services/servicesrpc"
@@ -334,7 +332,7 @@ func (e *AssetEvent) GetTransactionHistory(query *cBase.PaymentRequest) (*cBase.
 
 	var a []models.Balance
 	offset := (query.Page - 1) * query.PageSize
-	q := middleware.DB.Where("account_id = ? AND asset_id != ?", e.UserInfo.Account.ID, "00")
+	q := middleware.DB.Where("account_id = ? AND asset_id == ?", e.UserInfo.Account.ID, query.AssetId)
 	switch query.Away {
 	case 0, 1:
 		q = q.Where("away = ?", query.Away)
@@ -369,53 +367,6 @@ func (e *AssetEvent) GetTransactionHistory(query *cBase.PaymentRequest) (*cBase.
 				r.Invoice = &awardType
 				r.Address = &awardType
 				r.Target = &awardType
-			}
-			r.Amount = v.Amount
-			r.AssetId = a[i].AssetId
-			r.State = v.State
-			r.Fee = v.ServerFee
-			results.PaymentList = append(results.PaymentList, r)
-		}
-	}
-	return &results, nil
-}
-
-func (e *AssetEvent) GetTransactionHistoryByAsset() (*cBase.PaymentList, error) {
-	var a []models.Balance
-	err := middleware.DB.Where("account_id = ?", e.UserInfo.Account.ID).Where("asset_id = ?", *e.AssetId).Find(&a).Error
-	if err != nil {
-		btlLog.CUST.Error(err.Error())
-		return nil, err
-	}
-	var results cBase.PaymentList
-	if len(a) > 0 {
-		for i := len(a) - 1; i >= 0; i-- {
-			if a[i].State == models.STATE_FAILED {
-				continue
-			}
-			v := a[i]
-			r := cBase.PaymentResponse{}
-			r.Timestamp = v.CreatedAt.Unix()
-			r.BillType = v.BillType
-			r.Away = v.Away
-			r.Invoice = v.Invoice
-			r.Address = v.Invoice
-			r.Target = v.Invoice
-			r.PaymentHash = v.PaymentHash
-			if *v.Invoice == "award" && v.PaymentHash != nil {
-				awardType := cBase.GetAwardType(*v.PaymentHash)
-				r.Invoice = &awardType
-				r.Address = &awardType
-				r.Target = &awardType
-			}
-			if strings.HasPrefix(*v.Invoice, "ptn") {
-				var ptn custodyPayTN.PayToNpubKey
-				err := ptn.Decode(*v.Invoice)
-				if err == nil {
-					r.Invoice = &ptn.NpubKey
-					r.Address = &ptn.NpubKey
-					r.Target = &ptn.NpubKey
-				}
 			}
 			r.Amount = v.Amount
 			r.AssetId = a[i].AssetId
