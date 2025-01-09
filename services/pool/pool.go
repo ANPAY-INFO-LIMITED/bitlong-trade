@@ -1175,7 +1175,7 @@ func swapTokenForExactTokenNoPath(tokenIn string, tokenOut string, amountOut str
 				*_amountOutExcludeFee = *_amountOut
 			}
 
-			*_calcPriceAmountIn = *_amountIn
+			*_calcPriceAmountIn = *_amountInWithoutFee
 			*_calcPriceAmountOut = *_amountOut
 
 			*_amountInTransfer = *_amountIn
