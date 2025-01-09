@@ -7,7 +7,13 @@ import (
 	"trade/services/custodyAccount/poolAccount"
 )
 
-func CreatePoolAccount(tx *gorm.DB, pairId uint, allowTokens []string) (err error) {
+const (
+	PoolTypeDefault uint = 0
+
+	PoolTypeFee uint = 1
+)
+
+func CreatePoolAccount(tx *gorm.DB, pairId uint, poolType uint, allowTokens []string) (err error) {
 	transTokens := make([]string, 0)
 	for _, token := range allowTokens {
 		if token == TokenSatTag {
@@ -17,52 +23,54 @@ func CreatePoolAccount(tx *gorm.DB, pairId uint, allowTokens []string) (err erro
 		}
 	}
 
-	return poolAccount.CreatePoolAccount(tx, pairId, 0, transTokens)
+	return poolAccount.CreatePoolAccount(tx, pairId, poolType, transTokens)
 }
 
 // @Description: token is the asset_id or the "sat"
-func PoolAccountTransfer(tx *gorm.DB, pairId uint, username string, token string, _amount *big.Int, transferDescription string) (recordId uint, err error) {
+func PoolAccountTransfer(tx *gorm.DB, pairId uint, poolType uint, username string, token string, _amount *big.Int, transferDescription string) (recordId uint, err error) {
 	if token == TokenSatTag {
 		token = "00"
 	}
-	return poolAccount.PAccountToUserPay(tx, username, pairId, 0, token, _amount, transferDescription)
+	return poolAccount.PAccountToUserPay(tx, username, pairId, poolType, token, _amount, transferDescription)
 }
 
-func TransferToPoolAccount(tx *gorm.DB, username string, pairId uint, token string, _amount *big.Int, transferDescription string) (recordId uint, err error) {
+func TransferToPoolAccount(tx *gorm.DB, username string, pairId uint, poolType uint, token string, _amount *big.Int, transferDescription string) (recordId uint, err error) {
 	if token == TokenSatTag {
 		token = "00"
 	}
-	return poolAccount.UserPayToPAccount(tx, pairId, 0, username, token, _amount, transferDescription)
+	return poolAccount.UserPayToPAccount(tx, pairId, poolType, username, token, _amount, transferDescription)
 }
 
-func P2PTransfer(tx *gorm.DB, fromPairId uint, fromType uint, toPairId uint, toType uint, token string, _amount *big.Int, transferDescription string) (recordId uint, err error) {
+func PoolToPoolPTransfer(tx *gorm.DB, fromPairId uint, fromType uint, toPairId uint, toType uint, token string, _amount *big.Int, transferDescription string) (recordId uint, err error) {
 	if token == TokenSatTag {
 		token = "00"
 	}
 	return poolAccount.PAccountToPAccountPay(tx, fromPairId, fromType, toPairId, toType, token, _amount, transferDescription)
 }
 
-func GetPoolAccountRecords(pairId uint, limit int, offset int) (records *[]pAccount.PAccountBill, err error) {
-	return poolAccount.GetAccountRecords(pairId, 0, limit, offset)
-}
-func GetPoolAccountRecordsCount(pairId uint) (count int64, err error) {
-	return poolAccount.GetAccountRecordCount(pairId, 0)
+func GetPoolAccountRecords(pairId uint, poolType uint, limit int, offset int) (records *[]pAccount.PAccountBill, err error) {
+	return poolAccount.GetAccountRecords(pairId, poolType, limit, offset)
 }
 
-func GetPoolAccountInfo(pairId uint) (info *poolAccount.PAccountInfo, err error) {
-	return poolAccount.GetPoolAccountInfo(pairId, 0)
+func GetPoolAccountRecordsCount(pairId uint, poolType uint) (count int64, err error) {
+	return poolAccount.GetAccountRecordCount(pairId, poolType)
+}
+
+func GetPoolAccountInfo(pairId uint, poolType uint) (info *poolAccount.PAccountInfo, err error) {
+	return poolAccount.GetPoolAccountInfo(pairId, poolType)
 }
 
 // TODO 6.LockPoolAccount
-func LockPoolAccount(tx *gorm.DB, pairId uint) (err error) {
-	return poolAccount.LockPoolAccount(tx, pairId, 0)
+func LockPoolAccount(tx *gorm.DB, pairId uint, poolType uint) (err error) {
+	return poolAccount.LockPoolAccount(tx, pairId, poolType)
 }
 
 // TODO 7.UnLockPoolAccount
-func UnLockPoolAccount(tx *gorm.DB, pairId uint) (err error) {
-	return poolAccount.UnlockPoolAccount(tx, pairId, 0)
+func UnLockPoolAccount(tx *gorm.DB, pairId uint, poolType uint) (err error) {
+	return poolAccount.UnlockPoolAccount(tx, pairId, poolType)
 }
 
+// Deprecated
 // @Note: Transfer Sats only
 func TransferWithdrawReward(username string, _amount *big.Int, transferDescription string) (recordId uint, err error) {
 	return poolAccount.AwardSat(username, _amount, transferDescription)

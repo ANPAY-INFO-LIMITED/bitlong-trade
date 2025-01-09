@@ -312,6 +312,7 @@ const (
 	SetBtcUtxoErr
 	QuerySwapTrsScanCountErr
 	QuerySwapTrsErr
+	PoolTransferToFeeErr
 )
 
 // Err type:CustodyAccount

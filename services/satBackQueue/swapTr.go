@@ -82,6 +82,9 @@ func SwapTrsScanToSwapTr(swapTrsScan SwapTrsScan) (swapTr SwapTr, err error) {
 			_type = SwapTrTypeSell
 		}
 
+		// @dev: Reverse the type
+		_type = ReverseSwapType(_type)
+
 		var satFloat, assetFloat, price *big.Float
 		var success bool
 
@@ -134,4 +137,14 @@ func QueryNotPushedSwapTrs() (swapTrs []SwapTr, err error) {
 		return nil, utils.AppendErrorInfo(err, "SwapRecordInfosToSwapTrs")
 	}
 	return swapTrs, nil
+}
+
+func ReverseSwapType(_type string) (result string) {
+	if _type == SwapTrTypeBuy {
+		return SwapTrTypeSell
+	} else if _type == SwapTrTypeSell {
+		return SwapTrTypeBuy
+	} else {
+		return _type
+	}
 }

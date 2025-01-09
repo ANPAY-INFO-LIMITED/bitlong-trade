@@ -263,6 +263,9 @@ func poolMigrate() (err error) {
 	if err = middleware.DB.AutoMigrate(&pool.PoolWithdrawAwardBatch{}); err != nil {
 		return err
 	}
+	if err = middleware.DB.AutoMigrate(&pool.PoolAccountFeeBalance{}); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -334,6 +337,7 @@ func custodyBTCMigrate(err error) error {
 	}
 	return err
 }
+
 func custodyPAccountMigrate(err error) error {
 	if err = middleware.DB.AutoMigrate(&pAccount.PoolAccount{}); err != nil {
 		return err

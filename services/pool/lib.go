@@ -428,3 +428,29 @@ func getAmountInBigWithoutFee(_amountOut *big.Int, _reserveIn *big.Int, _reserve
 	}
 	return _amountIn, nil
 }
+
+func ceil(value *big.Float) (integer *big.Int) {
+	integer = big.NewInt(0)
+
+	intPart := big.NewInt(0)
+
+	value.Int(intPart)
+
+	intPartFloat := new(big.Float).SetInt(intPart)
+
+	*integer = *intPart
+
+	if value.Cmp(intPartFloat) > 0 {
+		integer = new(big.Int).Add(integer, big.NewInt(1))
+	}
+
+	return integer
+}
+
+func amountFee(_amount *big.Int, feeK uint16) (amountExcludeFee *big.Int, amountFee *big.Int) {
+	_k := new(big.Int).SetUint64(uint64(feeK))
+	_oneThousand := new(big.Int).SetUint64(1000)
+	_amountExcludeFee := new(big.Int).Div(new(big.Int).Mul(_amount, new(big.Int).Sub(_oneThousand, _k)), _oneThousand)
+	_amountFee := new(big.Int).Sub(_amount, _amountExcludeFee)
+	return _amountExcludeFee, _amountFee
+}

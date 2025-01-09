@@ -2329,3 +2329,23 @@ func QueryPoolInfo2(c *gin.Context) {
 		Data:   poolInfo,
 	})
 }
+
+func PoolTransferToFee(c *gin.Context) {
+	tokenA := c.Query("token_a")
+	tokenB := c.Query("token_b")
+	amount := c.Query("amount")
+	err := pool.PoolTransferToFee(tokenA, tokenB, amount)
+	if err != nil {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.PoolTransferToFeeErr.Code(),
+			ErrMsg: err.Error(),
+			Data:   nil,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, Result2{
+		Errno:  0,
+		ErrMsg: models.SUCCESS.Error(),
+		Data:   nil,
+	})
+}

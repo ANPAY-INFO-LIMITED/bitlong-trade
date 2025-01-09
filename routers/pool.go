@@ -1,6 +1,7 @@
 package routers
 
 import (
+	"encoding/base64"
 	"github.com/gin-gonic/gin"
 	"trade/config"
 	"trade/handlers"
@@ -90,12 +91,13 @@ func SetupPoolRouter(router *gin.Engine) *gin.Engine {
 		sync.POST("/withdraw_award", handlers.WithdrawAward)
 	}
 
-	username := config.GetLoadConfig().AdminUser.Username
-	password := config.GetLoadConfig().AdminUser.Password
+	username := base64.StdEncoding.EncodeToString([]byte(config.GetLoadConfig().AdminUser.Username))
+	password := base64.StdEncoding.EncodeToString([]byte(config.GetLoadConfig().AdminUser.Password))
 	authorized := router.Group("/pool/auth_op", gin.BasicAuth(gin.Accounts{
 		username: password,
 	}))
 	authorized.GET("/pool_info", handlers.QueryPoolInfo2)
+	authorized.GET("/pool_transfer_to_fee", handlers.PoolTransferToFee)
 
 	return router
 }
