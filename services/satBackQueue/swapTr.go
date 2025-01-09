@@ -25,13 +25,13 @@ const (
 )
 
 type SwapTrsScan struct {
-	ID        uint      `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	Username  string    `json:"username"`
-	TokenIn   string    `json:"token_in"`
-	TokenOut  string    `json:"token_out"`
-	AmountIn  string    `json:"amount_in"`
-	AmountOut string    `json:"amount_out"`
+	ID                 uint      `json:"id"`
+	CreatedAt          time.Time `json:"created_at"`
+	Username           string    `json:"username"`
+	TokenIn            string    `json:"token_in"`
+	TokenOut           string    `json:"token_out"`
+	CalcPriceAmountIn  string    `json:"calc_price_amount_in"`
+	CalcPriceAmountOut string    `json:"calc_price_amount_out"`
 }
 
 func QueryNotPushedSwapTrsScan() (swapTrsScans []SwapTrsScan, err error) {
@@ -41,7 +41,7 @@ func QueryNotPushedSwapTrsScan() (swapTrsScans []SwapTrsScan, err error) {
 	swapTrsScans = []SwapTrsScan{}
 
 	err = tx.Table("pool_swap_records").
-		Select("id,created_at,username,token_in,token_out,amount_in,amount_out").
+		Select("id,created_at,username,token_in,token_out,calc_price_amount_in,calc_price_amount_out").
 		Order("id desc").
 		Where("is_pushed_queue = ?", false).
 		Scan(&swapTrsScans).
@@ -71,14 +71,14 @@ func SwapTrsScanToSwapTr(swapTrsScan SwapTrsScan) (swapTr SwapTr, err error) {
 
 		if token0 == swapTrsScan.TokenIn {
 			// sat In, asset Out
-			AmountSat = swapTrsScan.AmountIn
-			AmountAsset = swapTrsScan.AmountOut
+			AmountSat = swapTrsScan.CalcPriceAmountIn
+			AmountAsset = swapTrsScan.CalcPriceAmountOut
 			_type = SwapTrTypeBuy
 
 		} else {
 			//	sat Out, asset In
-			AmountSat = swapTrsScan.AmountOut
-			AmountAsset = swapTrsScan.AmountIn
+			AmountSat = swapTrsScan.CalcPriceAmountOut
+			AmountAsset = swapTrsScan.CalcPriceAmountIn
 			_type = SwapTrTypeSell
 		}
 
