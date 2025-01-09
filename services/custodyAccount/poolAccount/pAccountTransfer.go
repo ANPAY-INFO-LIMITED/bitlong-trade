@@ -48,7 +48,7 @@ func addBalance(tx *gorm.DB, poolAccountId uint, AssetId string, amount float64,
 	if err != nil {
 		return 0, err
 	}
-	return balance.Id, nil
+	return bill.ID, nil
 }
 
 func lessBalance(tx *gorm.DB, poolAccountId uint, AssetId string, amount float64, target string, transferDesc string) (uint, error) {
@@ -94,7 +94,7 @@ func lessBalance(tx *gorm.DB, poolAccountId uint, AssetId string, amount float64
 	if err != nil {
 		return 0, err
 	}
-	return balance.Id, nil
+	return bill.ID, nil
 }
 
 func checkAssetId(tx *gorm.DB, poolAccountId uint, AssetId string) bool {

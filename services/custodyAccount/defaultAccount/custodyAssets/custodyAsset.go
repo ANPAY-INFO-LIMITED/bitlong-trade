@@ -332,7 +332,7 @@ func (e *AssetEvent) GetTransactionHistory(query *cBase.PaymentRequest) (*cBase.
 
 	var a []models.Balance
 	offset := (query.Page - 1) * query.PageSize
-	q := middleware.DB.Where("account_id = ? AND asset_id == ?", e.UserInfo.Account.ID, query.AssetId)
+	q := middleware.DB.Where("account_id = ? AND asset_id = ?", e.UserInfo.Account.ID, query.AssetId)
 	switch query.Away {
 	case 0, 1:
 		q = q.Where("away = ?", query.Away)

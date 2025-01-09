@@ -79,6 +79,7 @@ func QueryBalancesChange(c *gin.Context) {
 	c.JSON(http.StatusOK, Result{Errno: 0, ErrMsg: "", Data: a})
 }
 
+// GetBalanceList 获取总资产排行榜情况及通道内总金额
 func GetBalanceList(c *gin.Context) {
 	var creds localQuery.GetAssetListQuest
 	if err := c.ShouldBindJSON(&creds); err != nil {

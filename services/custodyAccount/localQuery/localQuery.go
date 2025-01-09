@@ -284,6 +284,7 @@ type GetAssetListResp struct {
 
 type assetTotal struct {
 	AssetId     string
+	Count       int64
 	TotalAmount float64
 	LocalTime   time.Time
 }
@@ -293,100 +294,76 @@ var balanceMap = make(map[string]*assetTotal)
 func GetAssetList(quest GetAssetListQuest) (*[]GetAssetListResp, int64, float64) {
 	db := middleware.DB
 	var assetList []GetAssetListResp
-	var count int64
-	var total float64
+	ct := struct {
+		Count int64   `gorm:"column:count"`
+		Total float64 `gorm:"column:total"`
+	}{}
 	var err error
 	if quest.AssetId == "" {
 		return &assetList, 0, 0
 	} else if quest.AssetId != "00" {
-		q := db.Where("asset_id =?", quest.AssetId)
 		if _, ok := balanceMap[quest.AssetId]; !ok {
-			var t float64
-			// 查询总金额
-			err = q.Model(&custodyModels.AccountBalance{}).Select("SUM(amount) as total").Scan(&t).Error
-			if err != nil || t == 0 {
+			err = db.Raw(assetListQueryCT, quest.AssetId, quest.AssetId, quest.AssetId).Scan(&ct).Error
+			if err != nil {
 				return nil, 0, 0
 			}
 			balanceMap[quest.AssetId] = &assetTotal{
 				AssetId:     quest.AssetId,
-				TotalAmount: t,
+				Count:       ct.Count,
+				TotalAmount: ct.Total,
 				LocalTime:   time.Now(),
 			}
-			total = t
 		} else {
 			if balanceMap[quest.AssetId].LocalTime.Sub(time.Now()) > 1*time.Hour {
-				var t float64
-				// 查询总金额
-				err = q.Model(&custodyModels.AccountBalance{}).Select("SUM(amount) as total").Scan(&t).Error
-				if err != nil || t == 0 {
+				err = db.Raw(assetListQueryCT, quest.AssetId, quest.AssetId, quest.AssetId).Scan(&ct).Error
+				if err != nil {
 					return nil, 0, 0
 				}
-				balanceMap[quest.AssetId].TotalAmount = t
+				balanceMap[quest.AssetId].TotalAmount = ct.Total
+				balanceMap[quest.AssetId].Count = ct.Count
 				balanceMap[quest.AssetId].LocalTime = time.Now()
 			}
-
-			total = balanceMap[quest.AssetId].TotalAmount
+			ct.Total = balanceMap[quest.AssetId].TotalAmount
+			ct.Count = balanceMap[quest.AssetId].Count
 		}
-
-		// 查询总记录数
-		err = q.Model(&custodyModels.AccountBalance{}).Count(&count).Error
-		if err != nil || count == 0 {
+		err = db.Raw(assetListQuery, quest.AssetId, quest.AssetId, quest.AssetId, quest.PageSize, (quest.Page)*quest.PageSize).
+			Scan(&assetList).Error
+		if err != nil {
 			return nil, 0, 0
 		}
-
-		q.Table("user_account_balance").
-			Joins("LEFT JOIN user_account ON user_account.id = user_account_balance.account_id").
-			Limit(quest.PageSize).Offset((quest.Page) * quest.PageSize).
-			Select("user_account_balance.*, user_account.user_name").
-			Order("user_account_balance.amount DESC").
-			Scan(&assetList)
 	} else {
 		if _, ok := balanceMap[quest.AssetId]; !ok {
-			var t float64
-			// 查询总金额
-			err = db.Model(&custodyModels.AccountBtcBalance{}).Select("SUM(amount) as total").Scan(&t).Error
-			if err != nil || t == 0 {
+			err = db.Raw(btcListQueryCT).Scan(&ct).Error
+			if err != nil {
 				return nil, 0, 0
 			}
+
 			balanceMap[quest.AssetId] = &assetTotal{
 				AssetId:     quest.AssetId,
-				TotalAmount: t,
+				Count:       ct.Count,
+				TotalAmount: ct.Total,
 				LocalTime:   time.Now(),
 			}
-			total = t
+
 		} else {
 			if balanceMap[quest.AssetId].LocalTime.Sub(time.Now()) > 1*time.Hour {
-				var t float64
-				// 查询总金额
-				err = db.Model(&custodyModels.AccountBtcBalance{}).Select("SUM(amount) as total").Scan(&t).Error
-				if err != nil || t == 0 {
+				err = db.Raw(btcListQueryCT).Scan(&ct).Error
+				if err != nil {
 					return nil, 0, 0
 				}
-				balanceMap[quest.AssetId].TotalAmount = t
+				balanceMap[quest.AssetId].Count = ct.Count
+				balanceMap[quest.AssetId].TotalAmount = ct.Total
 				balanceMap[quest.AssetId].LocalTime = time.Now()
 			}
-			total = balanceMap[quest.AssetId].TotalAmount
+			ct.Total = balanceMap[quest.AssetId].TotalAmount
+			ct.Count = balanceMap[quest.AssetId].Count
 		}
-
-		// 查询总金额
-		err = db.Model(&custodyModels.AccountBtcBalance{}).Select("SUM(amount) as total").Scan(&total).Error
-		if err != nil || total == 0 {
+		err = db.Raw(btcListQuery, quest.PageSize, (quest.Page)*quest.PageSize).Scan(&assetList).Error
+		if err != nil {
 			return nil, 0, 0
 		}
-
-		err = db.Model(custodyModels.AccountBtcBalance{}).Count(&count).Error
-		if err != nil || count == 0 {
-			return nil, 0, 0
-		}
-
-		db.Table("user_account_balance_btc").
-			Joins("LEFT JOIN user_account ON user_account.id = user_account_balance_btc.account_id").
-			Limit(quest.PageSize).Offset((quest.Page) * quest.PageSize).
-			Select("user_account_balance_btc.amount, '00' as asset_id,user_account.user_name").
-			Order("user_account_balance_btc.amount DESC").
-			Scan(&assetList)
 	}
-	return &assetList, count, total
+	return &assetList, ct.Count, ct.Total
 }
 
 type TotalBillListQuest struct {
