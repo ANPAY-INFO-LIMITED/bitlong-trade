@@ -149,3 +149,55 @@ func UpdateAllPoolPairTokenAccountBalances() error {
 	}
 	return tx.Commit().Error
 }
+
+type PoolAccountNameAndBalance struct {
+	Name    string  `json:"name"`
+	Balance float64 `json:"balance"`
+}
+
+type PoolPairTokenAccountBalanceScan struct {
+	Token0  string  `json:"token0"`
+	Token1  string  `json:"token1"`
+	Balance float64 `json:"balance"`
+}
+
+func GetPoolAccountNameAndBalancesCount(token string) (int64, error) {
+	var count int64
+
+	err := middleware.DB.Table("pool_pair_token_account_balances").
+		Joins("JOIN pool_pairs ON pool_pairs.id = pool_pair_token_account_balances.pair_id").
+		Where("token = ?", token).
+		Count(&count).Error
+
+	if err != nil {
+		return 0, utils.AppendErrorInfo(err, "select pool_pair_token_account_balances count")
+	}
+
+	return count, nil
+}
+
+func GetPoolAccountNameAndBalances(token string, limit int, offset int) ([]PoolAccountNameAndBalance, error) {
+	var poolPairTokenAccountBalanceScans []PoolPairTokenAccountBalanceScan
+
+	err := middleware.DB.Table("pool_pair_token_account_balances").
+		Select("pool_pairs.token0, pool_pairs.token1, pool_pair_token_account_balances.balance").
+		Joins("JOIN pool_pairs ON pool_pairs.id = pool_pair_token_account_balances.pair_id").
+		Where("token = ?", token).
+		Limit(limit).
+		Offset(offset).
+		Scan(&poolPairTokenAccountBalanceScans).Error
+
+	if err != nil {
+		return nil, utils.AppendErrorInfo(err, "select pool_pair_token_account_balances")
+	}
+
+	var poolAccountNameAndBalances []PoolAccountNameAndBalance
+	for _, poolPairTokenAccountBalanceScan := range poolPairTokenAccountBalanceScans {
+		poolAccountNameAndBalances = append(poolAccountNameAndBalances, PoolAccountNameAndBalance{
+			Name:    poolPairName(poolPairTokenAccountBalanceScan.Token0, poolPairTokenAccountBalanceScan.Token1),
+			Balance: poolPairTokenAccountBalanceScan.Balance,
+		})
+	}
+
+	return poolAccountNameAndBalances, nil
+}
