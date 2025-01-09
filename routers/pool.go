@@ -97,7 +97,8 @@ func SetupPoolRouter(router *gin.Engine) *gin.Engine {
 		username: password,
 	}))
 	authorized.GET("/pool_info", handlers.QueryPoolInfo2)
-	authorized.GET("/pool_transfer_to_fee", handlers.PoolTransferToFee)
+	//authorized.GET("/pool_transfer_to_fee", handlers.PoolTransferToFee)
+	authorized.GET("/pool_account_info", handlers.GetPoolAccountInfo)
 
 	return router
 }

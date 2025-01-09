@@ -313,6 +313,9 @@ const (
 	QuerySwapTrsScanCountErr
 	QuerySwapTrsErr
 	PoolTransferToFeeErr
+	GetPoolAccountInfoErr
+	ParseUintErr
+	QueryPairIdErr
 )
 
 // Err type:CustodyAccount

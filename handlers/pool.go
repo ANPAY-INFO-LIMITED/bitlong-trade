@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
+	"trade/middleware"
 	"trade/models"
 	"trade/services/pool"
 )
@@ -2347,5 +2348,46 @@ func PoolTransferToFee(c *gin.Context) {
 		Errno:  0,
 		ErrMsg: models.SUCCESS.Error(),
 		Data:   nil,
+	})
+}
+
+func GetPoolAccountInfo(c *gin.Context) {
+
+	tokenA := c.Query("token_a")
+	tokenB := c.Query("token_b")
+	poolType := c.Query("pool_type")
+	tx := middleware.DB.Begin()
+	pairId, err := pool.QueryPairId(tx, tokenA, tokenB)
+	if err != nil {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.QueryPairIdErr.Code(),
+			ErrMsg: err.Error(),
+			Data:   nil,
+		})
+	}
+	tx.Rollback()
+
+	poolTypeUint64, err := strconv.ParseUint(poolType, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.ParseUintErr.Code(),
+			ErrMsg: err.Error(),
+			Data:   nil,
+		})
+		return
+	}
+	pAccountInfo, err := pool.GetPoolAccountInfo(pairId, uint(poolTypeUint64))
+	if err != nil {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.GetPoolAccountInfoErr.Code(),
+			ErrMsg: err.Error(),
+			Data:   nil,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, Result2{
+		Errno:  0,
+		ErrMsg: models.SUCCESS.Error(),
+		Data:   pAccountInfo,
 	})
 }
