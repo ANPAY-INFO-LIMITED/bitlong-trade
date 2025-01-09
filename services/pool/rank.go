@@ -88,6 +88,9 @@ func updatePoolPairTokenAccountBalance(tx *gorm.DB, poolPairTokenAccountBalanceI
 	pairId := poolPairTokenAccountBalanceInfo.PairId
 	token := poolPairTokenAccountBalanceInfo.Token
 	balance := poolPairTokenAccountBalanceInfo.Balance
+	if token == "00" {
+		token = TokenSatTag
+	}
 	//get PoolPairTokenAccountBalance
 	var poolPairTokenAccountBalance PoolPairTokenAccountBalance
 	err = tx.Table("pool_pair_token_account_balances").
