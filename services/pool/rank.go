@@ -162,6 +162,10 @@ type PoolPairTokenAccountBalanceScan struct {
 }
 
 func GetPoolAccountNameAndBalancesCount(token string) (int64, error) {
+	if token == "00" {
+		token = TokenSatTag
+	}
+	
 	var count int64
 
 	err := middleware.DB.Table("pool_pair_token_account_balances").
@@ -177,12 +181,16 @@ func GetPoolAccountNameAndBalancesCount(token string) (int64, error) {
 }
 
 func GetPoolAccountNameAndBalances(token string, limit int, offset int) ([]PoolAccountNameAndBalance, error) {
+	if token == "00" {
+		token = TokenSatTag
+	}
 	var poolPairTokenAccountBalanceScans []PoolPairTokenAccountBalanceScan
 
 	err := middleware.DB.Table("pool_pair_token_account_balances").
 		Select("pool_pairs.token0, pool_pairs.token1, pool_pair_token_account_balances.balance").
 		Joins("JOIN pool_pairs ON pool_pairs.id = pool_pair_token_account_balances.pair_id").
 		Where("token = ?", token).
+		Order("pool_pair_token_account_balances.balance DESC").
 		Limit(limit).
 		Offset(offset).
 		Scan(&poolPairTokenAccountBalanceScans).Error
