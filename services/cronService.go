@@ -11,6 +11,7 @@ import (
 	"trade/config"
 	"trade/middleware"
 	"trade/models"
+	"trade/services/pool"
 	"trade/services/satBackQueue"
 	"trade/utils"
 )
@@ -40,7 +41,10 @@ func CheckIfAutoUpdateScheduledTask() {
 		if err != nil {
 			btlLog.ScheduledTask.Info("%v", err)
 		}
-
+		err = CreatePoolPairTokenAccountBalanceProcessions()
+		if err != nil {
+			btlLog.ScheduledTask.Info("%v", err)
+		}
 	}
 }
 
@@ -391,4 +395,23 @@ func (cs *CronService) GetAndPushPurchasePresaleNFT() {
 
 func (cs *CronService) GetAndPushSwapTrs() {
 	satBackQueue.GetAndPushSwapTrs()
+}
+
+func CreatePoolPairTokenAccountBalanceProcessions() (err error) {
+	return CreateOrUpdateScheduledTasks(&[]models.ScheduledTask{
+		{
+			Name:           "UpdatePoolPairTokenAccountBalance",
+			CronExpression: "* */2 * * * *",
+			FunctionName:   "UpdatePoolPairTokenAccountBalance",
+			Package:        "services",
+		},
+	})
+}
+
+func (cs *CronService) UpdatePoolPairTokenAccountBalance() {
+	err := pool.UpdateAllPoolPairTokenAccountBalances()
+	if err != nil {
+		btlLog.PoolPairTokenAccountBalance.Error("%v", err)
+		return
+	}
 }

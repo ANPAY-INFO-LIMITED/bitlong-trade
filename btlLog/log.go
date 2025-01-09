@@ -107,10 +107,11 @@ var (
 	dateIpLoginLogFile *os.File
 	pushQueueLogFile   *os.File
 
-	fairLaunchLogFile    *os.File
-	feeLogFile           *os.File
-	mintNftLogFile       *os.File
-	scheduledTaskLogFile *os.File
+	fairLaunchLogFile                  *os.File
+	feeLogFile                         *os.File
+	mintNftLogFile                     *os.File
+	scheduledTaskLogFile               *os.File
+	poolPairTokenAccountBalanceLogFile *os.File
 )
 
 func getLogFile(dirPath string, fileName string) (*os.File, error) {
@@ -199,6 +200,10 @@ func openLogFile() error {
 	if err != nil {
 		return err
 	}
+	poolPairTokenAccountBalanceLogFile, err = utils.GetLogFile("./logs/trade.pool_pair_token_account_balance.log")
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -217,18 +222,19 @@ func backupLogFile(filePath string) {
 }
 
 var (
-	CUST                  *ServicesLogger
-	CACC                  *ServicesLogger
-	FairLaunchDebugLogger *ServicesLogger
-	FEE                   *ServicesLogger
-	ScheduledTask         *ServicesLogger
-	PreSale               *ServicesLogger
-	MintNft               *ServicesLogger
-	UserData              *ServicesLogger
-	UserStats             *ServicesLogger
-	CPAmm                 *ServicesLogger
-	DateIpLogin           *ServicesLogger
-	PushQueue             *ServicesLogger
+	CUST                        *ServicesLogger
+	CACC                        *ServicesLogger
+	FairLaunchDebugLogger       *ServicesLogger
+	FEE                         *ServicesLogger
+	ScheduledTask               *ServicesLogger
+	PreSale                     *ServicesLogger
+	MintNft                     *ServicesLogger
+	UserData                    *ServicesLogger
+	UserStats                   *ServicesLogger
+	CPAmm                       *ServicesLogger
+	DateIpLogin                 *ServicesLogger
+	PushQueue                   *ServicesLogger
+	PoolPairTokenAccountBalance *ServicesLogger
 )
 
 func loadDefaultLog() {
@@ -249,6 +255,7 @@ func loadDefaultLog() {
 		CPAmm = NewLogger("CPAM", Level, nil, true, defaultLogFile, cpAmmLogFile)
 		DateIpLogin = NewLogger("DILR", Level, nil, true, defaultLogFile, dateIpLoginLogFile)
 		PushQueue = NewLogger("PUSH", Level, nil, true, defaultLogFile, pushQueueLogFile)
+		PoolPairTokenAccountBalance = NewLogger("PTAB", Level, nil, true, defaultLogFile, poolPairTokenAccountBalanceLogFile)
 	}
 
 }

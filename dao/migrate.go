@@ -266,6 +266,9 @@ func poolMigrate() (err error) {
 	if err = middleware.DB.AutoMigrate(&pool.PoolAccountFeeBalance{}); err != nil {
 		return err
 	}
+	if err = middleware.DB.AutoMigrate(&pool.PoolPairTokenAccountBalance{}); err != nil {
+		return err
+	}
 	return nil
 }
 
