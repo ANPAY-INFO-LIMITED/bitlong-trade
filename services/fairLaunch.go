@@ -1522,7 +1522,10 @@ func GetAllFairLaunchMintedStateSentInfo() (fairLaunchMintedInfos *[]models.Fair
 func GetAllValidFairLaunchMintedInfos() (fairLaunchMintedInfos *[]models.FairLaunchMintedInfo, err error) {
 	_fairLaunchMintedInfos := make([]models.FairLaunchMintedInfo, 0)
 	fairLaunchMintedInfos = &(_fairLaunchMintedInfos)
-	err = middleware.DB.Order("minted_set_time").Order("paid_success_time").Find(fairLaunchMintedInfos).Error
+	err = middleware.DB.Model(models.FairLaunchMintedInfo{}).
+		Where("state between ? and ?", models.FairLaunchMintedStateNoPay, models.FairLaunchMintedStateSentPending).
+		Order("state").
+		Find(fairLaunchMintedInfos).Error
 	if err != nil {
 		return nil, utils.AppendErrorInfo(err, "Find fairLaunchMintedInfos")
 	}
