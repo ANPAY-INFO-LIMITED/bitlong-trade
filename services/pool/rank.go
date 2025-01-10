@@ -165,7 +165,6 @@ func GetPoolAccountNameAndBalancesCount(token string) (int64, error) {
 	if token == "00" {
 		token = TokenSatTag
 	}
-	
 	var count int64
 
 	err := middleware.DB.Table("pool_pair_token_account_balances").

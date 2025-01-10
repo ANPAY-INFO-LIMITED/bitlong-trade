@@ -1889,6 +1889,10 @@ func ClearFairLaunchMintedInfoProcessNumber(tx *gorm.DB, fairLaunchMintedInfo *m
 	return f.UpdateFairLaunchMintedInfo(tx, fairLaunchMintedInfo)
 }
 
+func CancelFairLaunchMintedInfo(fairLaunchMintedInfoId uint) (err error) {
+	return middleware.DB.Model(&models.FairLaunchMintedInfo{}).Where("id = ?", fairLaunchMintedInfoId).Update("state", models.FairLaunchMintedStateFail).Error
+}
+
 func IncreaseFairLaunchMintedInfoProcessNumber(tx *gorm.DB, fairLaunchMintedInfo *models.FairLaunchMintedInfo) (err error) {
 	fairLaunchMintedInfo.ProcessNumber += 1
 	f := btldb.FairLaunchStore{DB: middleware.DB}
@@ -1936,7 +1940,7 @@ func ProcessFairLaunchMintedStateNoPayInfo(tx *gorm.DB, fairLaunchMintedInfo *mo
 	// @dev: 1.pay fee
 	payMintedFeeResult, err := PayMintFee(fairLaunchMintedInfo.UserID, fairLaunchMintedInfo.MintedFeeRateSatPerKw)
 	if err != nil {
-		return nil
+		return CancelFairLaunchMintedInfo(fairLaunchMintedInfo.ID)
 	}
 	// @dev: Record paid fee
 	err = CreateFairLaunchIncomeOfUserPayMintedFee(tx, fairLaunchMintedInfo.AssetID, fairLaunchMintedInfo.FairLaunchInfoID, int(fairLaunchMintedInfo.ID), payMintedFeeResult.PaidId, payMintedFeeResult.Fee, fairLaunchMintedInfo.UserID, fairLaunchMintedInfo.Username)
