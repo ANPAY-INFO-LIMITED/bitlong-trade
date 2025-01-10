@@ -19,6 +19,8 @@ func SetupAccountAssetRouter(router *gin.Engine) *gin.Engine {
 			balance.POST("/get/page_number", handlers.GetAccountAssetBalancePageNumberByPageSize)
 			// @dev: Query total amount of users' holding
 			balance.GET("/query/total_amount", handlers.GetAccountAssetBalanceUserHoldTotalAmount)
+
+			balance.POST("/rankList", handlers.GetCustodyAssetRankList)
 		}
 		transfer := accountAsset.Group("/transfer")
 		{

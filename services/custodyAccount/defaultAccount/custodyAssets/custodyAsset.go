@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"gorm.io/gorm"
+	"strings"
 	"time"
 	"trade/btlLog"
 	"trade/config"
@@ -18,6 +19,7 @@ import (
 	cBase "trade/services/custodyAccount/custodyBase"
 	"trade/services/custodyAccount/custodyBase/custodyFee"
 	"trade/services/custodyAccount/custodyBase/custodyLimit"
+	"trade/services/custodyAccount/custodyBase/custodyPayTN"
 	"trade/services/custodyAccount/defaultAccount/custodyBtc"
 	"trade/services/custodyAccount/defaultAccount/custodyBtc/mempool"
 	rpc "trade/services/servicesrpc"
@@ -349,7 +351,7 @@ func (e *AssetEvent) GetTransactionHistory(query *cBase.PaymentRequest) (*cBase.
 
 	var results cBase.PaymentList
 	if len(a) > 0 {
-		for i := len(a) - 1; i >= 0; i-- {
+		for i := range a {
 			if a[i].State == models.STATE_FAILED {
 				continue
 			}
@@ -358,16 +360,33 @@ func (e *AssetEvent) GetTransactionHistory(query *cBase.PaymentRequest) (*cBase.
 			r.Timestamp = v.CreatedAt.Unix()
 			r.BillType = v.BillType
 			r.Away = v.Away
-			r.Invoice = v.Invoice
-			r.Address = v.Invoice
 			r.Target = v.Invoice
 			r.PaymentHash = v.PaymentHash
 			if *v.Invoice == "award" && v.PaymentHash != nil {
 				awardType := cBase.GetAwardType(*v.PaymentHash)
-				r.Invoice = &awardType
-				r.Address = &awardType
 				r.Target = &awardType
 			}
+			if strings.HasPrefix(*v.Invoice, "ptn") {
+				var ptn custodyPayTN.PayToNpubKey
+				err := ptn.Decode(*v.Invoice)
+				if err == nil {
+					r.Target = &ptn.NpubKey
+				}
+			}
+			if r.BillType == models.BillTypePendingOder {
+				if strings.HasPrefix(*v.Invoice, "stake/pay/") {
+					var temp string
+					if *v.Invoice == "pendingOderPay" {
+						temp = "质押"
+						r.Target = &temp
+					} else if *v.Invoice == "pendingOderReceive" {
+						temp = "赎回"
+						r.Target = &temp
+					}
+				}
+			}
+			r.Invoice = v.Invoice
+			r.Address = v.Invoice
 			r.Amount = v.Amount
 			r.AssetId = a[i].AssetId
 			r.State = v.State

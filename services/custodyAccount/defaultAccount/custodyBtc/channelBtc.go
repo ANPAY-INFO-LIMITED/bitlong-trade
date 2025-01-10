@@ -309,31 +309,39 @@ func (e *BtcChannelEvent) GetTransactionHistory(query *cBase.PaymentRequest) (*c
 	}
 	var results cBase.PaymentList
 	if len(a) > 0 {
-		for i := len(a) - 1; i >= 0; i-- {
+		for i := range a {
 			v := a[i]
 			r := cBase.PaymentResponse{}
 			r.Timestamp = v.CreatedAt.Unix()
 			r.BillType = v.BillType
 			r.Away = v.Away
-			r.Invoice = v.Invoice
-			r.Address = v.Invoice
 			r.Target = v.Invoice
 			r.PaymentHash = v.PaymentHash
 			if *v.Invoice == "award" && v.PaymentHash != nil {
 				awardType := cBase.GetAwardType(*v.PaymentHash)
-				r.Invoice = &awardType
-				r.Address = &awardType
 				r.Target = &awardType
 			}
 			if strings.HasPrefix(*v.Invoice, "ptn") {
 				var ptn custodyPayTN.PayToNpubKey
 				err := ptn.Decode(*v.Invoice)
 				if err == nil {
-					r.Invoice = &ptn.NpubKey
-					r.Address = &ptn.NpubKey
 					r.Target = &ptn.NpubKey
 				}
 			}
+			if r.BillType == models.BillTypePendingOder {
+				if strings.HasPrefix(*v.Invoice, "stake") {
+					var temp string
+					if *v.Invoice == "pendingOderPay" {
+						temp = "质押"
+						r.Target = &temp
+					} else if *v.Invoice == "pendingOderReceive" {
+						temp = "赎回"
+						r.Target = &temp
+					}
+				}
+			}
+			r.Invoice = v.Invoice
+			r.Address = v.Invoice
 			r.Amount = v.Amount
 			btcAssetId := "00"
 			r.AssetId = &btcAssetId

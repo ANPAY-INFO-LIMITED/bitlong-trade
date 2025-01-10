@@ -256,3 +256,7 @@ func GetAccountAssetBalanceUserHoldTotalAmount(c *gin.Context) {
 		Data:    totalAmount,
 	})
 }
+
+func GetCustodyAssetRankList(c *gin.Context) {
+
+}
