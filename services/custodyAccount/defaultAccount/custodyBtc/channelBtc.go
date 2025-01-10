@@ -329,7 +329,7 @@ func (e *BtcChannelEvent) GetTransactionHistory(query *cBase.PaymentRequest) (*c
 				}
 			}
 			if r.BillType == models.BillTypePendingOder {
-				if strings.HasPrefix(*v.Invoice, "stake") {
+				if strings.HasPrefix(*v.PaymentHash, "stake") {
 					var temp string
 					if *v.Invoice == "pendingOderPay" {
 						temp = "质押"
