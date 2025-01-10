@@ -52,6 +52,9 @@ func SetupRouter() *gin.Engine {
 
 		limit := query.Group("/limit")
 		{
+			limit.POST("/GetControl", SecondHandler.GetControlHandler)
+			limit.POST("/SetControl", SecondHandler.SetControlHandler)
+
 			limit.POST("/GetUserLimit", SecondHandler.GetUserLimitHandler)
 			limit.POST("/SetUserLimitLevel", SecondHandler.SetUserLimitLevelHandler)
 			limit.POST("/SetUserTodayLimit", SecondHandler.SetUserTodayLimitHandler)

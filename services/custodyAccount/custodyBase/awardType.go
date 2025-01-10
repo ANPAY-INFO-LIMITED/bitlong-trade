@@ -14,9 +14,9 @@ func init() {
 	AwardTypes["tip21"] = "领取资产（推广）"
 	AwardTypes["tip32"] = "购买预售NFT奖励(直推)"
 	AwardTypes["tip31"] = "购买预售NFT奖励(推广)"
-	AwardTypes["tip41"] = "质押推广推广大使奖励"
+	AwardTypes["tip41"] = "质押推广大使奖励"
 	AwardTypes["tip42"] = "质押直推奖励"
-	AwardTypes["tip43"] = "质押推广奖励"
+	AwardTypes["tip43"] = "质押奖励"
 	AwardTypes["swapLP"] = "LP奖励提现"
 
 }

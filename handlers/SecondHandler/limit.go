@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"trade/btlLog"
+	"trade/services/custodyAccount/custodyBase/control"
 	"trade/services/custodyAccount/custodyBase/custodyLimit"
 )
 
@@ -169,6 +170,59 @@ func CreateOrUpdateLimitTypeLevelHandle(c *gin.Context) {
 	}
 
 	err := custodyLimit.CreateOrUpdateLimitTypeLevel(creds.LimitName, creds.Level, creds.Amount, creds.Count)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, Result{Errno: 500, ErrMsg: err.Error(), Data: nil})
+		return
+	}
+	c.JSON(http.StatusOK, Result{Errno: 0, ErrMsg: "", Data: nil})
+}
+
+func GetControlHandler(c *gin.Context) {
+	var creds = struct {
+		AssetId string `json:"assetId"`
+		Type    int    `json:"type"`
+	}{}
+	if err := c.ShouldBindJSON(&creds); err != nil {
+		btlLog.CUST.Error("%v", err)
+		c.JSON(http.StatusInternalServerError, Result{Errno: 500, ErrMsg: err.Error(), Data: nil})
+		return
+	}
+	var t control.TransferControl
+	err := t.FromInt(creds.Type)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, Result{Errno: 400, ErrMsg: err.Error(), Data: nil})
+		return
+	}
+	if creds.AssetId != "00" && creds.AssetId != "asset" {
+		c.JSON(http.StatusBadRequest, Result{Errno: 400, ErrMsg: "assetId is invalid", Data: nil})
+		return
+	}
+	cl := control.GetTransferControl(creds.AssetId, t)
+	c.JSON(http.StatusOK, Result{Errno: 0, ErrMsg: "", Data: cl})
+}
+
+func SetControlHandler(c *gin.Context) {
+	var creds = struct {
+		AssetId string `json:"assetId"`
+		Type    int    `json:"type"`
+		Control bool   `json:"control"`
+	}{}
+	if err := c.ShouldBindJSON(&creds); err != nil {
+		btlLog.CUST.Error("%v", err)
+		c.JSON(http.StatusInternalServerError, Result{Errno: 500, ErrMsg: err.Error(), Data: nil})
+		return
+	}
+	var t control.TransferControl
+	err := t.FromInt(creds.Type)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, Result{Errno: 400, ErrMsg: err.Error(), Data: nil})
+		return
+	}
+	if creds.AssetId != "00" && creds.AssetId != "asset" {
+		c.JSON(http.StatusBadRequest, Result{Errno: 400, ErrMsg: "assetId is invalid", Data: nil})
+		return
+	}
+	err = control.SetTransferControl(creds.AssetId, t, creds.Control)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, Result{Errno: 500, ErrMsg: err.Error(), Data: nil})
 		return
