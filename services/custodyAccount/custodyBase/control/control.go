@@ -31,7 +31,7 @@ func SetTransferControl(assetId string, transferType TransferControl, control bo
 		Type:    transferType,
 	}
 	str := t.toString()
-	btlLog.CLMT.Info("set Control function:", str, ":%v", control)
+	btlLog.CLMT.Info("set Control function:%v, key:%v", str, control)
 	err := middleware.RedisSet(str, control, 0)
 	if err != nil {
 		return err
