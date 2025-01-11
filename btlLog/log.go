@@ -98,6 +98,7 @@ var (
 
 	custErrorLogFile *os.File
 	CaccountLogFile  *os.File
+	CLimitLogFile    *os.File
 
 	presaleLogFile     *os.File
 	mintNftFile        *os.File
@@ -151,6 +152,10 @@ func openLogFile() error {
 		return err
 	}
 	CaccountLogFile, err = getLogFile(dirPath, "caccount.log")
+	if err != nil {
+		return err
+	}
+	CLimitLogFile, err = getLogFile(dirPath, "cLimit.log")
 	if err != nil {
 		return err
 	}
@@ -224,6 +229,7 @@ func backupLogFile(filePath string) {
 var (
 	CUST                        *ServicesLogger
 	CACC                        *ServicesLogger
+	CLMT                        *ServicesLogger
 	FairLaunchDebugLogger       *ServicesLogger
 	FEE                         *ServicesLogger
 	ScheduledTask               *ServicesLogger
@@ -243,6 +249,7 @@ func loadDefaultLog() {
 	{
 		CUST = NewLogger("CUST", Level, custErrorLogFile, true, defaultLogFile)
 		CACC = NewLogger("CACC", Level, custErrorLogFile, false, CaccountLogFile)
+		CLMT = NewLogger("CLMT", Level, custErrorLogFile, false, CLimitLogFile)
 	}
 	{
 		FairLaunchDebugLogger = NewLogger("FLDL", Level, nil, true, defaultLogFile, fairLaunchLogFile)

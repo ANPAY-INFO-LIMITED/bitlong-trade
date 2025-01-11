@@ -212,6 +212,7 @@ func SetControlHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, Result{Errno: 500, ErrMsg: err.Error(), Data: nil})
 		return
 	}
+	btlLog.CLMT.Info("SetControlHandler,,IP: %v, AssetId: %v, Type: %v, Control: %v", c.RemoteIP(), creds.AssetId, creds.Type, creds.Control)
 	var t control.TransferControl
 	err := t.FromInt(creds.Type)
 	if err != nil {
