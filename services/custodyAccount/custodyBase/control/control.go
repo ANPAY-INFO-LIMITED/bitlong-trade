@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/go-redis/redis/v8"
 	"strings"
+	"time"
 	"trade/btlLog"
 	"trade/middleware"
 )
@@ -14,14 +15,27 @@ func GetTransferControl(assetId string, transferType TransferControl) bool {
 		Type:    transferType,
 	}
 	str := t.toString()
-	control, err := middleware.RedisGet(str)
-	if errors.Is(err, redis.Nil) {
-		err := SetTransferControl(assetId, transferType, false)
+
+	var control string
+	var err error
+	var count int
+	for i := 3; i > 0; i-- {
+		control, err = middleware.RedisGet(str)
+		if err == nil {
+			break
+		} else if errors.Is(err, redis.Nil) {
+			count++
+		}
+		time.Sleep(time.Second)
+	}
+	if err != nil {
+		btlLog.CLMT.Error("get control failed:%v", err)
+	}
+	if count >= 3 && errors.Is(err, redis.Nil) {
+		err = SetTransferControl(assetId, transferType, false)
 		if err != nil {
 			return false
 		}
-	} else if err != nil {
-		return false
 	}
 	return control == "1"
 }
