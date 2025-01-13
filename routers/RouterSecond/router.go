@@ -115,5 +115,24 @@ func SetupRouter() *gin.Engine {
 		query.GET("/swap_trs", handlers.QuerySwapTrs)
 	}
 
+	// assetBalanceBackend
+	{
+		assetBalanceBackend := r.Group("/asset_balance_backend")
+		assetBalanceInfo := assetBalanceBackend.Group("/asset_balance_info")
+		{
+			assetBalanceInfo.GET("/get/limit_offset", handlers.GetAssetBalanceLimitAndOffset)
+			assetBalanceInfo.GET("/get/count", handlers.GetAssetBalanceCount)
+			assetBalanceInfo.GET("/get/username", handlers.QueryAssetBalanceInfoByUsername)
+			assetBalanceInfo.GET("/query/all_asset_ids", handlers.QueryAllAssetBalanceAssetIds)
+		}
+		AssetBalanceHistoryInfo := assetBalanceBackend.Group("/asset_balance_history_info")
+		{
+			AssetBalanceHistoryInfo.GET("/get/limit_offset", handlers.GetAssetBalanceHistoryLimitAndOffset)
+			AssetBalanceHistoryInfo.GET("/get/count", handlers.GetAssetBalanceHistoryCount)
+			AssetBalanceHistoryInfo.GET("/get/username", handlers.QueryAssetBalanceHistoryInfoByUsername)
+			AssetBalanceHistoryInfo.GET("/query/all_asset_ids", handlers.QueryAllAssetBalanceHistoryAssetIds)
+		}
+	}
+
 	return r
 }

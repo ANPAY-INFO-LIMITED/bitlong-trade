@@ -133,6 +133,9 @@ func SetupRouter() *gin.Engine {
 	if !config.GetLoadConfig().RouterDisable.BtcUtxo {
 		SetupBtcUtxoRouter(r)
 	}
+	if !config.GetLoadConfig().RouterDisable.AssetBalanceBackend {
+		SetupAssetBalanceBackendRouter(r)
+	}
 	SetupWsRouter(r)
 	return r
 }

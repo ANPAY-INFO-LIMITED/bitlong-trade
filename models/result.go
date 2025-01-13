@@ -316,6 +316,12 @@ const (
 	GetPoolAccountInfoErr
 	ParseUintErr
 	QueryPairIdErr
+	AssetIdEmptyErr
+	GetAssetBalanceLimitAndOffsetErr
+	GetAssetBalanceCountErr
+	QueryAssetBalanceInfoByUsernameErr
+	GetAssetBalanceHistoryCountErr
+	QueryAssetBalanceHistoryInfoByUsernameErr
 )
 
 // Err type:CustodyAccount
