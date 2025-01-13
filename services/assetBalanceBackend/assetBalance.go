@@ -80,8 +80,10 @@ func QueryAssetBalanceInfoByUsername(assetId string, username string) (assetBala
 	err = tx.Table("asset_balances").
 		Select("id,created_at,updated_at,balance,username").
 		Where("asset_id = ? and username = ?", assetId, username).
-		Scan(&assetBalanceInfos).
+		Order("balance desc").
+		Scan(&assetBalanceInfoScans).
 		Error
+
 	if err != nil {
 		return nil, utils.AppendErrorInfo(err, "select asset_balances")
 	}

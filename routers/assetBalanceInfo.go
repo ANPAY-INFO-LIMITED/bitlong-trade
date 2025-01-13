@@ -1,7 +1,6 @@
 package routers
 
 import (
-	"encoding/base64"
 	"github.com/gin-gonic/gin"
 	"trade/config"
 	"trade/handlers"
@@ -11,8 +10,8 @@ func SetupAssetBalanceBackendRouter(router *gin.Engine) *gin.Engine {
 
 	//assetBalanceBackend := router.Group("/asset_balance_backend")
 
-	username := base64.StdEncoding.EncodeToString([]byte(config.GetLoadConfig().AdminUser.Username))
-	password := base64.StdEncoding.EncodeToString([]byte(config.GetLoadConfig().AdminUser.Password))
+	username := config.GetLoadConfig().AdminUser.Username
+	password := config.GetLoadConfig().AdminUser.Password
 
 	authorized := router.Group("/asset_balance_backend", gin.BasicAuth(gin.Accounts{
 		username: password,
