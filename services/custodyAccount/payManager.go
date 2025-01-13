@@ -14,6 +14,7 @@ import (
 	"trade/services/btldb"
 	"trade/services/custodyAccount/account"
 	cBase "trade/services/custodyAccount/custodyBase"
+	"trade/services/custodyAccount/custodyBase/control"
 	"trade/services/custodyAccount/defaultAccount/custodyAssets"
 	"trade/services/custodyAccount/defaultAccount/custodyBtc"
 	"trade/services/custodyAccount/defaultAccount/other"
@@ -76,6 +77,8 @@ func CustodyStart(ctx context.Context, cfg *config.Config) bool {
 	if cfg.CustodyConfig.ClearBlockAccountBalance {
 		go ClearLockUserBalance()
 	}
+
+	go control.ControlTest()
 	return true
 }
 

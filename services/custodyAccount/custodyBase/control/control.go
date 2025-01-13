@@ -103,3 +103,25 @@ func (t *TransferControl) FromInt(s int) error {
 	}
 	return nil
 }
+
+func ControlTest() {
+	var err error
+	success, failed := 0, 0
+	btlLog.CLMT.Info("set Control function:%v, key:%v", "control,1", true)
+	err = middleware.RedisSet("control,1", true, 0)
+	if err != nil {
+		btlLog.CLMT.Error("set control failed:%v", err)
+	}
+	for {
+		_, err := middleware.RedisGet("control,1")
+		if err != nil {
+			btlLog.CLMT.Error("get control failed:%v", err)
+			failed++
+			btlLog.CLMT.Info("success:%d, failed:%d", success, failed)
+			continue
+		}
+		success++
+		btlLog.CLMT.Info("success:%d, failed:%d", success, failed)
+		time.Sleep(time.Second)
+	}
+}
