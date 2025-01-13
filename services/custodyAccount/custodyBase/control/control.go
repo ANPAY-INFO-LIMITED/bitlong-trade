@@ -118,6 +118,7 @@ func ControlTest() {
 			btlLog.CLMT.Error("get control failed:%v", err)
 			failed++
 			btlLog.CLMT.Info("success:%d, failed:%d", success, failed)
+			time.Sleep(time.Second)
 			continue
 		}
 		if errors.Is(err, redis.Nil) {
