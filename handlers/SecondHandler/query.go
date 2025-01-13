@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"trade/btlLog"
+	"trade/services/backmanage/ManageQuery"
 	"trade/services/custodyAccount/localQuery"
 )
 
@@ -81,7 +82,12 @@ func QueryBalancesChange(c *gin.Context) {
 
 // GetBalanceList 获取总资产排行榜情况及通道内总金额
 func GetBalanceList(c *gin.Context) {
-	var creds localQuery.GetAssetListQuest
+	creds := struct {
+		AssetId  string `json:"assetId"`
+		Page     int    `json:"page"`
+		PageSize int    `json:"pageSize"`
+	}{}
+
 	if err := c.ShouldBindJSON(&creds); err != nil {
 		btlLog.CUST.Error("%v", err)
 		c.JSON(http.StatusBadRequest, Result{Errno: 400, ErrMsg: err.Error(), Data: nil})
@@ -93,11 +99,11 @@ func GetBalanceList(c *gin.Context) {
 	}
 	creds.Page = creds.Page - 1
 
-	a, count, total := localQuery.GetAssetList(creds)
+	a, count, total := ManageQuery.GetAssetsBalanceRankList(creds.AssetId, creds.Page, creds.PageSize)
 	list := struct {
-		Count int64                          `json:"count"`
-		List  *[]localQuery.GetAssetListResp `json:"list"`
-		Total float64                        `json:"total"`
+		Count int64                               `json:"count"`
+		List  *[]ManageQuery.GetAssetRankListResp `json:"list"`
+		Total float64                             `json:"total"`
 	}{
 		Count: count,
 		List:  a,

@@ -113,12 +113,17 @@ func ControlTest() {
 		btlLog.CLMT.Error("set control failed:%v", err)
 	}
 	for {
-		_, err := middleware.RedisGet("control,1")
+		result, err := middleware.RedisGet("control,1")
 		if err != nil {
 			btlLog.CLMT.Error("get control failed:%v", err)
 			failed++
 			btlLog.CLMT.Info("success:%d, failed:%d", success, failed)
 			continue
+		}
+		if result == "1" {
+			err = middleware.RedisSet("control,1", false, 0)
+		} else {
+			err = middleware.RedisSet("control,1", true, 0)
 		}
 		success++
 		btlLog.CLMT.Info("success:%d, failed:%d", success, failed)

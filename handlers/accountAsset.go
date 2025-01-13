@@ -5,8 +5,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
+	"trade/btlLog"
 	"trade/models"
 	"trade/services"
+	"trade/services/backmanage/ManageQuery"
 )
 
 func GetAccountAssetBalanceByAssetId(c *gin.Context) {
@@ -258,5 +260,32 @@ func GetAccountAssetBalanceUserHoldTotalAmount(c *gin.Context) {
 }
 
 func GetCustodyAssetRankList(c *gin.Context) {
+	creds := struct {
+		AssetId  string `json:"assetId"`
+		Page     int    `json:"page"`
+		PageSize int    `json:"pageSize"`
+	}{}
 
+	if err := c.ShouldBindJSON(&creds); err != nil {
+		btlLog.CUST.Error("%v", err)
+		c.JSON(http.StatusBadRequest, models.MakeJsonErrorResultForHttp(models.DefaultErr, "Json format error", nil))
+		return
+	}
+	if creds.Page == 0 {
+		c.JSON(http.StatusBadRequest, models.MakeJsonErrorResultForHttp(models.DefaultErr, "page must be greater than 0", nil))
+		return
+	}
+	creds.Page = creds.Page - 1
+
+	a, count, total := ManageQuery.GetAssetsBalanceRankList(creds.AssetId, creds.Page, creds.PageSize)
+	list := struct {
+		Count int64                               `json:"count"`
+		List  *[]ManageQuery.GetAssetRankListResp `json:"list"`
+		Total float64                             `json:"total"`
+	}{
+		Count: count,
+		List:  a,
+		Total: total,
+	}
+	c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "", list))
 }
