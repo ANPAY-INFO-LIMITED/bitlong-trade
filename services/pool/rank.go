@@ -208,3 +208,25 @@ func GetPoolAccountNameAndBalances(token string, limit int, offset int) ([]PoolA
 
 	return poolAccountNameAndBalances, nil
 }
+
+func GetPoolAccountTotalBalance(token string) (totalBalance float64, err error) {
+	if token == "00" {
+		token = TokenSatTag
+	}
+	var balances []float64
+	
+	err = middleware.DB.Table("pool_pair_token_account_balances").
+		Select("balance").
+		Where("token = ?", token).
+		Pluck("balance", &balances).Error
+
+	if err != nil {
+		return 0, utils.AppendErrorInfo(err, "select pool_pair_token_account_balances")
+	}
+
+	for _, balance := range balances {
+		totalBalance += balance
+	}
+
+	return totalBalance, nil
+}
