@@ -1195,3 +1195,15 @@ func GetFirstAssetIdByBatchGroupId(batchGroupId int) (string, error) {
 	}
 	return assetId, nil
 }
+
+func IsUserBoughtNftPresale(username string) (bool, error) {
+	var count int64
+	err := middleware.DB.Table("nft_presales").
+		Where("buyer_user_id = ?", username).
+		Count(&count).
+		Error
+	if err != nil {
+		return false, utils.AppendErrorInfo(err, "select nft_presales count")
+	}
+	return count > 0, nil
+}
