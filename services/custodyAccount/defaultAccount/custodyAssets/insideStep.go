@@ -90,11 +90,12 @@ func RunInsideStepByUserId(usr *account.UserInfo, receiveUsr *account.UserInfo, 
 	}
 	//获取发票信息
 	PTN := custodyPayTN.PayToNpubKey{
-		NpubKey: receiveUsr.User.Username,
-		Amount:  mission.Amount,
-		AssetId: mission.AssetId,
-		Time:    mission.CreatedAt.Unix(),
-		Vision:  0,
+		NpubKey:     receiveUsr.User.Username,
+		Amount:      mission.Amount,
+		AssetId:     mission.AssetId,
+		Time:        mission.CreatedAt.Unix(),
+		FromNpubKey: usr.User.Username,
+		Vision:      1,
 	}
 	invoice, _ := PTN.Encode()
 	h, _ := custodyPayTN.HashEncodedString(invoice)

@@ -9,11 +9,12 @@ import (
 )
 
 type PayToNpubKey struct {
-	NpubKey string
-	AssetId string
-	Amount  float64
-	Time    int64
-	Vision  uint8
+	NpubKey     string
+	AssetId     string
+	Amount      float64
+	Time        int64
+	FromNpubKey string
+	Vision      uint8
 }
 
 func (p *PayToNpubKey) Encode() (string, error) {
@@ -34,7 +35,16 @@ func (p *PayToNpubKey) Decode(encoded string) error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(data, p)
+	err = json.Unmarshal(data, p)
+	if err != nil {
+		return err
+	}
+	if p.Vision == 0 {
+		if p.FromNpubKey == "" {
+			p.FromNpubKey = encoded
+		}
+	}
+	return nil
 }
 
 func HashEncodedString(encoded string) (string, error) {

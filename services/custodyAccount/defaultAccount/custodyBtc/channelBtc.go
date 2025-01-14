@@ -335,7 +335,11 @@ func (e *BtcChannelEvent) GetTransactionHistory(query *cBase.PaymentRequest) (*c
 				var ptn custodyPayTN.PayToNpubKey
 				err := ptn.Decode(*v.Invoice)
 				if err == nil {
-					r.Target = &ptn.NpubKey
+					if v.Away == models.AWAY_IN {
+						r.Target = &ptn.FromNpubKey
+					} else {
+						r.Target = &ptn.NpubKey
+					}
 				}
 			}
 			if r.BillType == models.BillTypePendingOder {
