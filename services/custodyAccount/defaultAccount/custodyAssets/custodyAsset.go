@@ -387,7 +387,7 @@ func (e *AssetEvent) GetTransactionHistory(query *cBase.PaymentRequest) (*cBase.
 				}
 			}
 			if r.BillType == models.BillTypePendingOder {
-				if strings.HasPrefix(*v.PaymentHash, "stake/pay/") {
+				if strings.HasPrefix(*v.PaymentHash, "stake") {
 					var temp string
 					if *v.Invoice == "pendingOderPay" {
 						temp = "质押"
