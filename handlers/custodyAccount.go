@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"strings"
-	"trade/config"
 	"trade/models"
 	"trade/services/custodyAccount"
 	"trade/services/custodyAccount/custodyBase"
@@ -68,12 +66,6 @@ func QueryInvoice(c *gin.Context) {
 func PayInvoice(c *gin.Context) {
 	// 获取登录用户信息
 	userName := c.MustGet("username").(string)
-	if config.GetConfig().NetWork != "regtest" {
-		if (len(userName) != 91 && len(userName) != 92) || !strings.HasPrefix(userName, "npub") {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "当前服务调用失败，请稍后再试"})
-			return
-		}
-	}
 	e, err := custodyBtc.NewBtcChannelEvent(userName)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error() + "用户不存在"})
@@ -102,12 +94,6 @@ func PayInvoice(c *gin.Context) {
 func PayUserBtc(c *gin.Context) {
 	// 获取登录用户信息
 	userName := c.MustGet("username").(string)
-	if config.GetConfig().NetWork != "regtest" {
-		if (len(userName) != 91 && len(userName) != 92) || !strings.HasPrefix(userName, "npub") {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "当前服务调用失败，请稍后再试"})
-			return
-		}
-	}
 	e, err := custodyBtc.NewBtcChannelEvent(userName)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error() + "用户不存在"})
