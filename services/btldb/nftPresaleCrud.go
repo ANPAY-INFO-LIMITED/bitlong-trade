@@ -49,6 +49,12 @@ func ReadNftPresalesByNftPresaleState(nftPresaleState models.NftPresaleState) (*
 	return &nftPresales, err
 }
 
+func ReadNftPresalesByNftPresaleStateAndReceiveAddrNotNull(nftPresaleState models.NftPresaleState) (*[]models.NftPresale, error) {
+	var nftPresales []models.NftPresale
+	err := middleware.DB.Where("state = ? and receive_addr <> ''", nftPresaleState).Order("launch_time desc").Find(&nftPresales).Error
+	return &nftPresales, err
+}
+
 func ReadNftPresalesBetweenNftPresaleState(stateStart models.NftPresaleState, stateEnd models.NftPresaleState) (*[]models.NftPresale, error) {
 	var nftPresales []models.NftPresale
 	err := middleware.DB.Where("state BETWEEN ? AND ?", stateStart, stateEnd).Order("launch_time desc").Find(&nftPresales).Error

@@ -381,21 +381,30 @@ func BuyNftPresale(userId int, username string, buyNftPresaleRequest models.BuyN
 			return utils.AppendErrorInfo(err, "IsAccountBalanceEnough")
 		}
 	}
-	addr := buyNftPresaleRequest.ReceiveAddr
-	// @dev: Decode addr and check if encoded addr is valid
-	decodedAddrInfo, err := api.GetDecodedAddrInfo(addr)
-	if err != nil {
-		return utils.AppendErrorInfo(err, "GetDecodedAddrInfo")
+
+	var addr, scriptKey, internalKey string
+
+	addr = buyNftPresaleRequest.ReceiveAddr
+
+	// @dev: Do not check addr if addr is empty
+	if addr != "" {
+		// @dev: Decode addr and check if encoded addr is valid
+		decodedAddrInfo, err := api.GetDecodedAddrInfo(addr)
+		if err != nil {
+			return utils.AppendErrorInfo(err, "GetDecodedAddrInfo")
+		}
+		// @dev: Return error if addr is invalid
+		isNftPresaleAddrValid, err := IsNftPresaleAddrValid(nftPresale, decodedAddrInfo)
+		if err != nil || !isNftPresaleAddrValid {
+			return utils.AppendErrorInfo(err, "IsNftPresaleAddrValid")
+		}
+		scriptKey = hex.EncodeToString(decodedAddrInfo.ScriptKey)
+		internalKey = hex.EncodeToString(decodedAddrInfo.InternalKey)
 	}
-	// @dev: Return error if addr is invalid
-	isNftPresaleAddrValid, err := IsNftPresaleAddrValid(nftPresale, decodedAddrInfo)
-	if err != nil || !isNftPresaleAddrValid {
-		return utils.AppendErrorInfo(err, "IsNftPresaleAddrValid")
-	}
+
 	// @dev: 4. Update info
 	deviceId := buyNftPresaleRequest.DeviceId
-	scriptKey := hex.EncodeToString(decodedAddrInfo.ScriptKey)
-	internalKey := hex.EncodeToString(decodedAddrInfo.InternalKey)
+
 	err = UpdateNftPresaleByPurchaseInfo(userId, username, deviceId, addr, scriptKey, internalKey, nftPresale)
 	if err != nil {
 		return utils.AppendErrorInfo(err, "UpdateNftPresaleByPurchaseInfo")
@@ -491,7 +500,7 @@ func GetAllNftPresaleStatePaidPending() (*[]models.NftPresale, error) {
 }
 
 func GetAllNftPresaleStatePaidNotSend() (*[]models.NftPresale, error) {
-	return btldb.ReadNftPresalesByNftPresaleState(models.NftPresaleStatePaidNotSend)
+	return btldb.ReadNftPresalesByNftPresaleStateAndReceiveAddrNotNull(models.NftPresaleStatePaidNotSend)
 }
 
 func GetAllNftPresaleStateSentPending() (*[]models.NftPresale, error) {
