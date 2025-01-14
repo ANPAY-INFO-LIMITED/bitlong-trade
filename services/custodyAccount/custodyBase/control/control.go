@@ -3,11 +3,15 @@ package control
 import (
 	"errors"
 	"github.com/go-redis/redis/v8"
+	"gorm.io/gorm"
 	"strings"
 	"time"
 	"trade/btlLog"
 	"trade/middleware"
+	"trade/models/custodyModels"
 )
+
+var controlMap = make(map[string]bool)
 
 func GetTransferControl(assetId string, transferType TransferControl) bool {
 	t := transferControlString{
@@ -15,42 +19,50 @@ func GetTransferControl(assetId string, transferType TransferControl) bool {
 		Type:    transferType,
 	}
 	str := t.toString()
-
-	var control string
-	var err error
-	var count int
-	for i := 3; i > 0; i-- {
-		control, err = middleware.RedisGet(str)
-		if err == nil {
-			break
-		} else if errors.Is(err, redis.Nil) {
-			count++
-		}
-		time.Sleep(time.Second)
+	if value, exists := controlMap[str]; exists {
+		return value
+	} else {
+		return true
 	}
-	if err != nil {
-		btlLog.CLMT.Error("get control failed:%v", err)
-	}
-	if count >= 3 && errors.Is(err, redis.Nil) {
-		err = SetTransferControl(assetId, transferType, false)
-		if err != nil {
-			return false
-		}
-	}
-	return control == "1"
 }
+
 func SetTransferControl(assetId string, transferType TransferControl, control bool) error {
 	t := transferControlString{
 		AssetId: assetId,
 		Type:    transferType,
 	}
 	str := t.toString()
-	btlLog.CLMT.Info("set Control function:%v, key:%v", str, control)
-	err := middleware.RedisSet(str, control, 0)
-	if err != nil {
+
+	ctrl := custodyModels.Control{
+		ControlName: str,
+	}
+	err := middleware.DB.First(&ctrl).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		btlLog.CLMT.Error("set control failed:%v", err)
 		return err
 	}
+	if ctrl.Status != control || ctrl.Status == false {
+		ctrl.Status = control
+		err = middleware.DB.Save(&ctrl).Error
+		if err != nil {
+			btlLog.CLMT.Error("set control failed:%v", err)
+			return err
+		}
+	}
+	loadingControlMap()
 	return nil
+}
+
+func loadingControlMap() {
+	var controls []custodyModels.Control
+	err := middleware.DB.Find(&controls).Error
+	if err != nil {
+		btlLog.CLMT.Error("loading control map failed:%v", err)
+		return
+	}
+	for _, control := range controls {
+		controlMap[control.ControlName] = control.Status
+	}
 }
 
 type transferControlString struct {
@@ -119,6 +131,9 @@ func ControlTest() {
 			failed++
 			btlLog.CLMT.Info("success:%d, failed:%d", success, failed)
 			time.Sleep(time.Second)
+			if failed >= 300 {
+				return
+			}
 			continue
 		}
 		if errors.Is(err, redis.Nil) {

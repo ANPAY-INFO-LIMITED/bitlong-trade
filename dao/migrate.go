@@ -321,7 +321,9 @@ func custodyLimitMigrate(err error) error {
 	if err = middleware.DB.AutoMigrate(&custodyModels.BlockedRecord{}); err != nil {
 		return err
 	}
-
+	if err = middleware.DB.AutoMigrate(&custodyModels.Control{}); err != nil {
+		return err
+	}
 	return err
 }
 

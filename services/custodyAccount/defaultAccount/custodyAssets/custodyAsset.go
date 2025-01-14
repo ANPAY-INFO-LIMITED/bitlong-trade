@@ -17,6 +17,7 @@ import (
 	"trade/services/btldb"
 	caccount "trade/services/custodyAccount/account"
 	cBase "trade/services/custodyAccount/custodyBase"
+	"trade/services/custodyAccount/custodyBase/control"
 	"trade/services/custodyAccount/custodyBase/custodyFee"
 	"trade/services/custodyAccount/custodyBase/custodyLimit"
 	"trade/services/custodyAccount/custodyBase/custodyPayTN"
@@ -124,9 +125,9 @@ func (e *AssetEvent) ApplyPayReq(Request cBase.PayReqApplyRequest) (cBase.PayReq
 }
 
 func (e *AssetEvent) SendPaymentToUser(receiverUserName string, amount float64, assetId string) error {
-	//if !control.GetTransferControl("asset", control.TransferControlLocal) {
-	//	return errors.New("当前服务调用失败，请稍后再试")
-	//}
+	if !control.GetTransferControl("asset", control.TransferControlLocal) {
+		return errors.New("当前服务调用失败，请稍后再试")
+	}
 	//检查接收方是否存在
 	var err error
 	receiver, err := caccount.GetUserInfo(receiverUserName)
@@ -188,16 +189,16 @@ func (e *AssetEvent) SendPayment(payRequest cBase.PayPacket) error {
 		return err
 	}
 	if bt.isInsideMission != nil {
-		//if !control.GetTransferControl("asset", control.TransferControlLocal) {
-		//	return errors.New("当前服务调用失败，请稍后再试")
-		//}
+		if !control.GetTransferControl("asset", control.TransferControlLocal) {
+			return errors.New("当前服务调用失败，请稍后再试")
+		}
 		//发起本地转账
 		bt.isInsideMission.err = bt.err
 		go e.payToInside(bt)
 	} else {
-		//if !control.GetTransferControl("asset", control.TransferControlOnChain) {
-		//	return errors.New("当前服务调用失败，请稍后再试")
-		//}
+		if !control.GetTransferControl("asset", control.TransferControlOnChain) {
+			return errors.New("当前服务调用失败，请稍后再试")
+		}
 		//发起外部转账
 		go e.payToOutside(bt)
 	}
