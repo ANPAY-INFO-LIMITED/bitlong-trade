@@ -151,7 +151,10 @@ func GetConn(grpcHost, tlsCertPath, macaroonPath string) (*grpc.ClientConn, func
 	if macaroonPath != "" {
 		macaroon := GetMacaroon(macaroonPath)
 		conn, err = grpc.NewClient(grpcHost, grpc.WithTransportCredentials(creds),
-			grpc.WithPerRPCCredentials(NewMacaroonCredential(macaroon)))
+			grpc.WithPerRPCCredentials(NewMacaroonCredential(macaroon)), grpc.WithDefaultCallOptions(
+				grpc.MaxCallRecvMsgSize(10*1024*1024), // 10 MB
+				grpc.MaxCallSendMsgSize(10*1024*1024), // 10 MB
+			))
 	} else {
 		conn, err = grpc.NewClient(grpcHost, grpc.WithTransportCredentials(creds))
 	}
