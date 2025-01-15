@@ -17,6 +17,7 @@ type SwapTr struct {
 	TrUnixtimeMs int64  `json:"tr_unixtime_ms"`
 	AssetsID     string `json:"assets_id"`
 	Type         string `json:"type"`
+	SwapFee      string `json:"swap_fee"`
 }
 
 const (
@@ -32,6 +33,7 @@ type SwapTrsScan struct {
 	TokenOut           string    `json:"token_out"`
 	CalcPriceAmountIn  string    `json:"calc_price_amount_in"`
 	CalcPriceAmountOut string    `json:"calc_price_amount_out"`
+	SwapFee            string    `json:"swap_fee"`
 }
 
 func QueryNotPushedSwapTrsScan() (swapTrsScans []SwapTrsScan, err error) {
@@ -41,7 +43,7 @@ func QueryNotPushedSwapTrsScan() (swapTrsScans []SwapTrsScan, err error) {
 	swapTrsScans = []SwapTrsScan{}
 
 	err = tx.Table("pool_swap_records").
-		Select("id,created_at,username,token_in,token_out,calc_price_amount_in,calc_price_amount_out").
+		Select("id,created_at,username,token_in,token_out,calc_price_amount_in,calc_price_amount_out,swap_fee").
 		Order("id desc").
 		Where("is_pushed_queue = ?", false).
 		Scan(&swapTrsScans).
@@ -108,6 +110,7 @@ func SwapTrsScanToSwapTr(swapTrsScan SwapTrsScan) (swapTr SwapTr, err error) {
 			TrUnixtimeMs: swapTrsScan.CreatedAt.UnixMilli(),
 			AssetsID:     token1,
 			Type:         _type,
+			SwapFee:      swapTrsScan.SwapFee,
 		}, nil
 
 	} else {

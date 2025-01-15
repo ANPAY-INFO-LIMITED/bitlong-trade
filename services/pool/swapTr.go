@@ -21,6 +21,7 @@ type SwapTr struct {
 	TrUnixtimeMs int64  `json:"tr_unixtime_ms"`
 	AssetsID     string `json:"assets_id"`
 	Type         string `json:"type"`
+	SwapFee      string `json:"swap_fee"`
 }
 
 const (
@@ -129,6 +130,7 @@ type SwapTrsScan struct {
 	TokenOut  string    `json:"token_out"`
 	AmountIn  string    `json:"amount_in"`
 	AmountOut string    `json:"amount_out"`
+	SwapFee   string    `json:"swap_fee"`
 }
 
 func QuerySwapTrsScan(tokenA string, tokenB string, limit int, offset int) (swapTrsScans *[]SwapTrsScan, err error) {
@@ -142,7 +144,7 @@ func QuerySwapTrsScan(tokenA string, tokenB string, limit int, offset int) (swap
 	swapTrsScans = new([]SwapTrsScan)
 
 	err = tx.Table("pool_pairs").
-		Select("pool_swap_records.id,pool_swap_records.created_at,pool_swap_records.username,pool_swap_records.token_in,pool_swap_records.token_out,pool_swap_records.amount_in,pool_swap_records.amount_out").
+		Select("pool_swap_records.id,pool_swap_records.created_at,pool_swap_records.username,pool_swap_records.token_in,pool_swap_records.token_out,pool_swap_records.amount_in,pool_swap_records.amount_out,pool_swap_records.swap_fee").
 		Joins("join pool_swap_records on pool_pairs.id = pool_swap_records.pair_id").
 		Where("pool_pairs.token0 = ? AND pool_pairs.token1 = ?", token0, token1).
 		Order("pool_swap_records.id desc").
@@ -209,6 +211,7 @@ func SwapTrsScanToSwapTr(swapTrsScan SwapTrsScan) (swapTr SwapTr, err error) {
 			TrUnixtimeMs: swapTrsScan.CreatedAt.UnixMilli(),
 			AssetsID:     token1,
 			Type:         _type,
+			SwapFee:      swapTrsScan.SwapFee,
 		}, nil
 
 	} else {
