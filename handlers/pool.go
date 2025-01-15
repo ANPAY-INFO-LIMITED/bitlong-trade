@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
+	"strings"
 	"trade/middleware"
 	"trade/models"
 	"trade/services/pool"
@@ -1030,7 +1031,7 @@ func CalcAddLiquidity(c *gin.Context) {
 		return
 	}
 
-	if requestUser != poolAddLiquidityBatchRequest.Username {
+	if !strings.Contains(requestUser, poolAddLiquidityBatchRequest.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -1102,7 +1103,7 @@ func CalcRemoveLiquidity(c *gin.Context) {
 		return
 	}
 
-	if requestUser != poolRemoveLiquidityBatchRequest.Username {
+	if !strings.Contains(requestUser, poolRemoveLiquidityBatchRequest.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -1173,7 +1174,7 @@ func CalcSwapExactTokenForTokenNoPath(c *gin.Context) {
 		return
 	}
 
-	if requestUser != poolSwapExactTokenForTokenNoPathBatchRequest.Username {
+	if !strings.Contains(requestUser, poolSwapExactTokenForTokenNoPathBatchRequest.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -1242,7 +1243,7 @@ func CalcSwapTokenForExactTokenNoPath(c *gin.Context) {
 		return
 	}
 
-	if requestUser != poolSwapTokenForExactTokenNoPathBatchRequest.Username {
+	if !strings.Contains(requestUser, poolSwapTokenForExactTokenNoPathBatchRequest.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -2120,7 +2121,7 @@ func AddLiquidity(c *gin.Context) {
 		return
 	}
 
-	if requestUser != poolAddLiquidityBatchRequest.Username {
+	if !strings.Contains(requestUser, poolAddLiquidityBatchRequest.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -2159,7 +2160,7 @@ func RemoveLiquidity(c *gin.Context) {
 		return
 	}
 
-	if requestUser != poolRemoveLiquidityBatchRequest.Username {
+	if !strings.Contains(requestUser, poolRemoveLiquidityBatchRequest.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -2198,7 +2199,7 @@ func SwapExactTokenForTokenNoPath(c *gin.Context) {
 		return
 	}
 
-	if requestUser != poolSwapExactTokenForTokenNoPathBatchRequest.Username {
+	if !strings.Contains(requestUser, poolSwapExactTokenForTokenNoPathBatchRequest.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -2237,7 +2238,7 @@ func SwapTokenForExactTokenNoPath(c *gin.Context) {
 		return
 	}
 
-	if requestUser != poolSwapTokenForExactTokenNoPathBatchRequest.Username {
+	if !strings.Contains(requestUser, poolSwapTokenForExactTokenNoPathBatchRequest.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -2276,7 +2277,7 @@ func WithdrawAward(c *gin.Context) {
 		return
 	}
 
-	if requestUser != poolWithdrawAwardBatchRequest.Username {
+	if !strings.Contains(requestUser, poolWithdrawAwardBatchRequest.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
