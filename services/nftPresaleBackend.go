@@ -13,6 +13,7 @@ type NftPresaleInfo struct {
 	Price           int                    `json:"price"`
 	Info            string                 `json:"info"`
 	BuyerUsername   string                 `json:"buyer_username"`
+	ReceiveAddr     string                 `json:"receive_addr"`
 	BoughtTime      int                    `json:"bought_time"`
 	PaidId          int                    `json:"paid_id"`
 	PaidSuccessTime int                    `json:"paid_success_time"`
@@ -23,8 +24,9 @@ func GetPurchasedNftPresaleInfo() ([]NftPresaleInfo, error) {
 	db := middleware.DB
 	var nftPresaleInfos []NftPresaleInfo
 	err := db.Table("nft_presales").
-		Select("id, asset_id, meta, group_key, price, info, buyer_username, bought_time, paid_id, paid_success_time, state").
+		Select("id, asset_id, meta, group_key, price, info, buyer_username, receive_addr, bought_time, paid_id, paid_success_time, state").
 		Where("state > ?", models.NftPresaleStatePaidPending).
+		Order("bought_time desc").
 		Scan(&nftPresaleInfos).
 		Error
 	if err != nil {
