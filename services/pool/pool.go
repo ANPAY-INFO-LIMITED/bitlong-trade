@@ -644,6 +644,21 @@ func swapExactTokenForTokenNoPath(tokenIn string, tokenOut string, amountIn stri
 				_swapFeeFloat.SetInt(_swapFee)
 				//fmt.Printf("_swapFee: %v\n", _swapFee)
 				*_amountInExcludeFee = *_amountIn
+
+				// TODO: Test
+				// half fee check
+				var isUserBoughtNftPresale bool
+				isUserBoughtNftPresale, err = IsUserBoughtNftPresale(username)
+				if err == nil {
+					if isUserBoughtNftPresale {
+						halfFee := CeilDiv(_swapFee, big.NewInt(2))
+						if halfFee.Cmp(_minSwapSat) >= 0 {
+							*_swapFee = *halfFee
+							_swapFeeFloat.SetInt(_swapFee)
+							_amountOut = new(big.Int).Sub(_amountOutWithoutFee, _swapFee)
+						}
+					}
+				}
 			}
 
 			*_calcPriceAmountIn = *_amountIn
@@ -733,17 +748,31 @@ func swapExactTokenForTokenNoPath(tokenIn string, tokenOut string, amountIn stri
 				*_amountOutTransfer = *_amountOut
 
 			} else {
-				// @dev: fee _swapFeeToken1ValueFloat
+				_minSwapSat := new(big.Int).SetUint64(uint64(MinSwapSatFee))
+				swapFeeType = SwapFee6Thousands
+
+				*_swapFee = *_amountInFee
+				_swapFeeFloat.SetInt(_swapFee)
+
+				// TODO: Test
+				// half fee check
+				var isUserBoughtNftPresale bool
+				isUserBoughtNftPresale, err = IsUserBoughtNftPresale(username)
+				if err == nil {
+					if isUserBoughtNftPresale {
+						halfFee := CeilDiv(_swapFee, big.NewInt(2))
+						if halfFee.Cmp(_minSwapSat) >= 0 {
+							*_swapFee = *halfFee
+							_swapFeeFloat.SetInt(_swapFee)
+							_amountInExcludeFee = new(big.Int).Sub(_amountIn, _swapFee)
+						}
+					}
+				}
 
 				_amountOut, err = getAmountOutBig(_amountIn, _reserveIn, _reserveOut, feeK)
 				if err != nil {
 					return ZeroValue, utils.AppendErrorInfo(err, "getAmountOutBig")
 				}
-
-				swapFeeType = SwapFee6Thousands
-
-				*_swapFee = *_amountInFee
-				_swapFeeFloat.SetInt(_swapFee)
 
 				*_calcPriceAmountIn = *_amountInExcludeFee
 				*_calcPriceAmountOut = *_amountOut
@@ -1055,15 +1084,32 @@ func swapTokenForExactTokenNoPath(tokenIn string, tokenOut string, amountOut str
 			} else {
 				// @dev: fee _feeValueFloat
 
-				_amountIn, err = getAmountInBig(_amountOut, _reserveIn, _reserveOut, feeK)
-				if err != nil {
-					return ZeroValue, utils.AppendErrorInfo(err, "getAmountInBig")
-				}
-
+				_minSwapSat := new(big.Int).SetUint64(uint64(MinSwapSatFee))
 				swapFeeType = SwapFee6Thousands
 
 				*_swapFee = *_amountOutFee
 				_swapFeeFloat.SetInt(_swapFee)
+
+				// TODO: Test
+				// half fee check
+				var isUserBoughtNftPresale bool
+				isUserBoughtNftPresale, err = IsUserBoughtNftPresale(username)
+				if err == nil {
+					if isUserBoughtNftPresale {
+						halfFee := CeilDiv(_swapFee, big.NewInt(2))
+						if halfFee.Cmp(_minSwapSat) >= 0 {
+							*_swapFee = *halfFee
+							_swapFeeFloat.SetInt(_swapFee)
+							_amountOutExcludeFee = new(big.Int).Sub(_amountOut, _swapFee)
+						}
+					}
+				}
+
+				// TODO: modify
+				_amountIn, err = getAmountInBig(_amountOut, _reserveIn, _reserveOut, feeK)
+				if err != nil {
+					return ZeroValue, utils.AppendErrorInfo(err, "getAmountInBig")
+				}
 
 				*_calcPriceAmountIn = *_amountIn
 				*_calcPriceAmountOut = *_amountOutExcludeFee
@@ -1166,6 +1212,8 @@ func swapTokenForExactTokenNoPath(tokenIn string, tokenOut string, amountOut str
 			} else {
 				// @dev: fee _amountInWithFee - _amountInWithoutFee
 
+				_minSwapSat := new(big.Int).SetUint64(uint64(MinSwapSatFee))
+
 				_amountIn = _amountInWithFee
 				swapFeeType = SwapFee6Thousands
 
@@ -1173,6 +1221,22 @@ func swapTokenForExactTokenNoPath(tokenIn string, tokenOut string, amountOut str
 				_swapFeeFloat.SetInt(_swapFee)
 
 				*_amountOutExcludeFee = *_amountOut
+
+				// TODO: Test
+				// half fee check
+				var isUserBoughtNftPresale bool
+				isUserBoughtNftPresale, err = IsUserBoughtNftPresale(username)
+				if err == nil {
+					if isUserBoughtNftPresale {
+						halfFee := CeilDiv(_swapFee, big.NewInt(2))
+						if halfFee.Cmp(_minSwapSat) >= 0 {
+							*_swapFee = *halfFee
+							_swapFeeFloat.SetInt(_swapFee)
+							_amountIn = new(big.Int).Add(_amountInWithoutFee, _swapFee)
+						}
+					}
+				}
+
 			}
 
 			*_calcPriceAmountIn = *_amountInWithoutFee

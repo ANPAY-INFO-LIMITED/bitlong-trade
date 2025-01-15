@@ -1208,7 +1208,7 @@ func GetFirstAssetIdByBatchGroupId(batchGroupId int) (string, error) {
 func IsUserBoughtNftPresale(username string) (bool, error) {
 	var count int64
 	err := middleware.DB.Table("nft_presales").
-		Where("buyer_user_id = ?", username).
+		Where("buyer_username = ?", username).
 		Count(&count).
 		Error
 	if err != nil {

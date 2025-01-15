@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math/big"
 	"strconv"
+	"trade/middleware"
 	"trade/utils"
 )
 
@@ -453,4 +454,25 @@ func amountFee(_amount *big.Int, feeK uint16) (amountExcludeFee *big.Int, amount
 	_amountExcludeFee := new(big.Int).Div(new(big.Int).Mul(_amount, new(big.Int).Sub(_oneThousand, _k)), _oneThousand)
 	_amountFee := new(big.Int).Sub(_amount, _amountExcludeFee)
 	return _amountExcludeFee, _amountFee
+}
+
+func IsUserBoughtNftPresale(username string) (bool, error) {
+	var count int64
+	err := middleware.DB.Table("nft_presales").
+		Where("buyer_username = ?", username).
+		Count(&count).
+		Error
+	if err != nil {
+		return false, utils.AppendErrorInfo(err, "select nft_presales count")
+	}
+	return count > 0, nil
+}
+
+func CeilDiv(_a, _b *big.Int) *big.Int {
+	_c := new(big.Int).Div(_a, _b)
+	_d := new(big.Int).Mul(_c, _b)
+	if _d.Cmp(_a) < 0 {
+		_c.Add(_c, big.NewInt(1))
+	}
+	return _c
 }
