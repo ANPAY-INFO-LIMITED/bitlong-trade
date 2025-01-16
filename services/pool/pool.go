@@ -654,9 +654,11 @@ func swapExactTokenForTokenNoPath(tokenIn string, tokenOut string, amountIn stri
 						halfFee := CeilDiv(_swapFee, big.NewInt(2))
 						if halfFee.Cmp(_minSwapSat) >= 0 {
 							*_swapFee = *halfFee
-							_swapFeeFloat.SetInt(_swapFee)
-							_amountOut = new(big.Int).Sub(_amountOutWithoutFee, _swapFee)
+						} else {
+							*_swapFee = *_minSwapSat
 						}
+						_swapFeeFloat.SetInt(_swapFee)
+						_amountOut = new(big.Int).Sub(_amountOutWithoutFee, _swapFee)
 					}
 				}
 			}
@@ -763,9 +765,11 @@ func swapExactTokenForTokenNoPath(tokenIn string, tokenOut string, amountIn stri
 						halfFee := CeilDiv(_swapFee, big.NewInt(2))
 						if halfFee.Cmp(_minSwapSat) >= 0 {
 							*_swapFee = *halfFee
-							_swapFeeFloat.SetInt(_swapFee)
-							_amountInExcludeFee = new(big.Int).Sub(_amountIn, _swapFee)
+						} else {
+							*_swapFee = *_minSwapSat
 						}
+						_swapFeeFloat.SetInt(_swapFee)
+						_amountInExcludeFee = new(big.Int).Sub(_amountIn, _swapFee)
 					}
 				}
 
@@ -1099,9 +1103,11 @@ func swapTokenForExactTokenNoPath(tokenIn string, tokenOut string, amountOut str
 						halfFee := CeilDiv(_swapFee, big.NewInt(2))
 						if halfFee.Cmp(_minSwapSat) >= 0 {
 							*_swapFee = *halfFee
-							_swapFeeFloat.SetInt(_swapFee)
-							_amountOutExcludeFee = new(big.Int).Sub(_amountOut, _swapFee)
+						} else {
+							*_swapFee = *_minSwapSat
 						}
+						_swapFeeFloat.SetInt(_swapFee)
+						_amountOutExcludeFee = new(big.Int).Sub(_amountOut, _swapFee)
 					}
 				}
 
@@ -1231,9 +1237,11 @@ func swapTokenForExactTokenNoPath(tokenIn string, tokenOut string, amountOut str
 						halfFee := CeilDiv(_swapFee, big.NewInt(2))
 						if halfFee.Cmp(_minSwapSat) >= 0 {
 							*_swapFee = *halfFee
-							_swapFeeFloat.SetInt(_swapFee)
-							_amountIn = new(big.Int).Add(_amountInWithoutFee, _swapFee)
+						} else {
+							*_swapFee = *_minSwapSat
 						}
+						_swapFeeFloat.SetInt(_swapFee)
+						_amountIn = new(big.Int).Add(_amountInWithoutFee, _swapFee)
 					}
 				}
 
