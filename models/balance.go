@@ -13,7 +13,7 @@ type Balance struct {
 	Unit        BalanceUnit  `gorm:"column:Unit;type:smallint" json:"unit"`
 	ServerFee   uint64       `gorm:"column:server_fee;type:bigint unsigned" json:"serverFee"`
 	AssetId     *string      `gorm:"column:asset_id;type:varchar(512);default:'00'" json:"assetId"`
-	Invoice     *string      `gorm:"column:invoice;type:varchar(512)" json:"invoice"`
+	Invoice     *string      `gorm:"column:invoice;type:varchar(1024)" json:"invoice"`
 	PaymentHash *string      `gorm:"column:payment_hash;type:varchar(100)" json:"paymentHash"`
 	State       BalanceState `gorm:"column:State;type:smallint" json:"State"`
 	TypeExt     *BalanceTypeExt
