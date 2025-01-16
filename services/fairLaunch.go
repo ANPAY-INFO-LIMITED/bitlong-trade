@@ -220,7 +220,8 @@ func ProcessFairLaunchInfo(imageData string, name string, assetType int, amount 
 	//	return nil, utils.AppendErrorInfo(err, "ValidateFeeRate")
 	//}
 	setGasFee := GetIssuanceTransactionGasFee(feeRate)
-	if !custodyAccount.IsAccountBalanceEnoughByUserId(uint(userId), uint64(setGasFee)) {
+	notPayAmount := CalculateAllNotPayAmount(username)
+	if !custodyAccount.IsAccountBalanceEnoughByUserId(uint(userId), uint64(setGasFee)+uint64(notPayAmount)) {
 		return nil, errors.New("account balance not enough to pay issuance gas fee")
 	}
 	fairLaunchInfo = models.FairLaunchInfo{
@@ -359,7 +360,8 @@ func ProcessFairLaunchMintedInfo(fairLaunchInfoID int, mintedNumber int, mintedF
 		return nil, utils.AppendErrorInfo(err, "Is Minted Number Valid")
 	}
 	mintedGasFee := GetMintedTransactionGasFee(mintedFeeRateSatPerKw)
-	if !custodyAccount.IsAccountBalanceEnoughByUserId(uint(userId), uint64(mintedGasFee)) {
+	notPayAmount := CalculateAllNotPayAmount(username)
+	if !custodyAccount.IsAccountBalanceEnoughByUserId(uint(userId), uint64(mintedGasFee)+uint64(notPayAmount)) {
 		return nil, errors.New("account balance not enough to pay minted gas fee")
 	}
 	fairLaunchMintedInfo = models.FairLaunchMintedInfo{
@@ -2939,4 +2941,22 @@ func RefundUserFirstMintByUsernameAndAssetId(usernameSlice []string, assetId str
 type RefundUserFirstMintRequest struct {
 	Usernames []string `json:"usernames"`
 	AssetId   string   `json:"asset_id"`
+}
+
+func CalculateFairLaunchInfoNotPayAmount(username string) (notPayAmount int64, err error) {
+	err = middleware.DB.Table("fair_launch_infos").
+		Select("sum(set_gas_fee)").
+		Where("username = ? and state = ?", username, models.FairLaunchStateNoPay).
+		Scan(&notPayAmount).
+		Error
+	return notPayAmount, err
+}
+
+func CalculateFairLaunchMintedInfoNotPayAmount(username string) (notPayAmount int64, err error) {
+	err = middleware.DB.Table("fair_launch_minted_infos").
+		Select("sum(minted_gas_fee)").
+		Where("username = ? and state = ?", username, models.FairLaunchMintedStateNoPay).
+		Scan(&notPayAmount).
+		Error
+	return notPayAmount, err
 }

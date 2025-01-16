@@ -375,9 +375,10 @@ func BuyNftPresale(userId int, username string, buyNftPresaleRequest models.BuyN
 		if err != nil {
 			return utils.AppendErrorInfo(err, "GetAccountBalance")
 		}
-		isEnough := accountBalance >= int64(price)
+		notPayAmount := CalculateAllNotPayAmount(username)
+		isEnough := accountBalance >= int64(price)+notPayAmount
 		if !isEnough {
-			err = errors.New("user(" + strconv.Itoa(userId) + ")'s account balance(" + strconv.FormatInt(accountBalance, 10) + ") not enough to pay nft presale price" + "(" + strconv.Itoa(nftPresale.Price) + ")")
+			err = errors.New("user(" + strconv.Itoa(userId) + ")'s account balance(" + strconv.FormatInt(accountBalance, 10) + ") not enough to pay nft presale price" + "(" + strconv.Itoa(nftPresale.Price) + ") and not pay amount(" + strconv.FormatInt(notPayAmount, 10) + ")")
 			return utils.AppendErrorInfo(err, "IsAccountBalanceEnough")
 		}
 	}
@@ -1215,4 +1216,20 @@ func IsUserBoughtNftPresale(username string) (bool, error) {
 		return false, utils.AppendErrorInfo(err, "select nft_presales count")
 	}
 	return count > 0, nil
+}
+
+func CalculateNftPresaleNotPayAmount(username string) (notPayAmount int64, err error) {
+	err = middleware.DB.Table("nft_presales").
+		Select("sum(price)").
+		Where("buyer_username = ? and state = ?", username, models.NftPresaleStateBoughtNotPay).
+		Scan(&notPayAmount).
+		Error
+	return notPayAmount, err
+}
+
+func CalculateAllNotPayAmount(username string) (notPayAmount int64) {
+	nftPresaleNotPayAmount, _ := CalculateNftPresaleNotPayAmount(username)
+	fairLaunchInfoNotPayAmount, _ := CalculateFairLaunchInfoNotPayAmount(username)
+	fairLaunchMintedInfoNotPayAmount, _ := CalculateFairLaunchMintedInfoNotPayAmount(username)
+	return nftPresaleNotPayAmount + fairLaunchInfoNotPayAmount + fairLaunchMintedInfoNotPayAmount
 }

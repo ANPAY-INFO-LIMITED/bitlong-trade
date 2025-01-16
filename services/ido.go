@@ -74,6 +74,7 @@ func ProcessIdoPublishInfo(userId int, assetID string, totalAmount int, minimumQ
 	var idoPublishInfo models.IdoPublishInfo
 	// TODO: need to calculate fee
 	setGasFee := GetIdoPublishTransactionGasFee(feeRate)
+	//notPayAmount := CalculateAllNotPayAmount(username)
 	if !custodyAccount.IsAccountBalanceEnoughByUserId(uint(userId), uint64(setGasFee)) {
 		return nil, errorAppendInfo("account balance not enough to pay publish gas fee")
 	}
@@ -167,6 +168,7 @@ func ProcessIdoParticipateInfo(userId int, idoPublishInfoID int, boughtAmount in
 	}
 	// TODO: need to calculate fee
 	participateGasFee := GetIdoParticipateTransactionGasFee(feeRate)
+	//notPayAmount := CalculateAllNotPayAmount(username)
 	if !custodyAccount.IsAccountBalanceEnoughByUserId(uint(userId), uint64(participateGasFee)) {
 		return nil, errorAppendInfo("account balance not enough to pay minted gas fee")
 	}
