@@ -1250,7 +1250,7 @@ func swapTokenForExactTokenNoPath(tokenIn string, tokenOut string, amountOut str
 			*_calcPriceAmountIn = *_amountInWithoutFee
 			*_calcPriceAmountOut = *_amountOut
 
-			*_amountInTransfer = *_amountIn
+			*_amountInTransfer = *_amountInWithoutFee
 			*_amountOutTransfer = *_amountOut
 
 			if _amountIn.Cmp(_amountInMax) > 0 {
