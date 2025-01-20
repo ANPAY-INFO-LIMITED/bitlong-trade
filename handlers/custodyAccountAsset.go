@@ -170,9 +170,10 @@ func QueryAssets(c *gin.Context) {
 }
 
 type AddressResponce struct {
-	Address string  `json:"addr"`
-	AssetId string  `json:"asset_id"`
-	Amount  float64 `json:"amount"`
+	Address    string  `json:"addr"`
+	AssetId    string  `json:"asset_id"`
+	Amount     float64 `json:"amount"`
+	CreateTime int64   `json:"createTime"`
 }
 
 func QueryAddress(c *gin.Context) {
@@ -200,9 +201,10 @@ func QueryAddress(c *gin.Context) {
 	var addrs []AddressResponce
 	for _, v := range addr {
 		addrs = append(addrs, AddressResponce{
-			Address: v.Invoice,
-			AssetId: v.AssetId,
-			Amount:  v.Amount,
+			Address:    v.Invoice,
+			AssetId:    v.AssetId,
+			Amount:     v.Amount,
+			CreateTime: v.CreatedAt.Unix(),
 		})
 	}
 	c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "", addrs))
