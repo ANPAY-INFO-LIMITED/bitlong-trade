@@ -373,69 +373,10 @@ func GetAssetManagedUtxoInfo(c *gin.Context) {
 
 func GetAssetTransferCombinedSliceByAssetIdLimit(c *gin.Context) {
 	assetId := c.Query("asset_id")
-	limit := c.Query("limit")
-	offset := c.Query("offset")
-
 	if assetId == "" {
 		err := errors.New("asset_id is empty")
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.AssetIdEmptyErr.Code(),
-			ErrMsg: err.Error(),
-			Data:   &[]models.AssetTransferProcessedCombined{},
-		})
-		return
-	}
-
-	if limit == "" {
-		err := errors.New("limit is empty")
-		c.JSON(http.StatusOK, Result2{
-			Errno:  models.LimitEmptyErr.Code(),
-			ErrMsg: err.Error(),
-			Data:   &[]models.AssetTransferProcessedCombined{},
-		})
-		return
-	}
-	limitInt, err := strconv.Atoi(limit)
-	if err != nil {
-		c.JSON(http.StatusOK, Result2{
-			Errno:  models.AtoiErr.Code(),
-			ErrMsg: err.Error(),
-			Data:   &[]models.AssetTransferProcessedCombined{},
-		})
-		return
-	}
-	if limitInt < 0 {
-		err := errors.New("limit is less than 0")
-		c.JSON(http.StatusOK, Result2{
-			Errno:  models.LimitLessThanZeroErr.Code(),
-			ErrMsg: err.Error(),
-			Data:   &[]models.AssetTransferProcessedCombined{},
-		})
-		return
-	}
-
-	if offset == "" {
-		err := errors.New("offset is empty")
-		c.JSON(http.StatusOK, Result2{
-			Errno:  models.OffsetEmptyErr.Code(),
-			ErrMsg: err.Error(),
-			Data:   &[]models.AssetTransferProcessedCombined{},
-		})
-		return
-	}
-	offsetInt, err := strconv.Atoi(offset)
-	if err != nil {
-		c.JSON(http.StatusOK, Result2{
-			Errno:  models.AtoiErr.Code(),
-			ErrMsg: err.Error(),
-			Data:   &[]models.AssetTransferProcessedCombined{},
-		})
-		return
-	}
-	if offsetInt < 0 {
-		err := errors.New("offset is less than 0")
-		c.JSON(http.StatusOK, Result2{
-			Errno:  models.OffsetLessThanZeroErr.Code(),
 			ErrMsg: err.Error(),
 			Data:   &[]models.AssetTransferProcessedCombined{},
 		})
