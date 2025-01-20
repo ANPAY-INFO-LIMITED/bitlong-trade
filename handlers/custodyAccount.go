@@ -71,8 +71,11 @@ func PayInvoice(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error() + "用户不存在"})
 		return
 	}
-	e.UserInfo.PaymentMux.Lock()
-	defer e.UserInfo.PaymentMux.Unlock()
+	if !e.UserInfo.PayLock() {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "当前用户正在支付中，请勿频繁操作"})
+		return
+	}
+	defer e.UserInfo.PayUnlock()
 
 	//获取支付发票请求
 	pay := custodyAccount.PayInvoiceRequest{}
@@ -99,8 +102,11 @@ func PayUserBtc(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error() + "用户不存在"})
 		return
 	}
-	e.UserInfo.PaymentMux.Lock()
-	defer e.UserInfo.PaymentMux.Unlock()
+	if !e.UserInfo.PayLock() {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "当前用户正在支付中，请勿频繁操作"})
+		return
+	}
+	defer e.UserInfo.PayUnlock()
 
 	//获取支付请求
 	pay := struct {

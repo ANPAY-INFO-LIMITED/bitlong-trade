@@ -72,8 +72,11 @@ func SendAsset(c *gin.Context) {
 		return
 	}
 
-	e.UserInfo.PaymentMux.Lock()
-	defer e.UserInfo.PaymentMux.Unlock()
+	if !e.UserInfo.PayLock() {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "当前用户正在支付中，请勿频繁操作"})
+		return
+	}
+	defer e.UserInfo.PayUnlock()
 
 	err = e.SendPayment(&custodyAssets.AssetPacket{
 		PayReq: apply.Address,
@@ -99,8 +102,11 @@ func SendToUserAsset(c *gin.Context) {
 		return
 	}
 
-	e.UserInfo.PaymentMux.Lock()
-	defer e.UserInfo.PaymentMux.Unlock()
+	if !e.UserInfo.PayLock() {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "当前用户正在支付中，请勿频繁操作"})
+		return
+	}
+	defer e.UserInfo.PayUnlock()
 
 	pay := struct {
 		NpubKey string  `json:"npub_key"`

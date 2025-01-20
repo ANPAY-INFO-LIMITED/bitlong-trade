@@ -12,6 +12,8 @@ import (
 	"trade/services/btldb"
 )
 
+const interval = 20 * time.Second // 交易间隔
+
 // 定义用户池相关的错误信息
 var (
 	ErrMaxUserPoolReached = fmt.Errorf("用户池已满，无法添加新用户")
@@ -27,9 +29,24 @@ type UserInfo struct {
 	Account       *models.Account
 	LockAccount   *cModels.LockAccount
 	PaymentMux    sync.Mutex // 支付锁
+	LastPayTime   time.Time  // 记录上次支付时间
 	RpcMux        sync.Mutex // RPC 锁
 	LastActiveMux sync.Mutex // 上次活跃时间锁
 	LastActive    time.Time  // 记录上次活跃时间
+}
+
+func (u *UserInfo) PayLock() bool {
+	currentTime := time.Now()
+	if currentTime.Sub(u.LastPayTime) < interval {
+		return false
+	}
+	u.PaymentMux.Lock()
+	return true
+}
+
+func (u *UserInfo) PayUnlock() {
+	u.LastPayTime = time.Now()
+	u.PaymentMux.Unlock()
 }
 
 // UserPool 定义用户池结构体
