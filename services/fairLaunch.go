@@ -123,11 +123,9 @@ func FairLaunchMint(tx *gorm.DB) {
 
 // SendFairLaunchAsset
 // @Description: Scheduled Task
-func SendFairLaunchAsset(tx *gorm.DB) {
-	err := SendFairLaunchMintedAssetLocked(tx)
+func SendFairLaunchAsset() {
+	err := SendFairLaunchMintedAssetLocked()
 	if err != nil {
-
-		btlLog.SendFairLaunchMintedAsset.Error("SendFairLaunchAsset: %v", err)
 
 		_ = utils.WriteToLogFile("./logs/trade.SendFairLaunchAsset.log", "[TRADE.SFLA]", utils.ValueJsonString(err))
 		// @dev: do not check err here
@@ -1754,7 +1752,7 @@ func FairLaunchMintedInfosIdToString(fairLaunchMintedInfos *[]models.FairLaunchM
 
 // SendFairLaunchMintedAssetLocked
 // @dev: Trigger after ProcessFairLaunchMintedStatePaidNoSendInfo
-func SendFairLaunchMintedAssetLocked(tx *gorm.DB) (err error) {
+func SendFairLaunchMintedAssetLocked() (err error) {
 	// @dev: all unsent
 	unsentFairLaunchMintedInfos, err := GetAllUnsentFairLaunchMintedInfos()
 	ids := "(id:" + FairLaunchMintedInfosIdToString(unsentFairLaunchMintedInfos) + ")"
@@ -1785,24 +1783,50 @@ func SendFairLaunchMintedAssetLocked(tx *gorm.DB) (err error) {
 	var feeRate *FeeRateResponseTransformed
 	var response *taprpc.SendAssetResponse
 	for assetId, addrs := range assetIdToAddrs {
+
+		tx := middleware.DB.Begin()
+		err = nil
+
 		// @dev: Check if confirmed btc balance enough
 		if !IsWalletBalanceEnough(assetIdToGasFeeTotal[assetId]) {
-			err = errors.New("lnd wallet balance is not enough" + ids)
-			return err
+			tx.Rollback()
+
+			err = errors.New("lnd wallet balance is not enough. asset(" + assetId + ")" + ids)
+			btlLog.SendFairLaunchMintedAsset.Error("SendFairLaunchAsset: %v", err)
+			continue
+			//return err
 		}
 		// @dev: Check if asset balance enough
 		if !IsAssetBalanceEnough(assetId, assetIdToAmount[assetId]) {
-			err = errors.New("tapd asset balance is not enough" + ids)
-			return err
+			tx.Rollback()
+
+			err = errors.New("tapd asset(" + assetId + ") balance is not enough" + ids)
+			btlLog.SendFairLaunchMintedAsset.Error("SendFairLaunchAsset: %v", err)
+			continue
+			//return err
 		}
-		// @dev: Check if asset utxo is enough
-		if !IsAssetUtxoEnough(assetId, assetIdToAmount[assetId]) {
-			err = errors.New("tapd asset utxo is not enough" + ids)
-			return err
-		}
+
+		// do not check single utxo now
+		//TODO: check all utxos or all assets lists number
+
+		//// @dev: Check if asset utxo is enough
+		//if !IsAssetUtxoEnough(assetId, assetIdToAmount[assetId]) {
+		//	tx.Rollback()
+		//
+		//	err = errors.New("tapd asset(" + assetId + ") utxo is not enough" + ids)
+		//	btlLog.SendFairLaunchMintedAsset.Error("SendFairLaunchAsset: %v", err)
+		//	continue
+		//	//return err
+		//}
+
 		feeRate, err = UpdateAndGetFeeRateResponseTransformed()
 		if err != nil {
-			return utils.AppendErrorInfo(err, "UpdateAndGetFeeRateResponseTransformed"+ids)
+			tx.Rollback()
+
+			err = utils.AppendErrorInfo(err, "UpdateAndGetFeeRateResponseTransformed. asset("+assetId+")"+ids)
+			btlLog.SendFairLaunchMintedAsset.Error("SendFairLaunchAsset: %v", err)
+			continue
+			//return utils.AppendErrorInfo(err, "UpdateAndGetFeeRateResponseTransformed"+ids)
 		}
 		// @dev: Append fee of 2 sat per b
 		feeRateSatPerKw := feeRate.SatPerKw.FastestFee + FeeRateSatPerBToSatPerKw(2)
@@ -1811,17 +1835,30 @@ func SendFairLaunchMintedAssetLocked(tx *gorm.DB) (err error) {
 		// @notice: 2024-8-14 16:37:34 This check should be removed
 		// @note: Use greater restrictions instead of removing check
 		if assetIdToGasFeeRateAverage[assetId]+FeeRateSatPerBToSatPerKw(100) < feeRateSatPerKw {
-			return errors.New("too high fee rate to send minted asset now" + ids)
+			tx.Rollback()
+
+			err = errors.New("too high fee rate to send minted asset now. asset(" + assetId + ")" + ids)
+			btlLog.SendFairLaunchMintedAsset.Error("SendFairLaunchAsset: %v", err)
+			continue
+			//return errors.New("too high fee rate to send minted asset now" + ids)
 		}
 		if len(addrs) == 0 {
-			//err = errors.New("length of addrs slice is zero, can't send assets and update")
+			tx.Rollback()
+
+			err = errors.New("length of addrs slice is zero, can't send assets and update. asset(" + assetId + ")")
+			btlLog.SendFairLaunchMintedAsset.Error("SendFairLaunchAsset: %v", err)
 			//return err
 			continue
 		}
 		// @dev: Send Asset
 		response, err = api.SendAssetAddrSliceAndGetResponse(addrs, feeRateSatPerKw)
 		if err != nil {
-			return utils.AppendErrorInfo(err, "SendAssetAddrSliceAndGetResponse"+ids)
+			tx.Rollback()
+
+			err = utils.AppendErrorInfo(err, "SendAssetAddrSliceAndGetResponse. asset("+assetId+")"+ids)
+			btlLog.SendFairLaunchMintedAsset.Error("SendFairLaunchAsset: %v", err)
+			continue
+			//return utils.AppendErrorInfo(err, "SendAssetAddrSliceAndGetResponse"+ids)
 		}
 		// @dev: Record paid fee
 		outpoint := response.Transfer.Outputs[0].Anchor.Outpoint
@@ -1829,13 +1866,26 @@ func SendFairLaunchMintedAssetLocked(tx *gorm.DB) (err error) {
 		addrsStr := AddrsToString(addrs)
 		err = CreateFairLaunchIncomeOfServerPaySendAssetFee(tx, assetId, assetIdToFairLaunchInfoId[assetId], txid, addrsStr)
 		if err != nil {
-			return utils.AppendErrorInfo(err, "CreateFairLaunchIncomeOfServerPaySendAssetFee"+ids)
+			tx.Rollback()
+
+			err = utils.AppendErrorInfo(err, "CreateFairLaunchIncomeOfServerPaySendAssetFee. asset("+assetId+")"+ids)
+			btlLog.SendFairLaunchMintedAsset.Error("SendFairLaunchAsset: %v", err)
+			continue
+
+			//return utils.AppendErrorInfo(err, "CreateFairLaunchIncomeOfServerPaySendAssetFee"+ids)
 		}
 		// @dev: Update minted info
 		err = UpdateFairLaunchMintedInfosBySendAssetResponse(tx, unsentFairLaunchMintedInfos, response)
 		if err != nil {
-			return utils.AppendErrorInfo(err, "UpdateFairLaunchMintedInfosBySendAssetResponse"+ids)
+			tx.Rollback()
+
+			err = utils.AppendErrorInfo(err, "UpdateFairLaunchMintedInfosBySendAssetResponse. asset("+assetId+")"+ids)
+			btlLog.SendFairLaunchMintedAsset.Error("SendFairLaunchAsset: %v", err)
+			continue
+
+			//return utils.AppendErrorInfo(err, "UpdateFairLaunchMintedInfosBySendAssetResponse"+ids)
 		}
+		tx.Commit()
 	}
 	return nil
 }

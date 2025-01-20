@@ -214,14 +214,14 @@ func (cs *CronService) FairLaunchMint() {
 }
 
 func (cs *CronService) SendFairLaunchAsset() {
-	tx := middleware.DB.Begin()
-	SendFairLaunchAsset(tx)
+	//tx := middleware.DB.Begin()
+	SendFairLaunchAsset()
 	err := TaskCountRecordByRedis("SendFairLaunchAsset")
 	if err != nil {
-		tx.Rollback()
+		//tx.Rollback()
 		return
 	}
-	tx.Commit()
+	//tx.Commit()
 }
 
 func (cs *CronService) RemoveMintedInventories() {
