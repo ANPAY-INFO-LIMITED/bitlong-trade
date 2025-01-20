@@ -322,6 +322,13 @@ const (
 	QueryAssetBalanceInfoByUsernameErr
 	GetAssetBalanceHistoryCountErr
 	QueryAssetBalanceHistoryInfoByUsernameErr
+	GetAssetBalanceInfoCountErr
+	GetAssetBalanceInfoErr
+	GetAccountAssetTransferCountErr
+	GetAccountAssetTransferErr
+	GetAssetManagedUtxoInfoCountErr
+	GetAssetManagedUtxoInfoErr
+	GetAssetTransferCombinedSliceByAssetIdLimitErr
 )
 
 // Err type:CustodyAccount

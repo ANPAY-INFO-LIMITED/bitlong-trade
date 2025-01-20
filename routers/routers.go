@@ -136,6 +136,9 @@ func SetupRouter() *gin.Engine {
 	if !config.GetLoadConfig().RouterDisable.AssetBalanceBackend {
 		SetupAssetBalanceBackendRouter(r)
 	}
+	if !config.GetLoadConfig().RouterDisable.AssetMoreInfo {
+		SetupAssetMoreInfo(r)
+	}
 	SetupWsRouter(r)
 	return r
 }

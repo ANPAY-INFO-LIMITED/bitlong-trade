@@ -553,6 +553,53 @@ func GetMempoolFeeRate() (*FeeRateResponseTransformed, error) {
 	return UpdateAndGetFeeRateResponseTransformed()
 }
 
+func CheckMinFeeRate(feeRateResponseTransformed *FeeRateResponseTransformed) *FeeRateResponseTransformed {
+	if feeRateResponseTransformed == nil {
+		return nil
+	}
+
+	var checked FeeRateResponseTransformed
+	satPerB := feeRateResponseTransformed.SatPerB
+	satPerKw := feeRateResponseTransformed.SatPerKw
+
+	if satPerB.FastestFee < 3 {
+		satPerB.FastestFee = 3
+	}
+	if satPerB.HalfHourFee < 3 {
+		satPerB.HalfHourFee = 3
+	}
+	if satPerB.HourFee < 3 {
+		satPerB.HourFee = 3
+	}
+	if satPerB.EconomyFee < 3 {
+		satPerB.EconomyFee = 3
+	}
+	if satPerB.MinimumFee < 3 {
+		satPerB.MinimumFee = 3
+	}
+
+	if satPerKw.FastestFee < FeeRateSatPerBToSatPerKw(3) {
+		satPerKw.FastestFee = FeeRateSatPerBToSatPerKw(3)
+	}
+	if satPerKw.HalfHourFee < FeeRateSatPerBToSatPerKw(3) {
+		satPerKw.HalfHourFee = FeeRateSatPerBToSatPerKw(3)
+	}
+	if satPerKw.HourFee < FeeRateSatPerBToSatPerKw(3) {
+		satPerKw.HourFee = FeeRateSatPerBToSatPerKw(3)
+	}
+	if satPerKw.EconomyFee < FeeRateSatPerBToSatPerKw(3) {
+		satPerKw.EconomyFee = FeeRateSatPerBToSatPerKw(3)
+	}
+	if satPerKw.MinimumFee < FeeRateSatPerBToSatPerKw(3) {
+		satPerKw.MinimumFee = FeeRateSatPerBToSatPerKw(3)
+	}
+
+	checked.SatPerB = satPerB
+	checked.SatPerKw = satPerKw
+
+	return &checked
+}
+
 func GetFeeRate(network models.Network) (*FeeRateResponse, error) {
 	UpdateFeeRate(network)
 	var feeRateResponse FeeRateResponse

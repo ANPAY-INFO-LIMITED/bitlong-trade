@@ -134,5 +134,15 @@ func SetupRouter() *gin.Engine {
 		}
 	}
 
+	assetMoreInfo := r.Group("/asset_more_info")
+	{
+		assetMoreInfo.GET("/get/asset_balance_info_count", handlers.GetAssetBalanceInfoCount)
+		assetMoreInfo.GET("/get/asset_balance_info", handlers.GetAssetBalanceInfo)
+		assetMoreInfo.GET("/get/account_asset_transfer_count", handlers.GetAccountAssetTransferCount)
+		assetMoreInfo.GET("/get/account_asset_transfer", handlers.GetAccountAssetTransfer)
+		assetMoreInfo.GET("/get/asset_managed_utxo_info_count", handlers.GetAssetManagedUtxoInfoCount)
+		assetMoreInfo.GET("/get/asset_managed_utxo_info", handlers.GetAssetManagedUtxoInfo)
+		assetMoreInfo.GET("/get/asset_transfer_50", handlers.GetAssetTransferCombinedSliceByAssetIdLimit)
+	}
 	return r
 }

@@ -4,6 +4,8 @@ gin_config:
     port: ""
     mode: ""
     local_port: ""
+custody_config:
+    clear_block_account_balance: false
 gorm_config:
     mysql:
         host: ""
@@ -62,6 +64,8 @@ router_disable:
     asset_meta: false
     pool: false
     btc_utxo: false
+    asset_balance_info: false
+    asset_more_info: false
 api_config:
     lnd:
         host: ""

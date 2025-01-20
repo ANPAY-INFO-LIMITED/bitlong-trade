@@ -54,6 +54,7 @@ func QueryAllFeeRate(c *gin.Context) {
 
 func QueryRecommendedFeeRate(c *gin.Context) {
 	feeRate, err := services.GetMempoolFeeRate()
+	feeRate = services.CheckMinFeeRate(feeRate)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
 			Success: false,

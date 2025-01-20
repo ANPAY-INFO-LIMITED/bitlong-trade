@@ -79,6 +79,7 @@ type Config struct {
 		Pool                  bool `yaml:"pool" json:"pool"`
 		BtcUtxo               bool `yaml:"btc_utxo" json:"btc_utxo"`
 		AssetBalanceBackend   bool `yaml:"asset_balance_info" json:"asset_balance_info"`
+		AssetMoreInfo         bool `yaml:"asset_more_info" json:"asset_more_info"`
 	} `yaml:"router_disable" json:"router_disable"`
 	ApiConfig struct {
 		Lnd struct {
