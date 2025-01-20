@@ -126,7 +126,7 @@ func FairLaunchMint(tx *gorm.DB) {
 func SendFairLaunchAsset(tx *gorm.DB) {
 	err := SendFairLaunchMintedAssetLocked(tx)
 	if err != nil {
-		err = utils.WriteToLogFile("./trade.SendFairLaunchAsset.log", "[TRADE.SFLA]", utils.ValueJsonString(err))
+		err = utils.WriteToLogFile("./logs/trade.SendFairLaunchAsset.log", "[TRADE.SFLA]", utils.ValueJsonString(err))
 		if err != nil {
 			utils.LogError("Write SendFairLaunchAsset err to log file", err)
 		}
