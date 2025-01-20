@@ -11,14 +11,14 @@ import (
 type BalanceScan struct {
 	ID          uint               `json:"id"`
 	CreatedAt   time.Time          `json:"created_at"`
-	AccountId   uint               `json:"accountId"`
-	BillType    models.BalanceType `json:"billType"`
+	AccountId   uint               `json:"account_id"`
+	BillType    models.BalanceType `json:"bill_type"`
 	Away        models.BalanceAway `json:"away"`
 	Amount      float64            `json:"amount"`
-	ServerFee   uint64             `json:"serverFee"`
-	AssetId     *string            `json:"assetId"`
+	ServerFee   uint64             `json:"server_fee"`
+	AssetId     *string            `json:"asset_id"`
 	Invoice     *string            `json:"invoice"`
-	PaymentHash *string            `json:"paymentHash"`
+	PaymentHash *string            `json:"payment_hash"`
 }
 
 type AccountAssetTransfer struct {
@@ -69,7 +69,7 @@ func BalanceScanToAccountAssetTransfer(balanceScan BalanceScan, username string)
 func GetBalanceScans(assetId string, limit int, offset int) (balanceScans []BalanceScan, err error) {
 	err = middleware.DB.
 		Table("bill_balance").
-		Select("id, created_at, accountId, billType, away, amount, serverFee, assetId, invoice, paymentHash").
+		Select("id, created_at, account_id, bill_type, away, amount, server_fee, asset_id, invoice, payment_hash").
 		Where("amount <> ? and bill_type in ? and asset_id = ?", 0, []models.BalanceType{models.BillTypeAssetTransfer, models.BillTypeAwardAsset}, assetId).
 		Order("updated_at desc").
 		Limit(limit).
