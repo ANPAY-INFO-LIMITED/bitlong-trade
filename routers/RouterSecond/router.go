@@ -143,6 +143,7 @@ func SetupRouter() *gin.Engine {
 		assetMoreInfo.GET("/get/asset_managed_utxo_info_count", handlers.GetAssetManagedUtxoInfoCount)
 		assetMoreInfo.GET("/get/asset_managed_utxo_info", handlers.GetAssetManagedUtxoInfo)
 		assetMoreInfo.GET("/get/asset_transfer_50", handlers.GetAssetTransferCombinedSliceByAssetIdLimit)
+		assetMoreInfo.GET("/get/asset_burn_total", handlers.GetAssetBurnTotal)
 	}
 	return r
 }

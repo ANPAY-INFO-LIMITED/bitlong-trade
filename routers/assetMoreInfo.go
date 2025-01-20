@@ -16,6 +16,7 @@ func SetupAssetMoreInfo(router *gin.Engine) *gin.Engine {
 		assetMoreInfo.GET("/get/asset_managed_utxo_info/count", handlers.GetAssetManagedUtxoInfoCount)
 		assetMoreInfo.GET("/get/asset_managed_utxo_info", handlers.GetAssetManagedUtxoInfo)
 		assetMoreInfo.GET("/get/asset_transfer_50", handlers.GetAssetTransferCombinedSliceByAssetIdLimit)
+		assetMoreInfo.GET("/get/asset_burn_total", handlers.GetAssetBurnTotal)
 	}
 
 	username := config.GetLoadConfig().AdminUser.Username
@@ -31,5 +32,6 @@ func SetupAssetMoreInfo(router *gin.Engine) *gin.Engine {
 	authorized.GET("/get/asset_managed_utxo_info/count", handlers.GetAssetManagedUtxoInfoCount)
 	authorized.GET("/get/asset_managed_utxo_info", handlers.GetAssetManagedUtxoInfo)
 	authorized.GET("/get/asset_transfer_50", handlers.GetAssetTransferCombinedSliceByAssetIdLimit)
+	authorized.GET("/get/asset_burn_total", handlers.GetAssetBurnTotal)
 	return router
 }

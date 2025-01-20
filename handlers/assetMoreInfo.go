@@ -400,3 +400,35 @@ func GetAssetTransferCombinedSliceByAssetIdLimit(c *gin.Context) {
 		Data:   assetTransfers,
 	})
 }
+
+//销毁
+
+func GetAssetBurnTotal(c *gin.Context) {
+	assetId := c.Query("asset_id")
+	if assetId == "" {
+		err := errors.New("asset_id is empty")
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.AssetIdEmptyErr.Code(),
+			ErrMsg: err.Error(),
+			Data:   0,
+		})
+		return
+	}
+
+	assetBurnTotalAmount, err := assetMoreInfo.GetAssetBurnTotal(assetId)
+
+	if err != nil {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.GetAssetBurnTotalErr.Code(),
+			ErrMsg: err.Error(),
+			Data:   0,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, Result2{
+		Errno:  0,
+		ErrMsg: models.SUCCESS.Error(),
+		Data:   assetBurnTotalAmount,
+	})
+}
