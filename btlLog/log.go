@@ -258,7 +258,7 @@ func loadDefaultLog() {
 		CLMT = NewLogger("CLMT", Level, custErrorLogFile, false, CLimitLogFile)
 	}
 	{
-		FairLaunchDebugLogger = NewLogger("FLDL", Level, nil, true, defaultLogFile, fairLaunchLogFile)
+		FairLaunchDebugLogger = NewLogger("FLDL", Level, nil, false, defaultLogFile, fairLaunchLogFile)
 		SendFairLaunchMintedAsset = NewLogger("SFML", Level, nil, true, defaultLogFile, sendFairLaunchMintedAssetLogFile)
 		FEE = NewLogger("FEE", Level, nil, true, defaultLogFile, feeLogFile)
 		ScheduledTask = NewLogger("CRON", Level, nil, true, defaultLogFile)
