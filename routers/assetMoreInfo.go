@@ -4,10 +4,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"trade/config"
 	"trade/handlers"
+	"trade/middleware"
 )
 
 func SetupAssetMoreInfo(router *gin.Engine) *gin.Engine {
 	assetMoreInfo := router.Group("/asset_more_info")
+	assetMoreInfo.Use(middleware.AuthMiddleware())
 	{
 		assetMoreInfo.GET("/get/asset_balance_info/count", handlers.GetAssetBalanceInfoCount)
 		assetMoreInfo.GET("/get/asset_balance_info", handlers.GetAssetBalanceInfo)
