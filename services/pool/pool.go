@@ -4585,8 +4585,8 @@ func QueryLiquidityAndAwardRecords(username string, limit int, offset int) (reco
 	err = tx.Table("pool_pairs").
 		Joins("join pool_shares on pool_pairs.id = pool_shares.pair_id").
 		Joins("join pool_share_balances on pool_shares.id = pool_share_balances.share_id").
-		Joins("join pool_share_lp_award_balances on pool_share_balances.username = pool_share_lp_award_balances.username").
-		Joins("join pool_share_lp_award_cumulatives on pool_share_balances.username = pool_share_lp_award_cumulatives.username").
+		Joins("join pool_share_lp_award_balances on pool_share_balances.username = pool_share_lp_award_balances.username and pool_shares.id = pool_share_lp_award_balances.share_id").
+		Joins("join pool_share_lp_award_cumulatives on pool_share_balances.username = pool_share_lp_award_cumulatives.username and pool_shares.id = pool_share_lp_award_cumulatives.share_id").
 		Select("pool_pairs.token0, pool_pairs.token1, pool_share_balances.balance as liquidity, pool_share_lp_award_balances.balance as lp_award_balance, pool_share_lp_award_cumulatives.amount as lp_award_cumulative").
 		Where("pool_share_balances.username = ?", username).
 		Order("pool_share_balances.id desc").
