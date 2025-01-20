@@ -109,6 +109,7 @@ var (
 	pushQueueLogFile   *os.File
 
 	fairLaunchLogFile                  *os.File
+	sendFairLaunchMintedAssetLogFile   *os.File
 	feeLogFile                         *os.File
 	mintNftLogFile                     *os.File
 	scheduledTaskLogFile               *os.File
@@ -193,6 +194,10 @@ func openLogFile() error {
 	if err != nil {
 		return err
 	}
+	sendFairLaunchMintedAssetLogFile, err = utils.GetLogFile("./logs/trade.send_fair_launch_minted_asset.log")
+	if err != nil {
+		return err
+	}
 	feeLogFile, err = utils.GetLogFile("./logs/trade.fee.log")
 	if err != nil {
 		return err
@@ -231,6 +236,7 @@ var (
 	CACC                        *ServicesLogger
 	CLMT                        *ServicesLogger
 	FairLaunchDebugLogger       *ServicesLogger
+	SendFairLaunchMintedAsset   *ServicesLogger
 	FEE                         *ServicesLogger
 	ScheduledTask               *ServicesLogger
 	PreSale                     *ServicesLogger
@@ -253,6 +259,7 @@ func loadDefaultLog() {
 	}
 	{
 		FairLaunchDebugLogger = NewLogger("FLDL", Level, nil, true, defaultLogFile, fairLaunchLogFile)
+		SendFairLaunchMintedAsset = NewLogger("SFML", Level, nil, true, defaultLogFile, sendFairLaunchMintedAssetLogFile)
 		FEE = NewLogger("FEE", Level, nil, true, defaultLogFile, feeLogFile)
 		ScheduledTask = NewLogger("CRON", Level, nil, true, defaultLogFile)
 		PreSale = NewLogger("PRSL", Level, nil, true, defaultLogFile, presaleLogFile)
@@ -264,5 +271,4 @@ func loadDefaultLog() {
 		PushQueue = NewLogger("PUSH", Level, nil, true, defaultLogFile, pushQueueLogFile)
 		PoolPairTokenAccountBalance = NewLogger("PTAB", Level, nil, true, defaultLogFile, poolPairTokenAccountBalanceLogFile)
 	}
-
 }

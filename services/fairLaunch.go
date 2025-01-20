@@ -126,6 +126,9 @@ func FairLaunchMint(tx *gorm.DB) {
 func SendFairLaunchAsset(tx *gorm.DB) {
 	err := SendFairLaunchMintedAssetLocked(tx)
 	if err != nil {
+
+		btlLog.SendFairLaunchMintedAsset.Error("SendFairLaunchAsset: %v", err)
+
 		_ = utils.WriteToLogFile("./logs/trade.SendFairLaunchAsset.log", "[TRADE.SFLA]", utils.ValueJsonString(err))
 		// @dev: do not check err here
 		btlLog.FairLaunchDebugLogger.Info("SendFairLaunchAsset: %v", err)
@@ -1751,7 +1754,7 @@ func FairLaunchMintedInfosIdToString(fairLaunchMintedInfos *[]models.FairLaunchM
 
 // SendFairLaunchMintedAssetLocked
 // @dev: Trigger after ProcessFairLaunchMintedStatePaidNoSendInfo
-func SendFairLaunchMintedAssetLocked(tx *gorm.DB) error {
+func SendFairLaunchMintedAssetLocked(tx *gorm.DB) (err error) {
 	// @dev: all unsent
 	unsentFairLaunchMintedInfos, err := GetAllUnsentFairLaunchMintedInfos()
 	ids := "(id:" + FairLaunchMintedInfosIdToString(unsentFairLaunchMintedInfos) + ")"
