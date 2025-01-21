@@ -145,5 +145,13 @@ func SetupRouter() *gin.Engine {
 		assetMoreInfo.GET("/get/asset_transfer_50", handlers.GetAssetTransferCombinedSliceByAssetIdLimit)
 		assetMoreInfo.GET("/get/asset_burn_total", handlers.GetAssetBurnTotal)
 	}
+
+	assetLocalMint := r.Group("/asset_local_mint")
+	{
+		assetLocalMint.GET("/get/asset_local_mint/count", handlers.GetAssetLocalMintInfoCount)
+		assetLocalMint.GET("/get/asset_local_mint", handlers.GetAssetLocalMintInfo)
+		assetLocalMint.GET("/get/asset_local_mint_history/count", handlers.GetAssetLocalMintHistoryInfoCount)
+		assetLocalMint.GET("/get/asset_local_mint_history", handlers.GetAssetLocalMintHistoryInfo)
+	}
 	return r
 }

@@ -124,7 +124,7 @@ func BalanceScansToAccountAssetTransfers(balanceScans []BalanceScan) []AccountAs
 func GetAccountAssetTransferCount(assetId string) (count int64, err error) {
 	err = middleware.DB.
 		Table("bill_balance").
-		Where("amount <> ? and bill_type in ? and asset_id = ?", 0, []models.BalanceType{models.BillTypeAssetTransfer, models.BillTypeAwardAsset}, assetId).
+		Where("amount <> ? and asset_id = ?", 0, assetId).
 		Count(&count).
 		Error
 	return count, err

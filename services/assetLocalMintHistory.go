@@ -3,8 +3,10 @@ package services
 import (
 	"errors"
 	"time"
+	"trade/middleware"
 	"trade/models"
 	"trade/services/btldb"
+	"trade/utils"
 )
 
 func ProcessAssetLocalMintHistorySetRequest(userId int, username string, assetLocalMintHistoryRequest models.AssetLocalMintHistorySetRequest) models.AssetLocalMintHistory {
@@ -51,6 +53,7 @@ func GetAssetLocalMintHistoryByAssetId(assetId string) (*models.AssetLocalMintHi
 func GetAssetLocalMintHistoryByUserIdAndAssetId(userId int, assetId string) (*models.AssetLocalMintHistory, error) {
 	return btldb.ReadAssetLocalMintHistoryByUserIdAndAssetId(userId, assetId)
 }
+
 func IsAssetLocalMintHistoryChanged(assetLocalMintHistoryByTxidAndIndex *models.AssetLocalMintHistory, old *models.AssetLocalMintHistory) bool {
 	if assetLocalMintHistoryByTxidAndIndex == nil || old == nil {
 		return true
@@ -228,4 +231,29 @@ func GetAllAssetLocalMintHistorySimplified() (*[]AssetLocalMintHistorySimplified
 	}
 	allAssetLocalMintHistorySimplified := AssetLocalMintHistorySliceToAssetLocalMintHistorySimplifiedSlice(allAssetLocalMintHistories)
 	return allAssetLocalMintHistorySimplified, nil
+}
+
+func GetAssetLocalMintHistoryInfoCount() (count int64, err error) {
+	err = middleware.DB.
+		Table("asset_local_mint_histories").
+		Count(&count).
+		Error
+	return count, err
+}
+
+func GetAssetLocalMintHistoryInfo(limit int, offset int) (assetLocalMintInfos []AssetLocalMintInfo, err error) {
+	var assetLocalMintInfoScans []AssetLocalMintInfoScan
+	err = middleware.DB.
+		Table("asset_local_mint_histories").
+		Select("id,created_at,name,asset_meta_data,amount,new_grouped_asset,group_key,grouped_asset,batch_txid,asset_id,username").
+		Limit(limit).
+		Offset(offset).
+		Order("created_at desc").
+		Scan(&assetLocalMintInfoScans).
+		Error
+	if err != nil {
+		return nil, utils.AppendErrorInfo(err, "select asset_local_mints")
+	}
+	assetLocalMintInfos = AssetLocalMintInfoScansToAssetLocalMintInfos(assetLocalMintInfoScans)
+	return assetLocalMintInfos, nil
 }

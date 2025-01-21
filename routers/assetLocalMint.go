@@ -20,5 +20,12 @@ func SetupAssetLocalMintRouter(router *gin.Engine) *gin.Engine {
 		config.GetLoadConfig().AdminUser.Username: config.GetLoadConfig().AdminUser.Password,
 	}))
 	authorized.GET("/get/all/simplified", handlers.GetAllAssetLocalMintSimplified)
+
+	{
+		authorized.GET("/get/asset_local_mint/count", handlers.GetAssetLocalMintInfoCount)
+		authorized.GET("/get/asset_local_mint", handlers.GetAssetLocalMintInfo)
+		authorized.GET("/get/asset_local_mint_history/count", handlers.GetAssetLocalMintHistoryInfoCount)
+		authorized.GET("/get/asset_local_mint_history", handlers.GetAssetLocalMintHistoryInfo)
+	}
 	return router
 }

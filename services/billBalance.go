@@ -33,7 +33,7 @@ func ReadBillBalanceAssetTransferAndAwardAssetByAssetId(assetId string) (*[]mode
 
 func ReadBillBalanceAssetTransferAndAwardAssetByAssetIdLimitAndOffset(assetId string, limit int, offset int) (*[]models.Balance, error) {
 	var billBalances []models.Balance
-	err := middleware.DB.Where("amount <> ? AND bill_type IN ? AND asset_id = ?", 0, []models.BalanceType{models.BillTypeAssetTransfer, models.BillTypeAwardAsset}, assetId).Order("updated_at desc").Limit(limit).Offset(offset).Find(&billBalances).Error
+	err := middleware.DB.Where("amount <> ? AND asset_id = ?", 0, assetId).Order("updated_at desc").Limit(limit).Offset(offset).Find(&billBalances).Error
 	return &billBalances, err
 }
 

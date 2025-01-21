@@ -1,10 +1,13 @@
 package services
 
 import (
+	"encoding/hex"
 	"errors"
 	"time"
+	"trade/middleware"
 	"trade/models"
 	"trade/services/btldb"
+	"trade/utils"
 )
 
 func ProcessAssetLocalMintSetRequest(userId int, username string, assetLocalMintRequest models.AssetLocalMintSetRequest) models.AssetLocalMint {
@@ -220,4 +223,90 @@ func GetAllAssetLocalMintSimplified() (*[]AssetLocalMintSimplified, error) {
 	}
 	allAssetLocalMintSimplified := AssetLocalMintSliceToAssetLocalMintSimplifiedSlice(allAssetLocalMints)
 	return allAssetLocalMintSimplified, nil
+}
+
+type AssetLocalMintInfoScan struct {
+	//name,asset_meta_data,amount,new_grouped_asset,group_key,grouped_asset,batch_txid,asset_id,username
+	ID              uint      `json:"id"`
+	CreatedAt       time.Time `json:"created_at"`
+	Name            string    `json:"name" gorm:"type:varchar(255)"`
+	AssetMetaData   string    `json:"asset_meta_data"` // hex to string
+	Amount          int       `json:"amount"`
+	NewGroupedAsset bool      `json:"new_grouped_asset"`
+	GroupKey        string    `json:"group_key" gorm:"type:varchar(255)"`
+	GroupedAsset    bool      `json:"grouped_asset"`
+	BatchTxid       string    `json:"batch_txid" gorm:"type:varchar(255)"`
+	AssetId         string    `json:"asset_id" gorm:"type:varchar(255)"`
+	Username        string    `json:"username" gorm:"type:varchar(255)"`
+}
+
+type AssetLocalMintInfo struct {
+	ID              uint   `json:"id"`
+	Time            int64  `json:"time"`
+	Name            string `json:"name" gorm:"type:varchar(255)"`
+	AssetMetaData   string `json:"asset_meta_data"`
+	Amount          int    `json:"amount"`
+	NewGroupedAsset bool   `json:"new_grouped_asset"`
+	GroupKey        string `json:"group_key" gorm:"type:varchar(255)"`
+	GroupedAsset    bool   `json:"grouped_asset"`
+	BatchTxid       string `json:"batch_txid" gorm:"type:varchar(255)"`
+	AssetId         string `json:"asset_id" gorm:"type:varchar(255)"`
+	Username        string `json:"username" gorm:"type:varchar(255)"`
+}
+
+func AssetLocalMintInfoScanToAssetLocalMintInfo(assetLocalMintInfoScan AssetLocalMintInfoScan) AssetLocalMintInfo {
+	var assetMetaData string
+	assetMetaDataByte, err := hex.DecodeString(assetLocalMintInfoScan.AssetMetaData)
+	if err != nil {
+		assetMetaData = assetLocalMintInfoScan.AssetMetaData
+	} else {
+		assetMetaData = string(assetMetaDataByte)
+	}
+	return AssetLocalMintInfo{
+		ID:              assetLocalMintInfoScan.ID,
+		Time:            assetLocalMintInfoScan.CreatedAt.Unix(),
+		Name:            assetLocalMintInfoScan.Name,
+		AssetMetaData:   assetMetaData,
+		Amount:          assetLocalMintInfoScan.Amount,
+		NewGroupedAsset: assetLocalMintInfoScan.NewGroupedAsset,
+		GroupKey:        assetLocalMintInfoScan.GroupKey,
+		GroupedAsset:    assetLocalMintInfoScan.GroupedAsset,
+		BatchTxid:       assetLocalMintInfoScan.BatchTxid,
+		AssetId:         assetLocalMintInfoScan.AssetId,
+		Username:        assetLocalMintInfoScan.Username,
+	}
+}
+
+func AssetLocalMintInfoScansToAssetLocalMintInfos(assetLocalMintInfoScans []AssetLocalMintInfoScan) []AssetLocalMintInfo {
+	var assetLocalMintInfos []AssetLocalMintInfo
+	for _, assetLocalMintInfoScan := range assetLocalMintInfoScans {
+		assetLocalMintInfo := AssetLocalMintInfoScanToAssetLocalMintInfo(assetLocalMintInfoScan)
+		assetLocalMintInfos = append(assetLocalMintInfos, assetLocalMintInfo)
+	}
+	return assetLocalMintInfos
+}
+
+func GetAssetLocalMintInfoCount() (count int64, err error) {
+	err = middleware.DB.
+		Table("asset_local_mints").
+		Count(&count).
+		Error
+	return count, err
+}
+
+func GetAssetLocalMintInfo(limit int, offset int) (assetLocalMintInfos []AssetLocalMintInfo, err error) {
+	var assetLocalMintInfoScans []AssetLocalMintInfoScan
+	err = middleware.DB.
+		Table("asset_local_mints").
+		Select("id,created_at,name,asset_meta_data,amount,new_grouped_asset,group_key,grouped_asset,batch_txid,asset_id,username").
+		Limit(limit).
+		Offset(offset).
+		Order("created_at desc").
+		Scan(&assetLocalMintInfoScans).
+		Error
+	if err != nil {
+		return nil, utils.AppendErrorInfo(err, "select asset_local_mints")
+	}
+	assetLocalMintInfos = AssetLocalMintInfoScansToAssetLocalMintInfos(assetLocalMintInfoScans)
+	return assetLocalMintInfos, nil
 }

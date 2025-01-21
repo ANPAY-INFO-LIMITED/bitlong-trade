@@ -329,6 +329,10 @@ const (
 	GetAssetManagedUtxoInfoCountErr
 	GetAssetManagedUtxoInfoErr
 	GetAssetTransferCombinedSliceByAssetIdLimitErr
+	GetAssetLocalMintInfoCountErr
+	GetAssetLocalMintInfoErr
+	GetAssetLocalMintHistoryInfoCountErr
+	GetAssetLocalMintHistoryInfoErr
 )
 
 // Err type:CustodyAccount
