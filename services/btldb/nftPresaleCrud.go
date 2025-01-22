@@ -73,6 +73,12 @@ func ReadNftPresalesByBuyerUserId(userId int) (*[]models.NftPresale, error) {
 	return &nftPresales, err
 }
 
+func ReadNftPresalesByBuyerUsername(username string) (*[]models.NftPresale, error) {
+	var nftPresales []models.NftPresale
+	err := middleware.DB.Where("buyer_username = ?", username).Order("launch_time desc").Find(&nftPresales).Error
+	return &nftPresales, err
+}
+
 func ReadAllNftPresales() (*[]models.NftPresale, error) {
 	var nftPresales []models.NftPresale
 	err := middleware.DB.Order("launch_time desc").Find(&nftPresales).Error

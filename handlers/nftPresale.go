@@ -142,17 +142,17 @@ func GetLaunchedNftPresale(c *gin.Context) {
 
 func GetUserBoughtNftPresale(c *gin.Context) {
 	username := c.MustGet("username").(string)
-	userId, err := services.NameToId(username)
-	if err != nil {
-		c.JSON(http.StatusOK, models.JsonResult{
-			Success: false,
-			Error:   err.Error(),
-			Code:    models.NameToIdErr,
-			Data:    nil,
-		})
-		return
-	}
-	nftPresales, err := services.GetNftPresalesByBuyerUserId(userId)
+	//userId, err := services.NameToId(username)
+	//if err != nil {
+	//	c.JSON(http.StatusOK, models.JsonResult{
+	//		Success: false,
+	//		Error:   err.Error(),
+	//		Code:    models.NameToIdErr,
+	//		Data:    nil,
+	//	})
+	//	return
+	//}
+	nftPresales, err := services.GetNftPresalesByBuyerUsername(username)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
 			Success: false,

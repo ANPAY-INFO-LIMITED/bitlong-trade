@@ -186,6 +186,10 @@ func GetNftPresalesByBuyerUserId(userId int) (*[]models.NftPresale, error) {
 	return btldb.ReadNftPresalesByBuyerUserId(userId)
 }
 
+func GetNftPresalesByBuyerUsername(username string) (*[]models.NftPresale, error) {
+	return btldb.ReadNftPresalesByBuyerUsername(username)
+}
+
 func GetAllNftPresalesOnlyGroupKeyPurchasable() (*[]models.NftPresale, error) {
 	return btldb.ReadAllNftPresalesOnlyGroupKeyPurchasable()
 }
