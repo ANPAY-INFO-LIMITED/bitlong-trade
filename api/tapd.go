@@ -24,6 +24,9 @@ func GetAssetName(assetId string) (string, error) {
 	if err != nil {
 		return "", utils.AppendErrorInfo(err, "GetAssetInfo")
 	}
+	if assetInfo == nil {
+		return "", nil
+	}
 	return assetInfo.Name, nil
 }
 
@@ -43,6 +46,23 @@ func GetAssetsName(assetIds []string) (*[]AssetIdAndName, error) {
 		})
 	}
 	return &assetIdAndNames, nil
+}
+
+func GetAssetsNameMap(assetIds []string) (map[string]string, error) {
+	if len(assetIds) == 0 {
+		return nil, errors.New("no asset ids provided")
+	}
+	assetsNameMap := make(map[string]string)
+	for _, assetId := range assetIds {
+		name, err := GetAssetName(assetId)
+		if err != nil {
+			return nil, utils.AppendErrorInfo(err, "GetAssetName")
+		}
+		//if name != "" {
+		assetsNameMap[assetId] = name
+		//}
+	}
+	return assetsNameMap, nil
 }
 
 func AddGroupAssetAndGetResponse(name string, assetTypeIsCollectible bool, meta *Meta, amount int, groupKey string) (*mintrpc.MintAssetResponse, error) {

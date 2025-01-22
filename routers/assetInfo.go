@@ -11,6 +11,7 @@ func SetupAssetInfoRouter(router *gin.Engine) *gin.Engine {
 	assetInfo.Use(middleware.AuthMiddleware())
 	{
 		assetInfo.POST("/get_name/slice", handlers.GetAssetNames)
+		assetInfo.POST("/get_name/slice/map", handlers.GetAssetsNameMap)
 	}
 	return router
 }

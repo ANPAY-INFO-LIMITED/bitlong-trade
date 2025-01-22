@@ -37,3 +37,34 @@ func GetAssetNames(c *gin.Context) {
 		Data:    assetIdAndNames,
 	})
 }
+
+func GetAssetsNameMap(c *gin.Context) {
+	_ = c.MustGet("username").(string)
+	var assetIds []string
+	err := c.ShouldBindJSON(&assetIds)
+	if err != nil {
+		c.JSON(http.StatusOK, models.JsonResult{
+			Success: false,
+			Error:   err.Error(),
+			Code:    models.ShouldBindJsonErr,
+			Data:    nil,
+		})
+		return
+	}
+	assetsNameMap, err := api.GetAssetsNameMap(assetIds)
+	if err != nil {
+		c.JSON(http.StatusOK, models.JsonResult{
+			Success: false,
+			Error:   err.Error(),
+			Code:    models.GetAssetsNameMapErr,
+			Data:    &[]api.AssetIdAndName{},
+		})
+		return
+	}
+	c.JSON(http.StatusOK, models.JsonResult{
+		Success: true,
+		Error:   models.SuccessErr,
+		Code:    models.SUCCESS,
+		Data:    assetsNameMap,
+	})
+}

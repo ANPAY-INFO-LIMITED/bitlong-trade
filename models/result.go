@@ -333,6 +333,7 @@ const (
 	GetAssetLocalMintInfoErr
 	GetAssetLocalMintHistoryInfoCountErr
 	GetAssetLocalMintHistoryInfoErr
+	GetAssetsNameMapErr
 )
 
 // Err type:CustodyAccount
