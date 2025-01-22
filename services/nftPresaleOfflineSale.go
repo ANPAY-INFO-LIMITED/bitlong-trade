@@ -15,6 +15,7 @@ type NftPresaleOfflinePurchaseData struct {
 	InvitationCode string `json:"invitation_code"`
 	AssetId        string `json:"asset_id"`
 	AssetName      string `json:"asset_name"`
+	ReceiveAddr    string `json:"receive_addr"`
 }
 
 type NftPresaleOfflinePurchaseDataInfo struct {
