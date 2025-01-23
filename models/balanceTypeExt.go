@@ -22,6 +22,7 @@ const (
 	BTExtLockedTransfer     BalanceTypeExtList = 500
 	BTExtPayToPoolAccount   BalanceTypeExtList = 600
 	BTExtReceivePoolAccount BalanceTypeExtList = 601
+	BTEServerFee            BalanceTypeExtList = 700
 )
 
 func (b BalanceTypeExtList) ToString() string {
@@ -36,6 +37,7 @@ func (b BalanceTypeExtList) ToString() string {
 		BTExtLockedTransfer:     "LockedTransfer",
 		BTExtPayToPoolAccount:   "PayToPoolAccount",
 		BTExtReceivePoolAccount: "ReceivePoolAccount",
+		BTEServerFee:            "ServerFee",
 	}
 	return balanceTypeExtString[b]
 }
@@ -51,6 +53,7 @@ func ToBalanceTypeExtList(s string) BalanceTypeExtList {
 		"LockedTransfer":     BTExtLockedTransfer,
 		"PayToPoolAccount":   BTExtPayToPoolAccount,
 		"ReceivePoolAccount": BTExtReceivePoolAccount,
+		"ServerFee":          BTEServerFee,
 	}
 	return balanceTypeExtList[s]
 }

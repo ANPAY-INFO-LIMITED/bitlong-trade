@@ -37,6 +37,8 @@ const (
 	BillTypePendingOder                 = 8
 	BillTypePoolAccount                 = 9
 
+	BillTypePaymentFee = 10
+
 	//locked 仅作为查询时的标识，不参与任何业务逻辑
 	LockedTransfer BalanceType = 1000
 )

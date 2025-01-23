@@ -87,7 +87,7 @@ func OutsideSteps(usr *account.UserInfo, mission *custodyModels.AccountOutsideMi
 	case custodyModels.AOMStateNotPayFee:
 		db := middleware.DB
 		mission.Fee += float64(custodyFee.ChannelBtcServiceFee)
-		err := PayFee(db, usr, mission.Fee, mission.BalanceId)
+		err := PayFee(db, usr, mission.Fee, mission.BalanceId, &mission.Target, &mission.Hash)
 		if err != nil {
 			btlLog.CUST.Error("PayBtcFeeError:%s", err)
 			mission.Retries += 1

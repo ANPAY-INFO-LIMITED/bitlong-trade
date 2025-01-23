@@ -131,7 +131,7 @@ func InsideSteps(usr *account.UserInfo, mission *custodyModels.AccountInsideMiss
 			return
 		}
 		//扣除手续费
-		err = PayFee(tx, usr, mission.Fee, mission.PayerBalanceId)
+		err = PayFee(tx, usr, mission.Fee, mission.PayerBalanceId, &i.Invoice, &i.Hash)
 		if err != nil {
 			btlLog.CUST.Error("PayFee error:%s", err)
 			mission.Error = err.Error()
