@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
+	"trade/btlLog"
 	"trade/middleware"
 	"trade/models"
 	cModels "trade/models/custodyModels"
@@ -19,6 +20,7 @@ func GetAssetBalance(usr *caccount.UserInfo, assetId string) (err error, unlock 
 	lockedBalance := cModels.LockBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, assetId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			btlLog.CUST.Error(err.Error())
 			return ServiceError, 0, 0, 0
 		}
 		locked = 0
@@ -30,6 +32,7 @@ func GetAssetBalance(usr *caccount.UserInfo, assetId string) (err error, unlock 
 	assetBalance := cModels.AccountBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.Account.ID, assetId).First(&assetBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			btlLog.CUST.Error(err.Error())
 			return ServiceError, 0, 0, 0
 		}
 		unlock = 0
@@ -52,6 +55,7 @@ func LockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount f
 	lockedBalance := cModels.LockBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, assetId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			btlLog.CUST.Error(err.Error())
 			return ServiceError
 		}
 		// Init Balance record
@@ -68,6 +72,7 @@ func LockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount f
 		return fmt.Errorf("invalid tag")
 	}
 	if err = tx.Save(&lockedBalance).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -86,6 +91,7 @@ func LockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount f
 				return RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 	Invoice := InvoiceLocked
@@ -106,6 +112,7 @@ func LockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount f
 		},
 	}
 	if err = tx.Create(&balanceBill).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 	_, err = custodyAssets.LessAssetBalance(tx, usr, balanceBill.Amount, balanceBill.ID, *balanceBill.AssetId, cModels.ChangeTypeLock)
@@ -125,6 +132,7 @@ func UnlockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount
 	lockedBalance := cModels.LockBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, assetId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			btlLog.CUST.Error(err.Error())
 			return ServiceError
 		}
 		lockedBalance.Amount = 0
@@ -151,6 +159,7 @@ func UnlockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount
 	}
 
 	if err = tx.Save(&lockedBalance).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -169,6 +178,7 @@ func UnlockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount
 				return RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -190,6 +200,7 @@ func UnlockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount
 		},
 	}
 	if err = tx.Create(&balanceBill).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 	// update user account
@@ -210,6 +221,7 @@ func transferLockedAsset(usr *caccount.UserInfo, lockedId string, assetId string
 	lockedBalance := cModels.LockBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, assetId).First(&lockedBalance).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			btlLog.CUST.Error(err.Error())
 			return ServiceError
 		}
 		lockedBalance.Amount = 0
@@ -234,6 +246,7 @@ func transferLockedAsset(usr *caccount.UserInfo, lockedId string, assetId string
 		return fmt.Errorf("invalid tag")
 	}
 	if err = tx.Save(&lockedBalance).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -252,6 +265,7 @@ func transferLockedAsset(usr *caccount.UserInfo, lockedId string, assetId string
 				return RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -267,6 +281,7 @@ func transferLockedAsset(usr *caccount.UserInfo, lockedId string, assetId string
 		Status:     cModels.LockBillExtStatusSuccess,
 	}
 	if err = tx.Create(&BillExt).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -292,6 +307,7 @@ func transferLockedAsset(usr *caccount.UserInfo, lockedId string, assetId string
 		},
 	}
 	if err = tx.Create(&balanceBill).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -325,6 +341,7 @@ func transferAsset(usr *caccount.UserInfo, lockedId string, assetId string, amou
 				return RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 	// Create transferBTC BillExt
@@ -345,6 +362,7 @@ func transferAsset(usr *caccount.UserInfo, lockedId string, assetId string, amou
 				return RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -369,6 +387,7 @@ func transferAsset(usr *caccount.UserInfo, lockedId string, assetId string, amou
 		},
 	}
 	if err = tx.Create(&balanceBill).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 	// update user account
@@ -404,11 +423,13 @@ func transferAsset(usr *caccount.UserInfo, lockedId string, assetId string, amou
 		},
 	}
 	if err = txRev.Create(&balanceBillRev).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 	// update billExt record
 	BillExt.Status = cModels.LockBillExtStatusSuccess
 	if err = txRev.Save(&BillExt).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 

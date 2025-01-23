@@ -33,6 +33,7 @@ func PutInAwardLockBTC(usr *caccount.UserInfo, amount float64, memo *string, loc
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, btcId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			tx.Rollback()
+			btlLog.CUST.Error(err.Error())
 			return nil, ServiceError
 		}
 		// Init Balance record
@@ -43,6 +44,7 @@ func PutInAwardLockBTC(usr *caccount.UserInfo, amount float64, memo *string, loc
 	lockedBalance.Amount += amount
 	if err = tx.Save(&lockedBalance).Error; err != nil {
 		tx.Rollback()
+		btlLog.CUST.Error(err.Error())
 		return nil, ServiceError
 	}
 
@@ -61,6 +63,7 @@ func PutInAwardLockBTC(usr *caccount.UserInfo, amount float64, memo *string, loc
 				return nil, RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return nil, ServiceError
 	}
 
@@ -88,6 +91,7 @@ func PutInAwardLockBTC(usr *caccount.UserInfo, amount float64, memo *string, loc
 				return nil, RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return nil, ServiceError
 	}
 
@@ -138,6 +142,7 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, assetId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			tx.Rollback()
+			btlLog.CUST.Error(err.Error())
 			return nil, ServiceError
 		}
 		// Init Balance record
@@ -148,6 +153,7 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 	lockedBalance.Amount += amount
 	if err = tx.Save(&lockedBalance).Error; err != nil {
 		tx.Rollback()
+		btlLog.CUST.Error(err.Error())
 		return nil, ServiceError
 	}
 
@@ -166,6 +172,7 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 				return nil, RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return nil, ServiceError
 	}
 
@@ -192,6 +199,7 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 				return nil, RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return nil, ServiceError
 	}
 

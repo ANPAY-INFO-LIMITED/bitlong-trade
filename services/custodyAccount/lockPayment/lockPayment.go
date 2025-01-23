@@ -96,6 +96,7 @@ func GetBalances(npubkey string) (*[]cModels.LockBalance, error) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
+		btlLog.CUST.Error(err.Error())
 		return nil, ServiceError
 	}
 	return &balances, nil
@@ -342,6 +343,7 @@ func ListTransferBTC(usr *caccount.UserInfo, assetId string, page, pageSize, awa
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
+		btlLog.CUST.Error(err.Error())
 		return nil, ServiceError
 	}
 	return bills, nil
