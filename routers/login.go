@@ -12,7 +12,7 @@ func SetupLoginRouter(router *gin.Engine) *gin.Engine {
 	// Login routing
 	router.POST("/login", handlers.LoginHandler)
 
-	router.POST("/rechange", handlers.ReChangeHandler)
+	router.POST("/reChange", handlers.ReChangeHandler)
 	// Refresh the route for the token
 	router.POST("/refresh", handlers.RefreshTokenHandler)
 	// A routing group that requires authentication
