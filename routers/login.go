@@ -11,6 +11,7 @@ func SetupLoginRouter(router *gin.Engine) *gin.Engine {
 	router.POST("/getDeviceId", handlers.GetDeviceIdHandler)
 	// Login routing
 	router.POST("/login", handlers.LoginHandler)
+
 	router.POST("/rechange", handlers.ReChangeHandler)
 	// Refresh the route for the token
 	router.POST("/refresh", handlers.RefreshTokenHandler)
