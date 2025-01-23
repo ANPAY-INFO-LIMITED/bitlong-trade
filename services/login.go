@@ -285,6 +285,61 @@ func ValidateUserAndGenerateToken(creds models.User) (string, error) {
 	}
 	return token, nil
 }
+func ValidateUserAndReChange(creds *models.User) (string, error) {
+	var (
+		username = creds.Username
+		err      error
+	)
+	// 检查是否是加密数据
+	if isEncrypted(creds.Username) {
+		if len(username) <= 0 {
+			return "", fmt.Errorf("username login failed")
+		}
+		// 解密用户名
+		username, err = DecryptAndRestore(creds.Username)
+		if err != nil {
+			return "", fmt.Errorf("username decryption failed: %v", err)
+		}
+
+	} else {
+		if config.GetConfig().NetWork != "regtest" {
+			if !isAllNumbers(username) {
+				if len(username) != len(
+					"npub29Z2ncVPR3BRmm9ixwoLF2euPQxKwxXDyPRLtFnH9KepkoudUDq1zBP9MggPF5EMtT3yAfUZ6sEA5tkYm6UJLAHk") {
+					return "", fmt.Errorf("username login failed")
+				}
+			}
+		}
+	}
+	var user models.User
+	result := middleware.DB.Where("user_name = ?", username).First(&user).Limit(1)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			// If there are other database errors, an error is returned
+			return "", result.Error
+		} else {
+			user.Username = username
+			password, err := hashPassword(creds.Password)
+			if err != nil {
+				return "", err
+			}
+			user.Password = password
+			err = btldb.UpdateUser(&user)
+			if err != nil {
+				return "", err
+			}
+		}
+	}
+	if !CheckPassword(user.Password, creds.Password) {
+		return "", errors.New("invalid credentials")
+	}
+	token, err := middleware.GenerateToken(username)
+	if err != nil {
+		return "", err
+	}
+	creds.Username = username
+	return token, nil
+}
 
 func (cs *CronService) FiveSecondTask() {
 	fmt.Println("5 secs runs")
