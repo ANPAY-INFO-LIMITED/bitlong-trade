@@ -32,6 +32,6 @@ func PayFee(Db *gorm.DB, usr *account.UserInfo, amount float64, balanceId uint, 
 	if err != nil {
 		return err
 	}
-	_, err = AddBtcBalance(Db, adminUsr, amount, balanceId, custodyModels.ChangeTypeBtcFee)
+	_, err = AddBtcBalance(Db, adminUsr, amount, ba.ID, custodyModels.ChangeTypeBtcFee)
 	return err
 }
