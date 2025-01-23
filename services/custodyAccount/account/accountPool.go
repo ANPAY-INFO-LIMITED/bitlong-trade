@@ -102,6 +102,7 @@ func (pool *UserPool) CreateUser(userName string) (*UserInfo, error) {
 	pool.mutex.Lock()
 	defer pool.mutex.Unlock()
 
+	// 再次检查用户是否存在
 	if existingUser, exists := pool.users[userName]; exists {
 		return existingUser, nil
 	}
@@ -185,6 +186,7 @@ func GetUserInfoFromDb(username string) (*models.User, *models.Account, *cModels
 	user, err := btldb.ReadUserByUsername(username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// todo 读取虚拟用户
 			return nil, nil, nil, ErrUserNotFound
 		}
 		return nil, nil, nil, fmt.Errorf("%w: %w", models.ReadDbErr, err)

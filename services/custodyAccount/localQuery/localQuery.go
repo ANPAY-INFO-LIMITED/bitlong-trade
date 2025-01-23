@@ -545,3 +545,7 @@ func LockedBillsQuery(quest LockedBillsQueryQuest) (*[]LockedBillsQueryResp, int
 	}
 	return &LockedBillsQueryRespList, total, err
 }
+
+func GetNodeTransfer() {
+
+}

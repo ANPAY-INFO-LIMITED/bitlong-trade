@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
+	"trade/btlLog"
 	"trade/middleware"
 	"trade/models"
 	cModels "trade/models/custodyModels"
@@ -17,6 +18,7 @@ func GetBtcBalance(usr *caccount.UserInfo) (err error, unlock float64, locked, t
 	lockedBalance := cModels.LockBalance{}
 	if err = db.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, btcId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			btlLog.CUST.Error(err.Error())
 			return ServiceError, 0, 0, 0
 		}
 		locked = 0
@@ -43,6 +45,7 @@ func LockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int) e
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, btcId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			tx.Rollback()
+			btlLog.CUST.Error(err.Error())
 			return ServiceError
 		}
 		// Init Balance record
@@ -59,6 +62,7 @@ func LockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int) e
 		return fmt.Errorf("invalid tag")
 	}
 	if err = tx.Save(&lockedBalance).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -77,6 +81,7 @@ func LockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int) e
 				return RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -99,6 +104,7 @@ func LockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int) e
 		},
 	}
 	if err = tx.Create(&balanceBill).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -121,6 +127,7 @@ func UnlockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int)
 	lockedBalance := cModels.LockBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, btcId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			btlLog.CUST.Error(err.Error())
 			return ServiceError
 		}
 		lockedBalance.Amount = 0
@@ -147,6 +154,7 @@ func UnlockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int)
 	}
 
 	if err = tx.Save(&lockedBalance).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -165,6 +173,7 @@ func UnlockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int)
 				return RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -188,6 +197,7 @@ func UnlockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int)
 		},
 	}
 	if err = tx.Create(&balanceBill).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -212,6 +222,7 @@ func transferLockedBTC(usr *caccount.UserInfo, lockedId string, amount float64, 
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, btcId).First(&lockedBalance).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			tx.Rollback()
+			btlLog.CUST.Error(err.Error())
 			return ServiceError
 		}
 		lockedBalance.Amount = 0
@@ -236,6 +247,7 @@ func transferLockedBTC(usr *caccount.UserInfo, lockedId string, amount float64, 
 		return fmt.Errorf("invalid tag")
 	}
 	if err = tx.Save(&lockedBalance).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -254,6 +266,7 @@ func transferLockedBTC(usr *caccount.UserInfo, lockedId string, amount float64, 
 				return RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -275,6 +288,7 @@ func transferLockedBTC(usr *caccount.UserInfo, lockedId string, amount float64, 
 				return RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -300,11 +314,13 @@ func transferLockedBTC(usr *caccount.UserInfo, lockedId string, amount float64, 
 		},
 	}
 	if err = tx.Create(&balanceBill).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
 	_, err = custodyBtc.AddBtcBalance(tx, toUser, amount, balanceBill.ID, cModels.ChangeTypeLockedTransfer)
 	if err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 	tx.Commit()
@@ -334,6 +350,7 @@ func transferBTC(usr *caccount.UserInfo, lockedId string, amount float64, toUser
 				return RepeatedLockId
 			}
 		}
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 	// Create transferBTC BillExt
@@ -348,6 +365,7 @@ func transferBTC(usr *caccount.UserInfo, lockedId string, amount float64, toUser
 		Status:     cModels.LockBillExtStatusInit,
 	}
 	if err = tx.Create(&BillExt).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
@@ -373,6 +391,7 @@ func transferBTC(usr *caccount.UserInfo, lockedId string, amount float64, toUser
 		},
 	}
 	if err = tx.Create(&balanceBill).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 	_, err = custodyBtc.LessBtcBalance(tx, usr, amount, balanceBill.ID, cModels.ChangeTypeLockedTransfer)
@@ -402,16 +421,19 @@ func transferBTC(usr *caccount.UserInfo, lockedId string, amount float64, toUser
 		},
 	}
 	if err = tx.Create(&balanceBillRev).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 	// update billExt record
 	BillExt.Status = cModels.LockBillExtStatusSuccess
 	if err = tx.Save(&BillExt).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
 	_, err = custodyBtc.AddBtcBalance(tx, toUser, amount, balanceBillRev.ID, cModels.ChangeTypeLockedTransfer)
 	if err != nil {
+		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
