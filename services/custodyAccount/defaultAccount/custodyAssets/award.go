@@ -135,7 +135,7 @@ func PutInAward(user *caccount.UserInfo, AssetId string, amount int, memo *strin
 	payba := models.Balance{}
 	payba.AccountId = adminUsr.Account.ID
 	payba.Amount = ba.Amount
-	payba.Unit = models.UNIT_SATOSHIS
+	payba.Unit = models.UNIT_ASSET_NORMAL
 	payba.BillType = models.BillTypeOfferAward
 	payba.Away = models.AWAY_OUT
 	payba.AssetId = &AssetId
