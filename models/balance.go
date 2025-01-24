@@ -40,6 +40,7 @@ const (
 	BillTypePaymentFee  = 10
 	BillTypeFirLunchFee = 11
 	BillTypeBackFee     = 12
+	BillTypeOfferAward  = 13
 
 	//locked 仅作为查询时的标识，不参与任何业务逻辑
 	LockedTransfer BalanceType = 1000

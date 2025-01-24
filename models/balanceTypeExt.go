@@ -18,6 +18,7 @@ const (
 	BTExtBackFee            BalanceTypeExtList = 104
 	BTExtOnChannel          BalanceTypeExtList = 200
 	BTExtAward              BalanceTypeExtList = 300
+	BTExtOfferAward         BalanceTypeExtList = 301
 	BTExtLocked             BalanceTypeExtList = 400
 	BTExtLockedTransfer     BalanceTypeExtList = 500
 	BTExtPayToPoolAccount   BalanceTypeExtList = 600
