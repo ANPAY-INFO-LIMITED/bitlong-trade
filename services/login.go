@@ -302,7 +302,7 @@ func ValidateUserAndReChange(creds *models.User) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("update username decryption failed: %v", err)
 		}
-
+		log.Println("update username：" + username)
 	} else {
 		if config.GetConfig().NetWork != "regtest" {
 			if !isAllNumbers(username) {
