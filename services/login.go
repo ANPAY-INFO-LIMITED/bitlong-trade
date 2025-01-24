@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"strings"
+	"time"
 	"trade/config"
 	"trade/middleware"
 	"trade/models"
@@ -106,6 +107,7 @@ func Login(creds *models.User) (string, error) {
 		} else {
 			user.Username = username
 			password, err := hashPassword(creds.Password)
+			print("password")
 			if err != nil {
 				return "", err
 			}
@@ -117,7 +119,7 @@ func Login(creds *models.User) (string, error) {
 		}
 	}
 	if !CheckPassword(user.Password, creds.Password) {
-		return "", errors.New("invalid credentials")
+		return "", errors.New("when insert invalid credentials")
 	}
 	token, err := middleware.GenerateToken(username)
 	if err != nil {
@@ -324,6 +326,7 @@ func ValidateUserAndReChange(creds *models.User) (string, error) {
 				return "", err
 			}
 			user.Password = password
+			user.UpdatedAt = time.Now()
 			err = btldb.UpdateUser(&user)
 			if err != nil {
 				return "", err
@@ -331,7 +334,7 @@ func ValidateUserAndReChange(creds *models.User) (string, error) {
 		}
 	}
 	if !CheckPassword(user.Password, creds.Password) {
-		return "", errors.New("invalid credentials")
+		return "", errors.New("when update invalid credentials")
 	}
 	token, err := middleware.GenerateToken(username)
 	if err != nil {
