@@ -118,6 +118,7 @@ func Login(creds *models.User) (string, error) {
 			}
 		}
 	}
+
 	if !CheckPassword(user.Password, creds.Password) {
 		return "", errors.New("when insert invalid credentials")
 	}
@@ -323,23 +324,21 @@ func ValidateUserAndReChange(creds *models.User) (string, error) {
 	}
 	var user models.User
 	result := middleware.DB.Where("user_name = ?", username).First(&user).Limit(1)
-	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			// If there are other database errors, an error is returned
-			return "", result.Error
-		} else {
-			user.Username = username
-			password, err := hashPassword(creds.Password)
-			if err != nil {
-				return "", err
-			}
-			user.Password = password
-			user.UpdatedAt = time.Now()
-			err = btldb.UpdateUser(&user)
-			if err != nil {
-				return "", err
-			}
+	if result.Error == nil {
+		user.Username = username
+		password, err := hashPassword(creds.Password)
+		if err != nil {
+			return "", err
 		}
+		user.Password = password
+		user.UpdatedAt = time.Now()
+		err = btldb.UpdateUser(&user)
+		if err != nil {
+			return "", err
+		}
+	}
+	if !CheckPassword(user.Password, creds.Password) {
+		return "", errors.New("when update invalid credentials")
 	}
 	token, err := middleware.GenerateToken(username)
 	if err != nil {
