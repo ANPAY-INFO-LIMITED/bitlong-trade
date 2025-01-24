@@ -275,7 +275,15 @@ func ValidateUserAndGenerateToken(creds models.User) (string, error) {
 				return "", err
 			}
 			user.Password = password
-			err = btldb.UpdateUser(&user)
+			//err = btldb.UpdateUser(&user)
+
+			err = middleware.DB.Model(models.User{}).
+				Where("id = ?", user.ID).
+				Updates(map[string]any{
+					"password":   password,
+					"updated_at": time.Now(),
+				}).
+				Error
 			if err != nil {
 				return "", err
 			}
@@ -332,9 +340,6 @@ func ValidateUserAndReChange(creds *models.User) (string, error) {
 				return "", err
 			}
 		}
-	}
-	if !CheckPassword(user.Password, creds.Password) {
-		return "", errors.New("when update invalid credentials")
 	}
 	token, err := middleware.GenerateToken(username)
 	if err != nil {
