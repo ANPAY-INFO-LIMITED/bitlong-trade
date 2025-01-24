@@ -82,7 +82,7 @@ func Login(creds *models.User) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("username decryption failed: %v", err)
 		}
-
+		log.Println("username", username)
 	} else {
 		if config.GetConfig().NetWork != "regtest" {
 			if !isAllNumbers(username) {
@@ -295,12 +295,12 @@ func ValidateUserAndReChange(creds *models.User) (string, error) {
 	// 检查是否是加密数据
 	if isEncrypted(creds.Username) {
 		if len(username) <= 0 {
-			return "", fmt.Errorf("username login failed")
+			return "", fmt.Errorf("username update failed")
 		}
 		// 解密用户名
 		username, err = DecryptAndRestore(creds.Username)
 		if err != nil {
-			return "", fmt.Errorf("username decryption failed: %v", err)
+			return "", fmt.Errorf("update username decryption failed: %v", err)
 		}
 
 	} else {
@@ -308,7 +308,7 @@ func ValidateUserAndReChange(creds *models.User) (string, error) {
 			if !isAllNumbers(username) {
 				if len(username) != len(
 					"npub29Z2ncVPR3BRmm9ixwoLF2euPQxKwxXDyPRLtFnH9KepkoudUDq1zBP9MggPF5EMtT3yAfUZ6sEA5tkYm6UJLAHk") {
-					return "", fmt.Errorf("username login failed")
+					return "", fmt.Errorf("username update failed")
 				}
 			}
 		}
