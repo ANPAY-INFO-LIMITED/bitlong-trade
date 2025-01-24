@@ -10,6 +10,8 @@ import (
 	"trade/models"
 	cModels "trade/models/custodyModels"
 	caccount "trade/services/custodyAccount/account"
+	"trade/services/custodyAccount/defaultAccount/custodyAssets"
+	"trade/services/custodyAccount/defaultAccount/custodyBtc"
 )
 
 var (
@@ -102,6 +104,44 @@ func PutInAwardLockBTC(usr *caccount.UserInfo, amount float64, memo *string, loc
 		AccountType: models.LockedAccount,
 	}
 	if err = tx.Create(&awardExt).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
+		return nil, err
+	}
+
+	//扣除admin账户对应的金额
+	var adminUsr *caccount.UserInfo
+	adminUsr, err = caccount.GetUserInfo("admin")
+	if err != nil {
+		btlLog.CUST.Error(err.Error())
+		return nil, err
+	}
+	payAwardInvoice := "offerAward"
+	payba := models.Balance{}
+	payba.AccountId = adminUsr.Account.ID
+	payba.Amount = amount
+	payba.Unit = models.UNIT_SATOSHIS
+	payba.BillType = models.BillTypeOfferAward
+	payba.Away = models.AWAY_OUT
+	payba.Invoice = &payAwardInvoice
+	payba.PaymentHash = &lockedId
+	payba.State = models.STATE_SUCCESS
+	payba.TypeExt = &models.BalanceTypeExt{Type: models.BTExtOfferAward}
+	err = tx.Create(&payba).Error
+	if err != nil {
+		btlLog.CUST.Error(err.Error())
+		return nil, err
+	}
+	payAwardExt := models.AccountAwardExt{
+		BalanceId:   payba.ID,
+		AwardId:     award.ID,
+		AccountType: models.LockedAccount,
+	}
+	if err = tx.Create(&payAwardExt).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
+		return nil, err
+	}
+	_, err = custodyBtc.LessBtcBalance(tx, adminUsr, payba.Amount, payba.ID, cModels.ChangeTypeOfferAward)
+	if err != nil {
 		btlLog.CUST.Error(err.Error())
 		return nil, err
 	}
@@ -210,6 +250,43 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 		AccountType: models.LockedAccount,
 	}
 	if err = tx.Create(&awardExt).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
+		return nil, err
+	}
+	//扣除admin账户对应的金额
+	var adminUsr *caccount.UserInfo
+	adminUsr, err = caccount.GetUserInfo("admin")
+	if err != nil {
+		btlLog.CUST.Error(err.Error())
+		return nil, err
+	}
+	payAwardInvoice := "offerAward"
+	payba := models.Balance{}
+	payba.AccountId = adminUsr.Account.ID
+	payba.Amount = amount
+	payba.Unit = models.UNIT_ASSET_NORMAL
+	payba.BillType = models.BillTypeOfferAward
+	payba.Away = models.AWAY_OUT
+	payba.AssetId = &assetId
+	payba.Invoice = &payAwardInvoice
+	payba.PaymentHash = &lockedId
+	payba.State = models.STATE_SUCCESS
+	payba.TypeExt = &models.BalanceTypeExt{Type: models.BTExtOfferAward}
+	err = tx.Create(&payba).Error
+	if err != nil {
+		btlLog.CUST.Error(err.Error())
+		return nil, err
+	}
+	payAwardExt := models.AccountAwardExt{
+		BalanceId: payba.ID,
+		AwardId:   award.ID,
+	}
+	if err = tx.Create(&payAwardExt).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
+		return nil, err
+	}
+	_, err = custodyAssets.LessAssetBalance(tx, adminUsr, payba.Amount, payba.ID, assetId, cModels.ChangeTypeOfferAward)
+	if err != nil {
 		btlLog.CUST.Error(err.Error())
 		return nil, err
 	}

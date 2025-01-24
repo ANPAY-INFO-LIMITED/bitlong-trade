@@ -123,6 +123,45 @@ func PutInAward(user *caccount.UserInfo, AssetId string, amount int, memo *strin
 		btlLog.CUST.Error(err.Error())
 		return nil, ServerBusy
 	}
+
+	//扣除admin账户对应的金额
+	var adminUsr *caccount.UserInfo
+	adminUsr, err = caccount.GetUserInfo("admin")
+	if err != nil {
+		btlLog.CUST.Error(err.Error())
+		return nil, err
+	}
+	payAwardInvoice := "offerAward"
+	payba := models.Balance{}
+	payba.AccountId = adminUsr.Account.ID
+	payba.Amount = ba.Amount
+	payba.Unit = models.UNIT_ASSET_NORMAL
+	payba.BillType = models.BillTypeOfferAward
+	payba.Away = models.AWAY_OUT
+	payba.AssetId = &AssetId
+	payba.Invoice = &payAwardInvoice
+	payba.PaymentHash = &lockedId
+	payba.State = models.STATE_SUCCESS
+	payba.TypeExt = &models.BalanceTypeExt{Type: models.BTExtOfferAward}
+	err = tx.Create(&payba).Error
+	if err != nil {
+		btlLog.CUST.Error(err.Error())
+		return nil, err
+	}
+	payAwardExt := models.AccountAwardExt{
+		BalanceId: payba.ID,
+		AwardId:   award.ID,
+	}
+	if err = tx.Create(&payAwardExt).Error; err != nil {
+		btlLog.CUST.Error(err.Error())
+		return nil, err
+	}
+	_, err = LessAssetBalance(tx, adminUsr, payba.Amount, payba.ID, AssetId, custodyModels.ChangeTypeOfferAward)
+	if err != nil {
+		btlLog.CUST.Error(err.Error())
+		return nil, err
+	}
+
 	// Commit the transaction
 	if err := tx.Commit().Error; err != nil {
 		btlLog.CUST.Error("award failed,not commit:%v", err)

@@ -36,6 +36,7 @@ const (
 	ChangeTypeBtcReceiveLocal   = "receive_local_btc"
 	ChangeTypeBackFee           = "back_fee"
 	ChangeTypeAward             = "award"
+	ChangeTypeOfferAward        = "offer_award"
 
 	ChangeTypePayToPoolAccount       = "pay_to_pool_account"
 	ChangeTypeReceiveFromPoolAccount = "receive_from_pool_account"

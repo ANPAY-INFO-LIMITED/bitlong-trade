@@ -281,7 +281,7 @@ func (e *AssetEvent) payToOutside(bt *AssetPacket) {
 		bt.err <- fmt.Errorf("payToOutside asset balance error: %s", err.Error())
 		return
 	}
-	err = custodyBtc.PayFee(tx, e.UserInfo, float64(mempool.GetCustodyAssetFee()), outsideBalance.ID)
+	err = custodyBtc.PayFee(tx, e.UserInfo, float64(outsideBalance.ServerFee), outsideBalance.ID, &bt.PayReq, nil)
 	if err != nil {
 		btlLog.CUST.Error("PayFee error:%s", err)
 		return

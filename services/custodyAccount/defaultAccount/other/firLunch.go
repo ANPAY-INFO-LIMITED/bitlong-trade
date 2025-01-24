@@ -39,6 +39,30 @@ func PayFirLunchFee(e *custodyBtc.BtcChannelEvent, gasFee uint64) (uint, error) 
 	if err != nil {
 		return 0, err
 	}
+	var adminUsr *caccount.UserInfo
+	adminUsr, err = caccount.GetUserInfo("admin")
+	if err != nil {
+		return 0, err
+	}
+	ba := models.Balance{}
+	ba.AccountId = adminUsr.Account.ID
+	ba.Amount = float64(gasFee)
+	ba.Unit = models.UNIT_SATOSHIS
+	ba.BillType = models.BillTypeFirLunchFee
+	ba.Away = models.AWAY_IN
+	ba.Invoice = &invoice
+	ba.PaymentHash = nil
+	ba.State = models.STATE_SUCCESS
+	ba.TypeExt = &models.BalanceTypeExt{Type: models.BTEFirLunchFee}
+	err = tx.Create(&ba).Error
+	if err != nil {
+		return 0, err
+	}
+	_, err = custodyBtc.AddBtcBalance(tx, adminUsr, ba.Amount, ba.ID, custodyModels.ChangeFirLunchFee)
+	if err != nil {
+		return 0, err
+	}
+
 	tx.Commit()
 
 	return id, nil
@@ -115,6 +139,31 @@ func BackFirLunchFee(id uint) (uint, error) {
 	if err != nil {
 		return 0, err
 	}
+
+	var adminUsr *caccount.UserInfo
+	adminUsr, err = caccount.GetUserInfo("admin")
+	if err != nil {
+		return 0, err
+	}
+	ba := models.Balance{}
+	ba.AccountId = adminUsr.Account.ID
+	ba.Amount = p.ChangeAmount
+	ba.Unit = models.UNIT_SATOSHIS
+	ba.BillType = models.BillTypeBackFee
+	ba.Away = models.AWAY_IN
+	ba.Invoice = &invoice
+	ba.PaymentHash = nil
+	ba.State = models.STATE_SUCCESS
+	ba.TypeExt = &models.BalanceTypeExt{Type: models.BTEFirBackFee}
+	err = tx.Create(&ba).Error
+	if err != nil {
+		return 0, err
+	}
+	_, err = custodyBtc.LessBtcBalance(tx, adminUsr, p.ChangeAmount, ba.ID, custodyModels.ChangeTypeBackFee)
+	if err != nil {
+		return 0, err
+	}
+
 	tx.Commit()
 
 	return feeId, nil
