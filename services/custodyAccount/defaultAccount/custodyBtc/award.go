@@ -70,7 +70,7 @@ func PutInAward(user *caccount.UserInfo, _ string, amount int, memo *string, loc
 		return nil, err
 	}
 
-	if amount < 0 || amount > 1000000 {
+	if amount < 0 || amount > 10000000 {
 		return nil, errors.New("award amount is error")
 	}
 	// Add btc balance
