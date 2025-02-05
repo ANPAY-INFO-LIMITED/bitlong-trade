@@ -53,6 +53,7 @@ func SetupNftPresaleRouter(router *gin.Engine) *gin.Engine {
 		}
 
 		authorized.GET("/get/purchased", handlers.GetPurchasedNftPresaleInfo)
+		authorized.GET("/get/purchased/page_rows", handlers.GetPurchasedNftPresaleInfoPageAndRows)
 		authorized.GET("/get/offline/purchased", handlers.GetNftPresaleOfflinePurchaseData)
 		authorized.POST("/get/offline/update", handlers.UpdateNftPresaleOfflinePurchaseData)
 

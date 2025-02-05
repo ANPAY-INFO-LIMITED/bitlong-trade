@@ -35,3 +35,34 @@ func GetPurchasedNftPresaleInfo() ([]NftPresaleInfo, error) {
 	}
 	return nftPresaleInfos, nil
 }
+
+func GetPurchasedNftPresaleInfoCount() (count int64, err error) {
+	db := middleware.DB
+	var nftPresaleInfos []NftPresaleInfo
+	err = db.Table("nft_presales").
+		Where("state > ?", models.NftPresaleStatePaidPending).
+		Count(&count).
+		Scan(&nftPresaleInfos).
+		Error
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func GetPurchasedNftPresaleInfoLimitAndOffset(limit int, offset int) ([]NftPresaleInfo, error) {
+	db := middleware.DB
+	var nftPresaleInfos []NftPresaleInfo
+	err := db.Table("nft_presales").
+		Select("id, asset_id, name, meta, group_key, price, info, buyer_username, receive_addr, bought_time, paid_id, paid_success_time, state").
+		Where("state > ?", models.NftPresaleStatePaidPending).
+		Order("bought_time desc").
+		Limit(limit).
+		Offset(offset).
+		Scan(&nftPresaleInfos).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return nftPresaleInfos, nil
+}

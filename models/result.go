@@ -268,9 +268,13 @@ const (
 	QueryUserWithdrawAwardRecordsCountErr
 	QueryUserWithdrawAwardRecordsErr
 	LimitEmptyErr
+	RowsEmptyErr
 	OffsetEmptyErr
+	PageEmptyErr
 	LimitLessThanZeroErr
+	RowsLessThanZeroErr
 	OffsetLessThanZeroErr
+	PageLessThanZeroErr
 	UsernameNotMatchErr
 	CalcAddLiquidityErr
 	CalcRemoveLiquidityErr
@@ -296,6 +300,8 @@ const (
 	CalcAmountOutErr
 	CalcAmountInErr
 	GetPurchasedNftPresaleInfoErr
+	GetPurchasedNftPresaleInfoCountErr
+	GetPurchasedNftPresaleInfoLimitAndOffsetErr
 	GetBtcBalanceCountErr
 	GetBtcBalanceOrderLimitOffsetErr
 	QueryUserShareBalanceErr

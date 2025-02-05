@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -537,6 +538,159 @@ func GetPurchasedNftPresaleInfo(c *gin.Context) {
 		Errno:  0,
 		ErrMsg: models.SUCCESS.Error(),
 		Data:   nftPresaleInfos,
+	})
+}
+
+func GetPurchasedNftPresaleInfoPageAndRows(c *gin.Context) {
+	page := c.Query("page")
+	rows := c.Query("rows")
+
+	var err error
+	var pageInt, rowsInt int
+	var count int64
+
+	if page == "" {
+		err = errors.New("page is empty")
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.PageEmptyErr.Code(),
+			ErrMsg: err.Error(),
+			Data: ResultData{
+				Page:      pageInt,
+				Rows:      rowsInt,
+				Count:     count,
+				DataSlice: []services.NftPresaleInfo{},
+			},
+		})
+		return
+	}
+	pageInt, err = strconv.Atoi(page)
+	if err != nil {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.AtoiErr.Code(),
+			ErrMsg: err.Error(),
+			Data: ResultData{
+				Page:      pageInt,
+				Rows:      rowsInt,
+				Count:     count,
+				DataSlice: []services.NftPresaleInfo{},
+			},
+		})
+		return
+	}
+	if pageInt < 0 {
+		err = errors.New("page is less than 0")
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.PageLessThanZeroErr.Code(),
+			ErrMsg: err.Error(),
+			Data: ResultData{
+				Page:      pageInt,
+				Rows:      rowsInt,
+				Count:     count,
+				DataSlice: []services.NftPresaleInfo{},
+			},
+		})
+		return
+	}
+
+	if rows == "" {
+		err := errors.New("rows is empty")
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.RowsEmptyErr.Code(),
+			ErrMsg: err.Error(),
+			Data: ResultData{
+				Page:      pageInt,
+				Rows:      rowsInt,
+				Count:     count,
+				DataSlice: []services.NftPresaleInfo{},
+			},
+		})
+		return
+	}
+	rowsInt, err = strconv.Atoi(rows)
+	if err != nil {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.AtoiErr.Code(),
+			ErrMsg: err.Error(),
+			Data: ResultData{
+				Page:      pageInt,
+				Rows:      rowsInt,
+				Count:     count,
+				DataSlice: []services.NftPresaleInfo{},
+			},
+		})
+		return
+	}
+	if rowsInt < 0 {
+		err = errors.New("rows is less than 0")
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.RowsLessThanZeroErr.Code(),
+			ErrMsg: err.Error(),
+			Data: ResultData{
+				Page:      pageInt,
+				Rows:      rowsInt,
+				Count:     count,
+				DataSlice: []services.NftPresaleInfo{},
+			},
+		})
+		return
+	}
+
+	limit := rowsInt
+	offset := (pageInt - 1) * rowsInt
+
+	if offset < 0 {
+		err = errors.New("offset is less than 0")
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.OffsetLessThanZeroErr.Code(),
+			ErrMsg: err.Error(),
+			Data: ResultData{
+				Page:      pageInt,
+				Rows:      rowsInt,
+				Count:     count,
+				DataSlice: []services.NftPresaleInfo{},
+			},
+		})
+		return
+	}
+
+	count, err = services.GetPurchasedNftPresaleInfoCount()
+	if err != nil {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.GetPurchasedNftPresaleInfoCountErr.Code(),
+			ErrMsg: err.Error(),
+			Data: ResultData{
+				Page:      pageInt,
+				Rows:      rowsInt,
+				Count:     count,
+				DataSlice: []services.NftPresaleInfo{},
+			},
+		})
+		return
+	}
+
+	nftPresaleInfos, err := services.GetPurchasedNftPresaleInfoLimitAndOffset(limit, offset)
+	if err != nil {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.GetPurchasedNftPresaleInfoLimitAndOffsetErr.Code(),
+			ErrMsg: err.Error(),
+			Data: ResultData{
+				Page:      pageInt,
+				Rows:      rowsInt,
+				Count:     count,
+				DataSlice: nftPresaleInfos,
+			},
+		})
+		return
+	}
+	c.JSON(http.StatusOK, Result2{
+		Errno:  0,
+		ErrMsg: models.SUCCESS.Error(),
+		Data: ResultData{
+			Page:      pageInt,
+			Rows:      rowsInt,
+			Count:     count,
+			DataSlice: nftPresaleInfos,
+		},
 	})
 }
 

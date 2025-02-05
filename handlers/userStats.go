@@ -294,6 +294,13 @@ type Result2 struct {
 	Data   interface{} `json:"data"`
 }
 
+type ResultData struct {
+	Page      int   `json:"page"`
+	Rows      int   `json:"rows"`
+	Count     int64 `json:"count"`
+	DataSlice any   `json:"data_slice"`
+}
+
 func GetDateLoginCount(c *gin.Context) {
 	start := c.Query("start")
 	end := c.Query("end")

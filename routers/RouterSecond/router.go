@@ -98,6 +98,7 @@ func SetupRouter() *gin.Engine {
 	// nftPresale
 	nftPresale := r.Group("/nft_presale")
 	nftPresale.GET("/get/purchased", handlers.GetPurchasedNftPresaleInfo)
+	nftPresale.GET("/get/purchased/page_rows", handlers.GetPurchasedNftPresaleInfoPageAndRows)
 	nftPresale.GET("/get/offline/purchased", handlers.GetNftPresaleOfflinePurchaseData)
 	nftPresale.POST("/get/offline/update", handlers.UpdateNftPresaleOfflinePurchaseData)
 
