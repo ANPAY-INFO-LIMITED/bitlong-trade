@@ -14,9 +14,13 @@ type BalanceTypeExtList uint
 const (
 	BTExtUnknown            BalanceTypeExtList = 0
 	BTExtFirLaunch          BalanceTypeExtList = 6
+	BTExtReverseChannel     BalanceTypeExtList = 7
 	BTExtLocal              BalanceTypeExtList = 100
+	BTExtPTNS               BalanceTypeExtList = 101
+	BTExtPTNSSupplier       BalanceTypeExtList = 102
 	BTExtBackFee            BalanceTypeExtList = 104
 	BTExtOnChannel          BalanceTypeExtList = 200
+	BTExtOnChain            BalanceTypeExtList = 201
 	BTExtAward              BalanceTypeExtList = 300
 	BTExtOfferAward         BalanceTypeExtList = 301
 	BTExtLocked             BalanceTypeExtList = 400
@@ -26,6 +30,9 @@ const (
 	BTEServerFee            BalanceTypeExtList = 700
 	BTEFirLunchFee          BalanceTypeExtList = 701
 	BTEFirBackFee           BalanceTypeExtList = 702
+	BTEReplace              BalanceTypeExtList = 711
+	BTEGameAward            BalanceTypeExtList = 722
+	BTEGameAwardFee         BalanceTypeExtList = 723
 )
 
 func (b BalanceTypeExtList) ToString() string {
@@ -43,6 +50,7 @@ func (b BalanceTypeExtList) ToString() string {
 		BTEServerFee:            "ServerFee",
 		BTEFirLunchFee:          "FirLunchFee",
 		BTEFirBackFee:           "FirBackFee",
+		BTEReplace:              "Replace",
 	}
 	return balanceTypeExtString[b]
 }
@@ -61,6 +69,7 @@ func ToBalanceTypeExtList(s string) BalanceTypeExtList {
 		"ServerFee":          BTEServerFee,
 		"FirLunchFee":        BTEFirLunchFee,
 		"FirBackFee":         BTEFirBackFee,
+		"Replace":            BTEReplace,
 	}
 	return balanceTypeExtList[s]
 }

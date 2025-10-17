@@ -40,8 +40,6 @@ func DeleteAssetMeta(id uint) error {
 	return btldb.DeleteAssetMeta(id)
 }
 
-// @dev:
-
 func GetAssetMetaByAssetId(assetId string) (*models.AssetMeta, error) {
 	return ReadAssetMetaByAssetId(assetId)
 }
@@ -60,8 +58,6 @@ func GetImageDataFromAssetMeta(assetMeta models.AssetMeta) string {
 	return meta.ImageData
 }
 
-// GetAssetMetaImageDataByAssetId
-// @Description: Get assetMeta image data by asset id
 func GetAssetMetaImageDataByAssetId(assetId string) (string, error) {
 	assetMeta, err := GetAssetMetaByAssetId(assetId)
 	if err != nil {
@@ -72,10 +68,10 @@ func GetAssetMetaImageDataByAssetId(assetId string) (string, error) {
 }
 
 func StoreAssetMetaIfNotExist(assetId string) error {
-	// @dev: Store asset meta
+
 	_, err := GetAssetMetaByAssetId(assetId)
 	if err != nil {
-		// @dev: not found asset meta from db, find by api
+
 		var assetMetaStr string
 		assetMeta, err := api.FetchAssetMetaByAssetId(assetId)
 		if err != nil {
@@ -92,12 +88,12 @@ func StoreAssetMetaIfNotExist(assetId string) error {
 }
 
 func StoreAssetMetasIfNotExist(assetIds []string) error {
-	// @dev: Store asset meta
+
 	var assetMetas []models.AssetMeta
 	for _, assetId := range assetIds {
 		_, err := GetAssetMetaByAssetId(assetId)
 		if err != nil {
-			// @dev: not found asset meta from db, find by api
+
 			var assetMetaStr string
 			fetchAssetMeta, err := api.FetchAssetMetaByAssetId(assetId)
 			if err != nil {
@@ -118,8 +114,6 @@ func StoreAssetMetasIfNotExist(assetIds []string) error {
 	return CreateAssetMetas(&assetMetas)
 }
 
-// ==================== GetAssetMetaImage ====================
-
 type AssetIdMetaDataImage struct {
 	AssetId   string `json:"asset_id"`
 	ImageData string `json:"image_data"`
@@ -135,18 +129,11 @@ func GetAssetMetaImage(assetIds []string) (*[]AssetIdMetaDataImage, *[]AssetIdMe
 	idMapData, idMapErr := api.FetchAssetMetaByAssetIds(assetIds)
 	if idMapErr != nil {
 		for assetId, data := range *idMapData {
-			// @dev: get image data from meta
+
 			meta := new(api.Meta)
 			meta.GetMetaFromStr(data)
 			imageData := meta.ImageData
-			// @dev: check image data
-			//if imageData == "" {
-			//	assetIdMetaDataErrs = append(assetIdMetaDataErrs, AssetIdMetaDataErr{
-			//		AssetId: assetId,
-			//		Err:     "image data is empty",
-			//	})
-			//	continue
-			//}
+
 			assetIdMetaDatas = append(assetIdMetaDatas, AssetIdMetaDataImage{
 				AssetId:   assetId,
 				ImageData: imageData,

@@ -2,6 +2,7 @@ package ManageQuery
 
 import (
 	"sort"
+	"trade/btlLog"
 	"trade/services/custodyAccount/localQuery"
 	"trade/services/pool"
 )
@@ -44,8 +45,11 @@ func GetAssetsBalanceRankList(assetId string, pageNum int, pageSize int) (*[]Get
 		return nil, 0, 0
 	}
 	totalAmount += pools
+	btlLog.CUST.Info("GetAssetsBalanceRankList: pools:%d, totalAmount:%f", pools, totalAmount)
 
-	balances, err := pool.GetPoolAccountNameAndBalances(assetId, pageSize, pageNum)
+	btlLog.CUST.Info("GetAssetsBalanceRankList: %v, %v, %v", totalAmount, pools, t)
+
+	balances, err := pool.GetPoolAccountNameAndBalances(assetId)
 	if err != nil {
 		return nil, 0, 0
 	}
@@ -59,11 +63,6 @@ func GetAssetsBalanceRankList(assetId string, pageNum int, pageSize int) (*[]Get
 	sort.Slice(resps, func(i, j int) bool {
 		return resps[i].Amount > resps[j].Amount
 	})
-	list := make([]GetAssetRankListResp, 0)
-	if len(resps) > pageSize {
-		list = resps[0:pageSize]
-	} else {
-		list = resps
-	}
+	list := resps[pageNum*pageSize : (pageNum+1)*pageSize]
 	return &list, totalCount, totalAmount
 }

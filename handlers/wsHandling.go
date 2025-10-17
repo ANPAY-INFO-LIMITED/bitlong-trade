@@ -16,14 +16,14 @@ const (
 	writeWait      = 10 * time.Second
 	pongWait       = 100 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 1024 * 1024 // 1 MB
+	maxMessageSize = 1024 * 1024
 )
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  2048,
 	WriteBufferSize: 2048,
 	CheckOrigin: func(r *http.Request) bool {
-		return true // 注意：在生产环境中应该更严格地检查origin
+		return true
 	},
 }
 

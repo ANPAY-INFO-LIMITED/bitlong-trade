@@ -16,11 +16,9 @@ import (
 	"trade/middleware"
 	"trade/models"
 	"trade/services/btldb"
-	"trade/services/custodyAccount"
+	"trade/services/custodyAccount/defaultAccount/custodyFee"
 	"trade/utils"
 )
-
-// @dev: CRUD
 
 func CreateNftPresale(nftPresale *models.NftPresale) error {
 	return btldb.CreateNftPresale(nftPresale)
@@ -86,7 +84,6 @@ func DeleteNftPresale(id uint) error {
 	return btldb.DeleteNftPresale(id)
 }
 
-// Deprecated
 func ProcessNftPresale(nftPresaleSetRequest *models.NftPresaleSetRequest) *models.NftPresale {
 	var assetId string
 	assetId = nftPresaleSetRequest.AssetId
@@ -100,9 +97,9 @@ func ProcessNftPresale(nftPresaleSetRequest *models.NftPresaleSetRequest) *model
 	var amount int
 	var meta string
 	_asset, err := api.GetIncludeLeasedAssetById(assetId)
-	//assetInfo, err := api.GetAssetInfoApi(assetId)
+
 	if err != nil {
-		// @dev: Do not return
+
 		btlLog.PreSale.Error("api GetIncludeLeasedAssetById err:%v", err)
 	} else {
 		name = _asset.AssetGenesis.Name
@@ -148,10 +145,6 @@ func ProcessNftPresales(nftPresaleSetRequests *[]models.NftPresaleSetRequest) *[
 	return &nftPresales
 }
 
-// @dev: Get
-
-// GetNftPresaleByAssetId
-// @Description:  This can return purchased nft
 func GetNftPresaleByAssetId(assetId string) (*models.NftPresale, error) {
 	return ReadNftPresaleByAssetId(assetId)
 }
@@ -238,13 +231,9 @@ func GetAllNftPresaleGroupKeyPurchasable() (*[]GroupKeyAndGroupName, error) {
 	return &groupKeyAndGroupNames, nil
 }
 
-// GetLaunchedNftPresales
-// @Description: Get launched nftPresales
 func GetLaunchedNftPresales() (*[]models.NftPresale, error) {
 	return ReadNftPresalesByNftPresaleState(models.NftPresaleStateLaunched)
 }
-
-// @dev: Buy
 
 func IsNftPresalePurchasable(nftPresale *models.NftPresale) bool {
 	if nftPresale == nil {
@@ -276,10 +265,10 @@ func IsNftPresaleAddrValid(nftPresale *models.NftPresale, addr *taprpc.Addr) (bo
 	}
 	addrGroupKey := hex.EncodeToString(addr.GroupKey)
 	var isGroupKeyEqual bool
-	// Without prefix
+
 	if len(nftPresale.GroupKey) == 64 {
 		isGroupKeyEqual = strings.Contains(addrGroupKey, nftPresale.GroupKey)
-		// @dev: With prefix 0x02 or 0x03
+
 	} else if len(nftPresale.GroupKey) == 66 {
 		isGroupKeyEqual = addrGroupKey == nftPresale.GroupKey
 	} else {
@@ -338,7 +327,7 @@ func IsWhitelistPass(nftPresale *models.NftPresale, username string) (bool, erro
 		return false, utils.AppendErrorInfo(err, "GetNftPresaleWhitelistsByNftPresale")
 	}
 	if whitelists == nil || len(*whitelists) == 0 {
-		// @dev: no white list, everyone can buy
+
 		return true, nil
 	}
 	for _, user := range *whitelists {
@@ -349,33 +338,31 @@ func IsWhitelistPass(nftPresale *models.NftPresale, username string) (bool, erro
 	return false, errors.New("username(" + username + ") not found in Whitelists")
 }
 
-// BuyNftPresale
-// @Description: Buy presale nft
 func BuyNftPresale(userId int, username string, buyNftPresaleRequest models.BuyNftPresaleRequest) error {
 	assetId := buyNftPresaleRequest.AssetId
 	nftPresale, err := GetNftPresaleByAssetId(assetId)
 	if err != nil {
 		return utils.AppendErrorInfo(err, "GetNftPresaleByAssetId")
 	}
-	// @dev: 1. Check if state is launched so that nft is purchasable
+
 	if !IsNftPresalePurchasable(nftPresale) {
 		err = errors.New("nft(" + nftPresale.AssetId + ") is not purchasable, its state is " + nftPresale.State.String() + ", ")
 		return utils.AppendErrorInfo(err, "IsNftPresalePurchasable")
 	}
-	// @dev: Check time
+
 	_, err = IsPurchasableTimeValid(nftPresale)
 	if err != nil {
 		return utils.AppendErrorInfo(err, "IsPurchasableTimeValid")
 	}
-	// @dev: Check whitelist
+
 	_, err = IsWhitelistPass(nftPresale, username)
 	if err != nil {
 		return utils.AppendErrorInfo(err, "IsWhitelistPass")
 	}
-	// @dev: 2. Check if account balance is enough
+
 	price := nftPresale.Price
 	{
-		accountBalance, err := custodyAccount.GetAccountBalance(uint(userId))
+		accountBalance, err := custodyFee.GetAccountBalance(uint(userId))
 		if err != nil {
 			return utils.AppendErrorInfo(err, "GetAccountBalance")
 		}
@@ -391,14 +378,13 @@ func BuyNftPresale(userId int, username string, buyNftPresaleRequest models.BuyN
 
 	addr = buyNftPresaleRequest.ReceiveAddr
 
-	// @dev: Do not check addr if addr is empty
 	if addr != "" {
-		// @dev: Decode addr and check if encoded addr is valid
+
 		decodedAddrInfo, err := api.GetDecodedAddrInfo(addr)
 		if err != nil {
 			return utils.AppendErrorInfo(err, "GetDecodedAddrInfo")
 		}
-		// @dev: Return error if addr is invalid
+
 		isNftPresaleAddrValid, err := IsNftPresaleAddrValid(nftPresale, decodedAddrInfo)
 		if err != nil || !isNftPresaleAddrValid {
 			return utils.AppendErrorInfo(err, "IsNftPresaleAddrValid")
@@ -407,7 +393,6 @@ func BuyNftPresale(userId int, username string, buyNftPresaleRequest models.BuyN
 		internalKey = hex.EncodeToString(decodedAddrInfo.InternalKey)
 	}
 
-	// @dev: 4. Update info
 	deviceId := buyNftPresaleRequest.DeviceId
 
 	err = UpdateNftPresaleByPurchaseInfo(userId, username, deviceId, addr, scriptKey, internalKey, nftPresale)
@@ -494,8 +479,6 @@ func NftPresaleSliceToNftPresaleSimplifiedSlice(nftPresales *[]models.NftPresale
 	return &nftPresaleSimplifiedSlice
 }
 
-// @dev: Get all nftPresales
-
 func GetAllNftPresaleStateBoughtNotPay() (*[]models.NftPresale, error) {
 	return btldb.ReadNftPresalesByNftPresaleState(models.NftPresaleStateBoughtNotPay)
 }
@@ -512,10 +495,6 @@ func GetAllNftPresaleStateSentPending() (*[]models.NftPresale, error) {
 	return btldb.ReadNftPresalesByNftPresaleState(models.NftPresaleStateSentPending)
 }
 
-// @dev: Operations
-
-// IncreaseNftPresaleProcessNumber
-// @Description: Increase NftPresale process number
 func IncreaseNftPresaleProcessNumber(nftPresale *models.NftPresale) (err error) {
 	nftPresale.ProcessNumber += 1
 	return UpdateNftPresale(nftPresale)
@@ -620,22 +599,22 @@ func UpdateNftPresaleAndSelfAddBatchGroupSoldNumber(nftPresale *models.NftPresal
 		return errors.New("nftPresale batch group id is 0")
 	}
 	tx := middleware.DB.Begin()
-	// @dev: 1. Read batchGroup
+
 	var batchGroup models.NftPresaleBatchGroup
 	err = tx.First(&batchGroup, nftPresale.BatchGroupId).Error
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-	// @dev: sold number self-add
+
 	batchGroup.SoldNumber += 1
-	// @dev: 2. Update batchGroup
+
 	err = tx.Save(&batchGroup).Error
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-	// @dev: 3. Update nftPresale
+
 	err = tx.Save(nftPresale).Error
 	if err != nil {
 		tx.Rollback()
@@ -644,15 +623,13 @@ func UpdateNftPresaleAndSelfAddBatchGroupSoldNumber(nftPresale *models.NftPresal
 	return tx.Commit().Error
 }
 
-// @dev: Process
-
 func ProcessNftPresaleStateBoughtNotPayService(nftPresale *models.NftPresale) error {
-	// @dev: 1. Pay fee
+
 	paidId, err := PayGasFee(nftPresale.BuyerUserId, nftPresale.Price)
 	if err != nil {
 		return utils.AppendErrorInfo(err, "PayGasFee for nftPresale")
 	}
-	// @dev: 2. Store paidId; Change state; Clear ProcessNumber
+
 	err = StorePaidIdThenChangeStateAndClearProcessNumber(paidId, nftPresale)
 	if err != nil {
 		return utils.AppendErrorInfo(err, "StorePaidIdThenChangeStateAndClearProcessNumber")
@@ -661,7 +638,7 @@ func ProcessNftPresaleStateBoughtNotPayService(nftPresale *models.NftPresale) er
 }
 
 func ProcessNftPresaleStatePaidPendingService(nftPresale *models.NftPresale) error {
-	// @dev: 1. Is fee paid
+
 	var isFeePaid bool
 	isFeePaid, err := IsFeePaid(nftPresale.PaidId)
 	if err != nil {
@@ -672,9 +649,9 @@ func ProcessNftPresaleStatePaidPendingService(nftPresale *models.NftPresale) err
 			}
 		}
 	}
-	// @dev: Fee has not been paid
+
 	if isFeePaid {
-		// @dev: Change state; clear Process Number; sold number self-add
+
 		err = ChangeNftPresaleStateAndUpdatePaidSuccessTimeThenClearProcessNumber(nftPresale)
 		if err != nil {
 			return utils.AppendErrorInfo(err, "ChangeNftPresaleStateAndUpdatePaidSuccessTimeThenClearProcessNumber")
@@ -686,18 +663,18 @@ func ProcessNftPresaleStatePaidPendingService(nftPresale *models.NftPresale) err
 
 func ProcessNftPresaleStatePaidNotSendService(nftPresale *models.NftPresale) error {
 	var err error
-	// @dev: Check if confirmed balance enough
+
 	minBalance := 2000
 	if !IsWalletBalanceEnough(minBalance) {
 		err = errors.New("lnd wallet balance is not enough(less than " + strconv.Itoa(minBalance) + ")")
 		return err
 	}
-	// @dev: Check if asset balance enough
+
 	if !IsAssetBalanceEnough(nftPresale.AssetId, nftPresale.Amount) {
 		err = errors.New("nft presale asset(" + strconv.Itoa(int(nftPresale.ID)) + ") balance is not enough")
 		return utils.AppendErrorInfo(err, "IsAssetBalanceEnough")
 	}
-	// @dev: Check if asset utxo is enough
+
 	if !IsAssetUtxoEnough(nftPresale.AssetId, nftPresale.Amount) {
 		err = errors.New("nft presale asset(" + strconv.Itoa(int(nftPresale.ID)) + ") utxo is not enough")
 		return utils.AppendErrorInfo(err, "IsAssetUtxoEnough")
@@ -706,20 +683,20 @@ func ProcessNftPresaleStatePaidNotSendService(nftPresale *models.NftPresale) err
 		err = errors.New("nft presale asset(" + strconv.Itoa(int(nftPresale.ID)) + ")'s receive addr(" + nftPresale.ReceiveAddr + ") is null")
 		return err
 	}
-	// @dev: Send Asset
+
 	addrs := []string{nftPresale.ReceiveAddr}
-	// @dev: Get fee rate
+
 	feeRate, err := UpdateAndGetFeeRateResponseTransformed()
 	if err != nil {
 		return utils.AppendErrorInfo(err, "UpdateAndGetFeeRateResponseTransformed("+strconv.Itoa(int(nftPresale.ID))+")")
 	}
 	feeRateSatPerKw := feeRate.SatPerKw.FastestFee
-	// @dev: Send and get response
+
 	response, err := api.SendAssetAddrSliceAndGetResponse(addrs, feeRateSatPerKw)
 	if err != nil {
 		return utils.AppendErrorInfo(err, "SendAssetAddrSliceAndGetResponse("+strconv.Itoa(int(nftPresale.ID))+")")
 	}
-	// @dev: Update info
+
 	err = UpdateNftPresaleBySendAssetResponse(nftPresale, response)
 	if err != nil {
 		return utils.AppendErrorInfo(err, "UpdateNftPresaleBySendAssetResponse("+strconv.Itoa(int(nftPresale.ID))+")")
@@ -733,9 +710,9 @@ func ProcessNftPresaleStateSentPendingService(nftPresale *models.NftPresale) err
 		err = errors.New("no outpoint generated, asset of presale(" + strconv.Itoa(int(nftPresale.ID)) + ") may has not been sent")
 		return err
 	}
-	// @dev: 1.Is Transaction Confirmed
+
 	if IsTransactionConfirmed(nftPresale.SentTxid) {
-		// @dev: Change state and Clear ProcessNumber
+
 		err = UpdateNftPresaleAfterConfirmed(nftPresale)
 		if err != nil {
 			return utils.AppendErrorInfo(err, "UpdateNftPresaleAfterConfirmed")
@@ -747,8 +724,6 @@ func ProcessNftPresaleStateSentPendingService(nftPresale *models.NftPresale) err
 	}
 }
 
-// @dev: Process all
-
 func ProcessAllNftPresaleStateBoughtNotPayService() (*[]ProcessionResult, error) {
 	var processionResults []ProcessionResult
 	nftPresales, err := GetAllNftPresaleStateBoughtNotPay()
@@ -759,7 +734,7 @@ func ProcessAllNftPresaleStateBoughtNotPayService() (*[]ProcessionResult, error)
 		{
 			err = IncreaseNftPresaleProcessNumber(&nftPresale)
 			if err != nil {
-				// @dev: Do nothing
+
 			}
 			err = ProcessNftPresaleStateBoughtNotPayService(&nftPresale)
 			if err != nil {
@@ -801,7 +776,7 @@ func ProcessAllNftPresaleStatePaidPendingService() (*[]ProcessionResult, error) 
 		{
 			err = IncreaseNftPresaleProcessNumber(&nftPresale)
 			if err != nil {
-				// @dev: Do nothing
+
 			}
 			err = ProcessNftPresaleStatePaidPendingService(&nftPresale)
 			if err != nil {
@@ -843,7 +818,7 @@ func ProcessAllNftPresaleStatePaidNotSendService() (*[]ProcessionResult, error) 
 		{
 			err = IncreaseNftPresaleProcessNumber(&nftPresale)
 			if err != nil {
-				// @dev: Do nothing
+
 			}
 			err = ProcessNftPresaleStatePaidNotSendService(&nftPresale)
 			if err != nil {
@@ -886,7 +861,7 @@ func ProcessAllNftPresaleStateSentPendingService() (*[]ProcessionResult, error) 
 		{
 			err = IncreaseNftPresaleProcessNumber(&nftPresale)
 			if err != nil {
-				// @dev: Do nothing
+
 			}
 			err = ProcessNftPresaleStateSentPendingService(&nftPresale)
 			if err != nil {
@@ -919,8 +894,6 @@ func ProcessAllNftPresaleStateSentPendingService() (*[]ProcessionResult, error) 
 	return &processionResults, nil
 }
 
-// @dev: Scheduled task
-
 func ProcessNftPresaleBoughtNotPay() {
 	processionResult, err := ProcessAllNftPresaleStateBoughtNotPayService()
 	if err != nil {
@@ -929,7 +902,7 @@ func ProcessNftPresaleBoughtNotPay() {
 	if processionResult == nil || len(*processionResult) == 0 {
 		return
 	}
-	// @dev: Do not use PrintProcessionResult
+
 	btlLog.PreSale.Error("[PRESALE.BNP]%v", "\n"+utils.ValueJsonString(processionResult))
 }
 
@@ -941,7 +914,7 @@ func ProcessNftPresalePaidPending() {
 	if processionResult == nil || len(*processionResult) == 0 {
 		return
 	}
-	// @dev: Do not use PrintProcessionResult
+
 	btlLog.PreSale.Error("[PRESALE.PPD]%v", "\n"+utils.ValueJsonString(processionResult))
 }
 
@@ -953,7 +926,7 @@ func ProcessNftPresalePaidNotSend() {
 	if processionResult == nil || len(*processionResult) == 0 {
 		return
 	}
-	// @dev: Do not use PrintProcessionResult
+
 	btlLog.PreSale.Error("[PRESALE.PNS]%v", "\n"+utils.ValueJsonString(processionResult))
 }
 
@@ -965,11 +938,9 @@ func ProcessNftPresaleSentPending() {
 	if processionResult == nil || len(*processionResult) == 0 {
 		return
 	}
-	// @dev: Do not use PrintProcessionResult
+
 	btlLog.PreSale.Error("[PRESALE.SPD]%v", "\n"+utils.ValueJsonString(processionResult))
 }
-
-// @dev: Other Operations
 
 func GetProcessingNftPresale() (*[]models.NftPresale, error) {
 	return ReadNftPresalesBetweenNftPresaleState(models.NftPresaleStateBoughtNotPay, models.NftPresaleStatePaidNotSend)
@@ -988,12 +959,9 @@ func CheckIsNftPresaleProcessing() error {
 	return utils.AppendErrorInfo(err, info)
 }
 
-// GetGroupNameByGroupKey
-// @dev: Get group name by group key
-// TODO: this func may has bug
 func GetGroupNameByGroupKey(network models.Network, groupKey string) (string, error) {
 	var groupName string
-	// @dev: 1. Get outpoints by group key
+
 	assetKeys, err := api.AssetLeafKeys(true, groupKey, universerpc.ProofType_PROOF_TYPE_ISSUANCE)
 	if err != nil {
 		return "", utils.AppendErrorInfo(err, "AssetLeafKeys")
@@ -1010,7 +978,7 @@ func GetGroupNameByGroupKey(network models.Network, groupKey string) (string, er
 		outpoints = append(outpoints, assetKey.OpStr)
 		opMapScriptKey[assetKey.OpStr] = assetKey.ScriptKeyBytes
 	}
-	// @dev: 2. Get time by outpoints
+
 	outpointTime, err := api.GetTimesByOutpointSlice(network, outpoints)
 	if err != nil {
 		return "", utils.AppendErrorInfo(err, "GetTimesByOutpointSlice")
@@ -1033,49 +1001,43 @@ func GetGroupNameByGroupKey(network models.Network, groupKey string) (string, er
 		return "", utils.AppendErrorInfo(err, "")
 	}
 	{
-		// @dev: Do not check length here
-		//if len(outpoints) != len(outpointTime) {
-		//	err = errors.New("length of outpoints(" + strconv.Itoa(len(outpoints)) + ") is not equal length of outpointTime(" + strconv.Itoa(len(outpointTime)) + ")")
-		//	return "", utils.AppendErrorInfo(err, "")
-		//}
+
 	}
-	// @dev: 3. Sort outpoints by time
+
 	func(tak []timeAndAssetKey) {
 		sort.Slice(tak, func(i, j int) bool {
 			return (tak)[i].Time < (tak)[j].Time
 		})
 	}(timeAndAssetKeys)
-	// @dev: 4. Get first asset of group
+
 	firstAssetKey := timeAndAssetKeys[0]
-	// @dev: Get asset id by outpoint
+
 	assetId, err := api.QueryProofToGetAssetId(groupKey, firstAssetKey.OpStr, firstAssetKey.ScriptKeyBytes)
 	if err != nil {
 		return "", utils.AppendErrorInfo(err, "QueryProofToGetAssetId")
 	}
-	// @dev: Get asset meta by asset id
+
 	assetMeta, err := api.FetchAssetMetaByAssetId(assetId)
 	if err != nil {
 		return "", utils.AppendErrorInfo(err, "FetchAssetMetaByAssetId")
 	}
-	// @dev: Decode metadata and determines whether the group name is empty
+
 	var meta api.Meta
 	meta.GetMetaFromStr(assetMeta.Data)
 	groupName = meta.GroupName
 	return groupName, nil
 }
 
-// GetGroupNamesByGroupKeys
-// @dev: Get group names by group keys
 func GetGroupNamesByGroupKeys(network models.Network, groupKeys []string) (*map[string]string, error) {
 	var totalOutpoints []string
-	// groupKey => groupName
+
 	groupKeyMapName := make(map[string]string)
-	// groupKey => outpoints
+
 	groupKeyMapOps := make(map[string][]string)
-	// outpoint => scriptKey
+
 	opMapScriptKey := make(map[string]string)
 	for _, groupKey := range groupKeys {
-		// @dev: 1. Get outpoints by group key
+
 		assetKeys, err := api.AssetLeafKeys(true, groupKey, universerpc.ProofType_PROOF_TYPE_ISSUANCE)
 		if err != nil {
 			btlLog.PreSale.Error("api AssetLeafKeys err:%v", err)
@@ -1094,8 +1056,7 @@ func GetGroupNamesByGroupKeys(network models.Network, groupKeys []string) (*map[
 		totalOutpoints = append(totalOutpoints, outpoints...)
 		groupKeyMapOps[groupKey] = outpoints
 	}
-	// @dev: 2. Get time by outpoints
-	// outpoint => time
+
 	outpointTime, err := api.GetTimesByOutpointSlice(network, totalOutpoints)
 	if err != nil {
 		btlLog.PreSale.Error("api GetTimesByOutpointSlice err:%v", err)
@@ -1123,25 +1084,25 @@ func GetGroupNamesByGroupKeys(network models.Network, groupKeys []string) (*map[
 			err = errors.New("length of outpoints(" + strconv.Itoa(len(totalOutpoints)) + ") is not equal length of outpointTime(" + strconv.Itoa(len(outpointTime)) + ")")
 			btlLog.PreSale.Error("%v", err)
 		}
-		// @dev: 3. Sort outpoints by time
+
 		func(tak []timeAndAssetKey) {
 			sort.Slice(tak, func(i, j int) bool {
 				return (tak)[i].Time < (tak)[j].Time
 			})
 		}(timeAndAssetKeys)
-		// @dev: 4. Get first asset of group
+
 		firstAssetKey := timeAndAssetKeys[0]
-		// @dev: Get asset id by outpoint
+
 		assetId, err := api.QueryProofToGetAssetId(groupKey, firstAssetKey.OpStr, firstAssetKey.ScriptKeyBytes)
 		if err != nil {
 			btlLog.PreSale.Error("api QueryProofToGetAssetId err:%v", err)
 		}
-		// @dev: Get asset meta by asset id
+
 		assetMeta, err := api.FetchAssetMetaByAssetId(assetId)
 		if err != nil {
 			btlLog.PreSale.Error("api FetchAssetMetaByAssetId err:%v", err)
 		}
-		// @dev: Decode metadata and determines whether the group name is empty
+
 		var meta api.Meta
 		meta.GetMetaFromStr(assetMeta.Data)
 		groupKeyMapName[groupKey] = meta.GroupName
@@ -1179,8 +1140,6 @@ func ProcessFailOrCanceledNftPresales(nftPresales *[]models.NftPresale) *[]model
 	return &newNftPresales
 }
 
-// ReSetFailOrCanceledNftPresale
-// @Description: ReSet fail or canceled nftPresale
 func ReSetFailOrCanceledNftPresale() error {
 	nftPresales, err := GetFailOrCanceledNftPresale()
 	if err != nil {
@@ -1193,11 +1152,9 @@ func ReSetFailOrCanceledNftPresale() error {
 	return CreateAndUpdateNftPresales(newNftPresales, nftPresales)
 }
 
-// @dev
-
 func GetFirstAssetIdByBatchGroupId(batchGroupId int) (string, error) {
 	var assetId string
-	// @dev: Do not use scan
+
 	err := middleware.DB.Model(&models.NftPresale{}).
 		Select("asset_id").
 		Where("batch_group_id = ?", batchGroupId).

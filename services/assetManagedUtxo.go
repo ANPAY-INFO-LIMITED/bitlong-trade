@@ -254,8 +254,6 @@ func CreateOrUpdateAssetManagedUtxo(userId int, transfer *models.AssetManagedUtx
 	return btldb.UpdateAssetManagedUtxo(assetManagedUtxo)
 }
 
-// CreateOrUpdateAssetManagedUtxos
-// @Description: create or update asset managed utxos
 func CreateOrUpdateAssetManagedUtxos(userId int, transfers *[]models.AssetManagedUtxo) (err error) {
 	if transfers == nil || len(*transfers) == 0 {
 		return nil

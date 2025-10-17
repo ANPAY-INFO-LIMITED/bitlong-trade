@@ -7,17 +7,18 @@ import (
 
 type AssetSyncInfo struct {
 	gorm.Model
-	AssetId      string     `gorm:"column:asset_id;type:varchar(512);not null" json:"asset_Id"`
-	Name         string     `gorm:"column:name;type:varchar(255);not null" json:"name"`
-	Point        string     `gorm:"column:point;type:varchar(255);not null" json:"point"`
-	AssetType    AssetType  `gorm:"column:asset_type;type:smallint;not null" json:"assetType"`
-	GroupName    *string    `gorm:"column:group_name;type:varchar(255)" json:"group_name"`
-	GroupKey     *string    `gorm:"column:asset_is_group;type:varchar(255)" json:"group_key"`
-	Amount       uint64     `gorm:"column:amount;type:bigint;not null" json:"amount"`
-	Meta         *string    `gorm:"column:meta;type:text" json:"meta"`
-	CreateHeight int64      `gorm:"column:create_height;type:bigint;not null" json:"create_height"`
-	CreateTime   *time.Time `gorm:"column:create_time;not null" json:"create_time"`
-	Universe     string     `gorm:"column:universe;type:varchar(100)" json:"universe"`
+	AssetId        string     `gorm:"column:asset_id;type:varchar(512);not null" json:"asset_Id"`
+	Name           string     `gorm:"column:name;type:varchar(255);not null" json:"name"`
+	Point          string     `gorm:"column:point;type:varchar(255);not null" json:"point"`
+	AssetType      AssetType  `gorm:"column:asset_type;type:smallint;not null" json:"assetType"`
+	GroupName      *string    `gorm:"column:group_name;type:varchar(255)" json:"group_name"`
+	GroupKey       *string    `gorm:"column:asset_is_group;type:varchar(255)" json:"group_key"`
+	Amount         uint64     `gorm:"column:amount;type:bigint;not null" json:"amount"`
+	Meta           *string    `gorm:"column:meta;type:text" json:"meta"`
+	CreateHeight   int64      `gorm:"column:create_height;type:bigint;not null" json:"create_height"`
+	CreateTime     *time.Time `gorm:"column:create_time;not null" json:"create_time"`
+	Universe       string     `gorm:"column:universe;type:varchar(100)" json:"universe"`
+	DecimalDisplay uint32     `gorm:"column:decimal_display;type:int;default:0" json:"decimal_display"`
 }
 
 func (AssetSyncInfo) TableName() string {

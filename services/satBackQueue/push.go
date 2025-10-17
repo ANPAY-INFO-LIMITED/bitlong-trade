@@ -20,6 +20,7 @@ const (
 	claimAsset         queueTopic = "claimAsset"
 	purchasePresaleNFT queueTopic = "purchasePresaleNFT"
 	swap_tr            queueTopic = "swap_tr"
+	genLiquidity       queueTopic = "gen_liquidity"
 )
 
 func (q queueTopic) String() string {
@@ -53,6 +54,11 @@ type TopicAndInfoId struct {
 	InfoID uint       `json:"info_id"`
 }
 
+type TopicAndGenLiquidityAssetsId struct {
+	Topic    queueTopic `json:"topic"`
+	AssetsId string     `json:"assets_id"`
+}
+
 func Push(topic queueTopic, qid string, request Request) (Response, error) {
 	body, err := Post(topic, qid, request)
 	if err != nil {
@@ -67,7 +73,7 @@ func Push(topic queueTopic, qid string, request Request) (Response, error) {
 }
 
 func Post(topic queueTopic, qid string, data any) ([]byte, error) {
-	url := "http://" + host + "/q/" + topic.String() + "?qid=" + qid
+	url := "http:
 	requestJsonBytes, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
@@ -78,7 +84,6 @@ func Post(topic queueTopic, qid string, data any) ([]byte, error) {
 		return nil, err
 	}
 
-	//req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("accept", "application/json")
 	req.Header.Add("content-type", "application/json")
 	res, err := http.DefaultClient.Do(req)
@@ -321,9 +326,9 @@ func GetAndPushClaimAsset() {
 				Rid:          "",
 				Error:        err.Error(),
 			}
-			_err := tx.Model(&PushQueueRecord{}).Create(&pushQueueRecord)
+			_err := tx.Model(&PushQueueRecord{}).Create(&pushQueueRecord).Error
 			if _err != nil {
-				btlLog.PushQueue.Error("Create _err:\n%v\nPQR:\n%v", _err.Error, utils.ValueJsonString(pushQueueRecord))
+				btlLog.PushQueue.Error("Create _err:\n%v\nPQR:\n%v", _err, utils.ValueJsonString(pushQueueRecord))
 				tx.Rollback()
 				continue
 			}
@@ -393,9 +398,9 @@ func GetAndPushPurchasePresaleNFT() {
 				Rid:          "",
 				Error:        err.Error(),
 			}
-			_err := tx.Model(&PushQueueRecord{}).Create(&pushQueueRecord)
+			_err := tx.Model(&PushQueueRecord{}).Create(&pushQueueRecord).Error
 			if _err != nil {
-				btlLog.PushQueue.Error("Create _err:\n%v\nPQR:\n%v", _err.Error, utils.ValueJsonString(pushQueueRecord))
+				btlLog.PushQueue.Error("Create _err:\n%v\nPQR:\n%v", _err, utils.ValueJsonString(pushQueueRecord))
 				tx.Rollback()
 				continue
 			}
@@ -488,9 +493,9 @@ func GetAndPushSwapTrs() {
 				Rid:          "",
 				Error:        err.Error(),
 			}
-			_err := tx.Model(&SwapTrPushQueueRecord{}).Create(&pushQueueRecord)
+			_err := tx.Model(&SwapTrPushQueueRecord{}).Create(&pushQueueRecord).Error
 			if _err != nil {
-				btlLog.PushQueue.Error("Create _err:\n%v\nPQR:\n%v", _err.Error, utils.ValueJsonString(pushQueueRecord))
+				btlLog.PushQueue.Error("Create _err:\n%v\nPQR:\n%v", _err, utils.ValueJsonString(pushQueueRecord))
 				tx.Rollback()
 				continue
 			}

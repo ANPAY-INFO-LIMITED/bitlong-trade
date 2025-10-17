@@ -168,7 +168,6 @@ func GetAllAssetBalancesNonZeroByAssetId(assetId string) (*[]models.AssetBalance
 	return btldb.ReadAllAssetBalancesNonZeroByAssetId(assetId)
 }
 
-// Deprecated: Use GetAssetIdAndBalancesByAssetIdLimitAndOffset instead
 func GetAllAssetBalancesNonZeroLimit(limit int) (*[]models.AssetBalance, error) {
 	return btldb.ReadAllAssetBalancesNonZeroLimit(limit)
 }
@@ -237,9 +236,6 @@ func AssetBalancesToUsernameAssetBalances(assetBalances *[]models.AssetBalance) 
 	return usernameAssetBalances
 }
 
-// GetAllUserAssetBalances
-// @dev: UserId
-// @Description: Get all asset balances by userId
 func GetAllUserAssetBalances() (*[]UserAssetBalance, error) {
 	allAssetBalances, err := GetAllAssetBalances()
 	if err != nil {
@@ -249,9 +245,6 @@ func GetAllUserAssetBalances() (*[]UserAssetBalance, error) {
 	return userAssetBalances, nil
 }
 
-// GetAllUsernameAssetBalances
-// @dev: Username
-// @Description: Get all username asset balances
 func GetAllUsernameAssetBalances() (*[]UsernameAssetBalance, error) {
 	allAssetBalances, err := GetAllAssetBalances()
 	if err != nil {
@@ -348,9 +341,6 @@ func AssetBalancesToAssetIdAndBalances(assetBalances *[]models.AssetBalance) *[]
 	return assetIdAndBalances
 }
 
-// GetAllAssetIdAndBalances
-// @Description: Get all asset balances by assetId
-// @dev
 func GetAllAssetIdAndBalances() (*[]AssetIdAndBalance, error) {
 	allAssetBalances, err := GetAllAssetBalances()
 	if err != nil {
@@ -419,7 +409,7 @@ func GetAssetIdSliceFromAssetIdAndBalanceSimplifiedSliceSort(assetIdAndBalanceSi
 	for _, assetIdAndBalance := range *assetIdAndBalanceSimplifiedSlice {
 		assetIdSlice = append(assetIdSlice, assetIdAndBalance.AssetId)
 	}
-	// @dev: Sort string slice
+
 	sort.Strings(assetIdSlice)
 	return assetIdSlice
 }
@@ -429,7 +419,7 @@ func AssetIdMapBalanceSimplifiedToAssetIdSlice(assetIdMapBalanceSimplified *map[
 	for assetId, _ := range *assetIdMapBalanceSimplified {
 		assetIdSlice = append(assetIdSlice, assetId)
 	}
-	// @dev: Sort string slice
+
 	sort.Strings(assetIdSlice)
 	return assetIdSlice
 }
@@ -461,15 +451,13 @@ func SortAssetIdAndBalanceSimplifiedSlice(assetIdAndBalanceSimplified *[]AssetId
 	return &assetIdAndBalanceSimplifiedSort
 }
 
-// GetAllAssetIdAndBalanceSimplifiedSort
-// @Description: Get all asset id and balance simplified
 func GetAllAssetIdAndBalanceSimplifiedSort() (*[]AssetIdAndBalanceSimplified, error) {
 	assetIdAndBalances, err := GetAllAssetIdAndBalances()
 	if err != nil {
 		return nil, err
 	}
 	assetIdAndBalanceSimplified := AssetIdAndBalanceSliceToAssetIdAndBalanceSimplifiedSlice(assetIdAndBalances)
-	// @dev: Sort by asset id
+
 	assetIdAndBalanceSimplified = SortAssetIdAndBalanceSimplifiedSlice(assetIdAndBalanceSimplified)
 	return assetIdAndBalanceSimplified, nil
 }
@@ -479,8 +467,6 @@ type AssetIdAndUserAssetBalance struct {
 	UserAssetBalance *[]UserAssetBalance `json:"user_asset_balance"`
 }
 
-// GetAllAssetIdAndUserAssetBalances
-// @Description: Get all asset balances by assetId and userId
 func GetAllAssetIdAndUserAssetBalances() (*[]AssetIdAndUserAssetBalance, error) {
 	var assetIdAndUserAssetBalances []AssetIdAndUserAssetBalance
 	allAssetBalances, err := GetAllAssetBalancesNonZero()
@@ -533,12 +519,10 @@ func GetAssetHolderNumberByAssetIdWithAssetBalances(assetId string) (int, error)
 			return asset.HolderNum, nil
 		}
 	}
-	// @dev: Asset holder info not found
+
 	return 0, nil
 }
 
-// GetAssetHolderNumberAssetBalance
-// @Description: Use asset balances
 func GetAssetHolderNumberAssetBalance(assetId string) (int, error) {
 	return GetAssetHolderNumberByAssetIdWithAssetBalances(assetId)
 }
@@ -562,9 +546,6 @@ func GetAssetIdAndBalanceSimplifiedByAssetIdUpdatedAtDesc(assetId string) (*Asse
 	}, nil
 }
 
-// GetAssetIdAndBalancesByAssetId
-// @Description: Get assetId and balances by assetId
-// @dev
 func GetAssetIdAndBalancesByAssetId(assetId string) (*AssetIdAndBalance, error) {
 	allAssetBalances, err := GetAllAssetBalancesNonZero()
 	if err != nil {
@@ -602,8 +583,7 @@ func GetAssetIdAndAssetBalancesByAssetId(assetId string) (*AssetIdAndBalance, er
 }
 
 func GetAssetIdAndBalancesByAssetIdLimitAndOffset(assetId string, limit int, offset int) (*AssetIdAndBalance, error) {
-	// @dev: Do not use GetAllAssetBalancesNonZeroLimitAndOffset(limit, offset)
-	// @dev: Do not use AssetBalancesToAssetIdMapAssetBalances(allAssetBalances)
+
 	assetBalances, err := btldb.ReadAssetBalanceByAssetIdNonZeroLimitAndOffset(assetId, limit, offset)
 	if err != nil {
 		return nil, err
@@ -624,8 +604,6 @@ func GetAssetBalanceByAssetIdNonZero(assetId string) (*[]models.AssetBalance, er
 	return btldb.ReadAssetBalanceByAssetIdNonZero(assetId)
 }
 
-// GetAssetBalanceByAssetIdNonZeroLength
-// @Description: Get asset balance by asset id non-zero length
 func GetAssetBalanceByAssetIdNonZeroLength(assetId string) (int64, error) {
 	var count int64
 	err := middleware.DB.
@@ -638,8 +616,6 @@ func GetAssetBalanceByAssetIdNonZeroLength(assetId string) (int64, error) {
 	return count, nil
 }
 
-// IsLimitAndOffsetValid
-// @dev: Check limit and offset is valid by total amount
 func IsLimitAndOffsetValid(assetId string, limit int, offset int) (bool, error) {
 	if !(limit > 0 && offset >= 0) {
 		return false, errors.New("invalid limit or offset")
@@ -667,8 +643,6 @@ func GetAssetHolderBalancePageNumberByPageSize(assetId string, pageSize int) (pa
 	return int(math.Ceil(float64(recordsNum) / float64(pageSize))), nil
 }
 
-// @dev: Use receives and transfers
-// @dev: Rat stands for Receices and transfers
 type UserAssetBalanceByRat struct {
 	UserId             int `json:"user_id"`
 	AssetBalanceAmount int `json:"asset_balance_amount"`
@@ -679,15 +653,11 @@ type AssetIdAndUserAssetBalanceByRat struct {
 	UserAssetBalance *[]UserAssetBalanceByRat `json:"user_asset_balance"`
 }
 
-// @dev: Use to maps to compute
-// GetAllAddressAmountMapByRatPositiveAmount
 func GetAssetIdAndUserAssetBalanceByRat() *[]AssetIdAndUserAssetBalanceByRat {
-	// TODO: Compute asset Balance by receives and transfers' maps
+
 	return nil
 }
 
-// GetAllAddressAmountMapByRat
-// @Description: Get all address amount map by receives and transfers
 func GetAllAddressAmountMapByRat(network models.Network) (*map[string]*AssetIdAndAmount, error) {
 	addressAmountMap := make(map[string]*AssetIdAndAmount)
 	receivesAddressAmountMap, err := AllAssetReceivesToAddressAmountMap(network)
@@ -727,11 +697,6 @@ func GetAllAddressAmountMapByRat(network models.Network) (*map[string]*AssetIdAn
 	return &addressAmountMap, nil
 }
 
-// TODO: Get all address amount map by receives and transfers, then store data in db
-
-// GetAllAddressAmountMapByRatPositiveAmount
-// @Description: Filter zero and negative amount of asset address
-// @dev: UTXO
 func GetAllAddressAmountMapByRatPositiveAmount(network models.Network) (*map[string]*AssetIdAndAmount, error) {
 	addressAmountMap := make(map[string]*AssetIdAndAmount)
 	allAddressAmountMapByRat, err := GetAllAddressAmountMapByRat(network)

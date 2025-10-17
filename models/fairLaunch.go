@@ -52,8 +52,6 @@ const (
 	StatusUnknown
 )
 
-// FairLaunchInfo
-// TODO: param FeeRate maybe need to rename
 type FairLaunchInfo struct {
 	gorm.Model
 	ImageData                      string           `json:"image_data"`
@@ -163,7 +161,6 @@ type FairLaunchMintedUserInfo struct {
 	Status                 FairLaunchStatus `json:"status" default:"1" gorm:"default:1"`
 }
 
-// Deprecated: Use FairLaunchMintedAndAvailableInfo instead
 type FairLaunchInventoryInfo struct {
 	gorm.Model
 	FairLaunchInfoID       int                      `json:"fair_launch_info_id" gorm:"not null;index"`

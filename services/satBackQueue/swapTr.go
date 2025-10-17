@@ -72,19 +72,18 @@ func SwapTrsScanToSwapTr(swapTrsScan SwapTrsScan) (swapTr SwapTr, err error) {
 		var AmountSat, AmountAsset, _type string
 
 		if token0 == swapTrsScan.TokenIn {
-			// sat In, asset Out
+
 			AmountSat = swapTrsScan.CalcPriceAmountIn
 			AmountAsset = swapTrsScan.CalcPriceAmountOut
 			_type = SwapTrTypeBuy
 
 		} else {
-			//	sat Out, asset In
+
 			AmountSat = swapTrsScan.CalcPriceAmountOut
 			AmountAsset = swapTrsScan.CalcPriceAmountIn
 			_type = SwapTrTypeSell
 		}
 
-		// @dev: Reverse the type
 		_type = ReverseSwapType(_type)
 
 		var satFloat, assetFloat, price *big.Float

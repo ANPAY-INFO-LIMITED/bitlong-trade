@@ -5,8 +5,6 @@ import (
 	"trade/models"
 )
 
-// AssetTransfer
-
 func CreateAssetTransfer(assetTransfer *models.AssetTransfer) error {
 	return middleware.DB.Create(assetTransfer).Error
 }
@@ -45,8 +43,6 @@ func DeleteAssetTransfer(id uint) error {
 	var assetTransfer models.AssetTransfer
 	return middleware.DB.Delete(&assetTransfer, id).Error
 }
-
-// AssetTransferProcessedDb
 
 func CreateAssetTransferProcessed(assetTransferProcessed *models.AssetTransferProcessedDb) error {
 	return middleware.DB.Create(assetTransferProcessed).Error
@@ -127,8 +123,6 @@ func DeleteAssetTransferProcessedSlice(assetTransferProcessedSlice *[]models.Ass
 	return middleware.DB.Delete(&assetTransferProcessedSlice).Error
 }
 
-// AssetTransferProcessedInputDb
-
 func CreateAssetTransferProcessedInput(assetTransferProcessedInput *models.AssetTransferProcessedInputDb) error {
 	return middleware.DB.Create(assetTransferProcessedInput).Error
 }
@@ -167,7 +161,6 @@ func ReadAssetTransferProcessedInputSliceByTxid(txid string) (*[]models.AssetTra
 	return &assetTransferProcessedInputSlice, err
 }
 
-// Deprecated
 func ReadAssetTransferProcessedInputSliceByAssetIdLimit(assetId string, limit int) (*[]models.AssetTransferProcessedInputDb, error) {
 	var assetTransferProcessedInputSlice []models.AssetTransferProcessedInputDb
 	err := middleware.DB.Where("asset_id = ?", assetId).Limit(limit).Find(&assetTransferProcessedInputSlice).Error
@@ -180,8 +173,6 @@ func ReadAssetTransferProcessedInputByTxid(txid string) (*models.AssetTransferPr
 	return &assetTransferProcessedInput, err
 }
 
-// ReadAssetTransferProcessedInputByTxidAndIndex
-// @dev: `index`
 func ReadAssetTransferProcessedInputByTxidAndIndex(txid string, index int) (*models.AssetTransferProcessedInputDb, error) {
 	var assetTransferProcessedInput models.AssetTransferProcessedInputDb
 	err := middleware.DB.Where("txid = ? AND `index` = ?", txid, index).First(&assetTransferProcessedInput).Error
@@ -204,8 +195,6 @@ func DeleteAssetTransferProcessedInput(id uint) error {
 func DeleteAssetTransferProcessedInputSlice(assetTransferProcessedInputSlice *[]models.AssetTransferProcessedInputDb) error {
 	return middleware.DB.Delete(assetTransferProcessedInputSlice).Error
 }
-
-// AssetTransferProcessedOutputDb
 
 func CreateAssetTransferProcessedOutput(assetTransferProcessedOutput *models.AssetTransferProcessedOutputDb) error {
 	return middleware.DB.Create(assetTransferProcessedOutput).Error
@@ -239,7 +228,6 @@ func ReadAssetTransferProcessedOutputSliceByAssetId(assetId string) (*[]models.A
 	return &assetTransferProcessedOutputSlice, err
 }
 
-// Deprecated
 func ReadAssetTransferProcessedOutputSliceByAssetIdLimit(assetId string, limit int) (*[]models.AssetTransferProcessedOutputDb, error) {
 	var assetTransferProcessedOutputSlice []models.AssetTransferProcessedOutputDb
 	err := middleware.DB.Where("asset_id = ?", assetId).Limit(limit).Find(&assetTransferProcessedOutputSlice).Error
@@ -264,8 +252,6 @@ func ReadAssetTransferProcessedOutputSliceWhoseAddressIsNull() (*[]models.AssetT
 	return &assetTransferProcessedOutputSlice, err
 }
 
-// ReadAssetTransferProcessedOutputByTxidAndIndex
-// @dev: `index`
 func ReadAssetTransferProcessedOutputByTxidAndIndex(txid string, index int) (*models.AssetTransferProcessedOutputDb, error) {
 	var assetTransferProcessedOutput models.AssetTransferProcessedOutputDb
 	err := middleware.DB.Where("txid = ? AND `index` = ?", txid, index).First(&assetTransferProcessedOutput).Error

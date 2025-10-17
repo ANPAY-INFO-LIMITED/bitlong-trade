@@ -11,9 +11,9 @@ type AccountOutsideMission struct {
 	Type      AOMType  `gorm:"type:enum('btc','asset');column:type;index:idx_type" json:"type"`
 	Target    string   `gorm:"type:text;column:target" json:"target"`
 	Hash      string   `gorm:"type:varchar(128);column:hash" json:"hash"`
-	Amount    float64  `gorm:"type:decimal(15,2);column:amount" json:"amount"`
-	FeeLimit  float64  `gorm:"type:decimal(15,2);column:fee_limit" json:"feeLimit"`
-	Fee       float64  `gorm:"type:decimal(15,2);column:fee" json:"fee"`
+	Amount    float64  `gorm:"type:decimal(25,2);column:amount" json:"amount"`
+	FeeLimit  float64  `gorm:"type:decimal(25,2);column:fee_limit" json:"feeLimit"`
+	Fee       float64  `gorm:"type:decimal(25,2);column:fee" json:"fee"`
 	FeeType   string   `gorm:"type:varchar(128);column:fee_type" json:"feeType"`
 	BalanceId uint     `gorm:"column:balance_id;type:bigint unsigned" json:"balanceId"`
 	TxId      string   `gorm:"type:varchar(128);column:tx_id" json:"txId"`

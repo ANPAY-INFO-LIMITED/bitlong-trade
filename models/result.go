@@ -12,24 +12,33 @@ type JsonResult struct {
 	Data    any     `json:"data"`
 }
 
+type Result2 struct {
+	Errno  ErrCode `json:"errno"`
+	ErrMsg string  `json:"errmsg"`
+	Data   any     `json:"data"`
+}
+
 type ErrCode int
 
 var (
 	SuccessErr = SUCCESS.Error()
 )
 
-// Err type:Normal
 const (
 	SUCCESS    ErrCode = 200
 	DefaultErr ErrCode = -1
 	ReadDbErr  ErrCode = 4001
+	SUCCESS_2  ErrCode = 0
 )
 
 func (e ErrCode) Code() int {
 	return int(e)
 }
 
-// Err type:Unknown
+func (e ErrCode) ToCode() Code {
+	return Code(e)
+}
+
 const (
 	NameToIdErr ErrCode = iota + 500
 	IdAtoiErr
@@ -274,6 +283,7 @@ const (
 	LimitLessThanZeroErr
 	RowsLessThanZeroErr
 	OffsetLessThanZeroErr
+	StateLessThanZeroErr
 	PageLessThanZeroErr
 	UsernameNotMatchErr
 	CalcAddLiquidityErr
@@ -340,16 +350,104 @@ const (
 	GetAssetLocalMintHistoryInfoCountErr
 	GetAssetLocalMintHistoryInfoErr
 	GetAssetsNameMapErr
+	GetChannelNodeListErr
+	GetChannelIdsAndPointsErr
+	TradeToUserFundChannelErr
+	GetLastProofErr
+	TxUpdateErr
+	CreateSellOrderErr
+	BuySOrderErr
+	PublishSOrderTxErr
+	QueryPsbtTlSwapCreateInfosErr
+	QueryPsbtTlSwapBoughtInfosErr
+	QueryPsbtTlSwapQueryCreateInfosErr
+	QueryPsbtTlSwapQueryBoughtInfosErr
+	QueryPsbtTlSwapQueryCreateInfosByIdErr
+	QueryPsbtTlSwapQueryBoughtInfosByIdErr
+	QueryPsbtTlSwapCreateInfosCountErr
+	QueryPsbtTlSwapBoughtInfosCountErr
+	QueryPsbtTlSwapQueryCreateInfosCountErr
+	QueryPsbtTlSwapQueryBoughtInfosCountErr
+	QueryPsbtTlSwapQueryCreateInfosByIdCountErr
+	QueryPsbtTlSwapQueryBoughtInfosByIdCountErr
+	InvalidReq
+	GetAssetHolderBalanceCountErr
+	GetAssetHolderBalanceErr
+	GetAccountAssetBalanceCountErr
+	GetAccountAssetBalanceErr
+	GetAssetManagedUtxoCountErr
+	GetAssetManagedUtxoErr
+	FeatureIsDisabled
+	PureAddLiquidityErr
+	GetConfErr
+	CreateBoxDeviceInfoErr
+	CreateBoxChannelsInfoErr
+	GetBoxDeviceActiveInfoToH5Err
+	UpdateBoxChannelInfoErr
+	HandleForceClosedAssetChannelToOpenErr
+	GetMcAndAliasErr
+	OpenAssetChannelErr
+	GetBoxDeviceAndChannelsInfoErr
+	GetTradeChannelsInfoErr
+	SetBackAssetsRecordErr
+	GetTapAddrsErr
+	GetAllBoxDeviceInfoErr
+	CreateBoxAssetPushInfoErr
+	UploadBoxIPErr
+	GetBoxIPErr
+	OsUserHomeDirErr
+	InvalidFilePath
+	BoxFrpErr
+	QuerySecretErr
+	EncodeDataToBase64Err
+
+	AvailablePortErr
+	InvalidPort
+
+	ApiNotAllowedErr
+	ValidateBoxProxyErr
+	QueryPortErr
+	BoxProxyCallRespErr
+	BoxProxyCallRespMsgErr
+	BoxProxyCallRespCodeErr
+
+	RedisSetErr
+	RedisGetErr
+	PortAlreadyUsed
+
+	PubKeyEmpty
+	SecretEmpty
+
+	GetChannelCountErr
+	GetTotalCapacityErr
+	GetNodeCountErr
+	GetChannelInfoErr
+	SearchChannelInfoErr
+
+	CreateDeliAddrErr
+	ReadDeliAddrErr
+	UpdateDeliAddrErr
+	DeleteDeliAddrErr
+
+	GetLoDataHistoryErr
+
+	CreateDeliAddrRecInfoErr
+
+	GetTimesBatchProcessSliceErr
+	ProcessChannelInfoErr
+
+	GetCountriesErr
+	GetCountriesEnErr
+
+	CreateContactInfoErr
 )
 
-// Err type:CustodyAccount
 const (
 	_ ErrCode = iota + 1000
 	_
 	_
 	_
 
-	//CcustodyAccountPayInsideMissionSuccess
 	CustodyAccountPayInsideMissionFaild
 	CustodyAccountPayInsideMissionPending
 )
@@ -357,6 +455,8 @@ const (
 func (e ErrCode) Error() string {
 	switch {
 	case errors.Is(e, SUCCESS):
+		return ""
+	case errors.Is(e, SUCCESS_2):
 		return ""
 	case errors.Is(e, DefaultErr):
 		return "error"
@@ -401,4 +501,55 @@ func MakeJsonErrorResultForHttp(code ErrCode, errorString string, data any) *Jso
 		jsr.Success = false
 	}
 	return &jsr
+}
+
+type Code int
+
+var (
+	NullStr = ""
+)
+
+func ToCode(c ErrCode) Code {
+	if errors.Is(c, SUCCESS) {
+		return 0
+	}
+	return Code(c)
+}
+
+func (c Code) Int() int {
+	return int(c)
+}
+
+type Resp struct {
+	Code Code   `json:"code"`
+	Msg  string `json:"msg"`
+	Data any    `json:"data"`
+}
+
+type RespT[T any] struct {
+	Code Code   `json:"code"`
+	Msg  string `json:"msg"`
+	Data T      `json:"data"`
+}
+
+type (
+	RespStr   RespT[string]
+	RespInt   RespT[int]
+	RespInt64 RespT[int64]
+)
+
+type RespLnc[T any] struct {
+	Code Code    `json:"code"`
+	Msg  string  `json:"msg"`
+	Data LncT[T] `json:"data"`
+}
+
+type Lnc struct {
+	List  []any `json:"list"`
+	Count int64 `json:"count"`
+}
+
+type LncT[T any] struct {
+	List  []T   `json:"list"`
+	Count int64 `json:"count"`
 }

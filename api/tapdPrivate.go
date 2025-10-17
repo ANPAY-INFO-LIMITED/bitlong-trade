@@ -2,15 +2,28 @@ package api
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
-	"github.com/lightninglabs/taproot-assets/taprpc"
-	"github.com/lightninglabs/taproot-assets/taprpc/mintrpc"
-	"github.com/lightninglabs/taproot-assets/taprpc/universerpc"
+	"errors"
+	"io"
 	"strconv"
 	"strings"
+	"trade/btlLog"
 	"trade/config"
 	"trade/models"
+	"trade/rpc/btlchannelrpc"
+	"trade/services/nodemanage"
 	"trade/utils"
+
+	"github.com/lightninglabs/taproot-assets/rfqmath"
+	"github.com/lightninglabs/taproot-assets/taprpc"
+	"github.com/lightninglabs/taproot-assets/taprpc/mintrpc"
+	"github.com/lightninglabs/taproot-assets/taprpc/tapchannelrpc"
+	"github.com/lightninglabs/taproot-assets/taprpc/universerpc"
+	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
+	"github.com/lightningnetwork/lnd/lntypes"
+	"github.com/lightningnetwork/lnd/record"
 )
 
 func assetLeaves(isGroup bool, id string, proofType universerpc.ProofType) (*universerpc.AssetLeafResponse, error) {
@@ -304,19 +317,19 @@ func newAddr(assetId string, amt int, proofCourierAddr string) (*taprpc.Addr, er
 	defer connClose()
 	client := taprpc.NewTaprootAssetsClient(conn)
 	_assetIdByteSlice, _ := hex.DecodeString(assetId)
-	if !strings.HasPrefix(proofCourierAddr, "universerpc://") {
-		proofCourierAddr = "universerpc://" + proofCourierAddr
-	}
-	request := &taprpc.NewAddrRequest{
-		AssetId:          _assetIdByteSlice,
-		Amt:              uint64(amt),
-		ProofCourierAddr: proofCourierAddr,
-	}
-	response, err := client.NewAddr(context.Background(), request)
-	if err != nil {
-		return nil, utils.AppendErrorInfo(err, "NewAddr")
-	}
-	return response, nil
+	if !strings.HasPrefix(proofCourierAddr, "universerpc: 
+		proofCourierAddr = "universerpc: 
+}
+request := &taprpc.NewAddrRequest{
+AssetId:          _assetIdByteSlice,
+Amt:              uint64(amt),
+ProofCourierAddr: proofCourierAddr,
+}
+response, err := client.NewAddr(context.Background(), request)
+if err != nil {
+return nil, utils.AppendErrorInfo(err, "NewAddr")
+}
+return response, nil
 }
 
 func sendAsset(tapAddrs string, feeRate int) (*taprpc.SendAssetResponse, error) {
@@ -506,7 +519,7 @@ func fetchAssetMetaByAssetIds(assetIds []string) (*map[string]string, *map[strin
 		response, err := client.FetchAssetMeta(context.Background(), request)
 		if err != nil {
 			idMapErr[assetId] = err
-			//continue
+
 		}
 		if response == nil {
 			idMapData[assetId] = ""
@@ -535,4 +548,261 @@ func queryAssetRoots(assetId string) *universerpc.QueryRootResponse {
 		return nil
 	}
 	return roots
+}
+
+func fundChannel(assetId string, assetAmount int, peerPubkey string, feeRate int, pushSat int, localAmt int) (*btlchannelrpc.FundBtlChannelResponse, error) {
+	connConfiguration := GetConnConfiguration(ClientTypeTapd)
+	conn, connClose := utils.GetConn(connConfiguration.GrpcHost, connConfiguration.TlsCertPath, connConfiguration.MacaroonPath)
+	defer connClose()
+	assetIdBytes, err := hex.DecodeString(assetId)
+	if err != nil {
+		return nil, err
+	}
+
+	PubKey, err := hex.DecodeString(peerPubkey)
+	if err != nil {
+		return nil, err
+	}
+
+	if pushSat != 0 {
+		pushSat = 0
+	}
+
+	client := btlchannelrpc.NewBtlChannelsClient(conn)
+	req := &btlchannelrpc.FundBtlChannelRequest{
+		AssetAmount:        uint64(assetAmount),
+		AssetId:            assetIdBytes,
+		PeerPubkey:         PubKey,
+		FeeRateSatPerVbyte: uint32(feeRate),
+		LocalAmt:           uint64(localAmt),
+	}
+
+	response, err := client.FundBtlChannel(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+	return response, err
+}
+
+func boxFundChannel(assetId string, assetAmount int64, peerPubkey string, feeRate int, pushSat int, localAmt int, serverIdentityPubkey string) (*btlchannelrpc.FundBtlChannelResponse, error) {
+
+	node, err := nodemanage.GetNodeCoonPubKey(serverIdentityPubkey)
+	if err != nil {
+		return nil, err
+	}
+	assetIdBytes, err := hex.DecodeString(assetId)
+	if err != nil {
+		return nil, err
+	}
+
+	PubKey, err := hex.DecodeString(peerPubkey)
+	if err != nil {
+		return nil, err
+	}
+
+	client := btlchannelrpc.NewBtlChannelsClient(node.TapCon)
+	req := &btlchannelrpc.FundBtlChannelRequest{
+		AssetAmount:        uint64(assetAmount),
+		AssetId:            assetIdBytes,
+		PeerPubkey:         PubKey,
+		FeeRateSatPerVbyte: uint32(feeRate),
+		LocalAmt:           uint64(localAmt),
+	}
+
+	if pushSat != 0 {
+		req.PushSat = int64(pushSat)
+	}
+	btlLog.BoxAssetPush.Info("\nboxFundChannel\n %v", req)
+	response, err := client.FundBtlChannel(context.Background(), req)
+	if err != nil {
+		btlLog.BoxAssetPush.Error("\nboxFundChannel\n %v", err)
+		return nil, err
+	}
+	return response, err
+}
+
+func keySendToAssetChannel(assetId string, amount int64, pubkey string, outgoingChanId int) (*lnrpc.Payment, error) {
+	connConfiguration := GetConnConfiguration(ClientTypeTapd)
+	conn, connClose := utils.GetConn(connConfiguration.GrpcHost, connConfiguration.TlsCertPath, connConfiguration.MacaroonPath)
+	defer connClose()
+
+	if assetId == "" || amount == 0 || pubkey == "" {
+		return nil, errors.New("invalid params")
+	}
+
+	client := tapchannelrpc.NewTaprootAssetChannelsClient(conn)
+
+	assetIdStr, err := hex.DecodeString(assetId)
+	if err != nil {
+		return nil, err
+	}
+
+	peerPubkey, err := hex.DecodeString(pubkey)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &tapchannelrpc.SendPaymentRequest{
+		AssetId:     assetIdStr,
+		AssetAmount: uint64(amount),
+		PaymentRequest: &routerrpc.SendPaymentRequest{
+			Dest:              peerPubkey,
+			Amt:               int64(rfqmath.DefaultOnChainHtlcSat),
+			TimeoutSeconds:    30,
+			DestCustomRecords: make(map[uint64][]byte),
+		},
+	}
+
+	if outgoingChanId != 0 {
+		req.PaymentRequest.OutgoingChanIds = []uint64{uint64(outgoingChanId)}
+	}
+
+	destRecords := req.PaymentRequest.DestCustomRecords
+	_, isKeysend := destRecords[record.KeySendType]
+	var rHash []byte
+	var preimage lntypes.Preimage
+	if _, err := rand.Read(preimage[:]); err != nil {
+		return nil, err
+	}
+	if !isKeysend {
+		destRecords[record.KeySendType] = preimage[:]
+		hash := preimage.Hash()
+		rHash = hash[:]
+
+		req.PaymentRequest.PaymentHash = rHash
+
+	}
+	resp, err := client.SendPayment(context.Background(), req)
+	if err != nil {
+		btlLog.BoxAssetPush.Error("\nkeysend\n %v", err)
+		return nil, err
+	}
+	for {
+		resp1, err := resp.Recv()
+		if err != nil {
+			if err == io.EOF {
+				btlLog.BoxAssetPush.Error("\nkeysend io.EOF\n %v", err)
+				return nil, err
+			}
+			btlLog.BoxAssetPush.Error("\nkeysend stream Recv err:\n %v", err)
+			return nil, err
+		} else if resp1 != nil {
+			resp2 := resp1.GetPaymentResult()
+			if resp2 != nil {
+				if resp2.Status == 2 {
+					return resp2, nil
+				} else if resp2.Status == 3 {
+					return nil, err
+				}
+			}
+		}
+	}
+}
+
+func boxKeySendToAssetChannel(client tapchannelrpc.TaprootAssetChannelsClient, assetId string, amount int64, pubkey string, outgoingChanId int64, serverIdentityPubkey string) (*lnrpc.Payment, error) {
+
+	if assetId == "" || amount == 0 || pubkey == "" {
+		return nil, errors.New("invalid params")
+	}
+
+	assetIdStr, err := hex.DecodeString(assetId)
+	if err != nil {
+		return nil, err
+	}
+
+	peerPubkey, err := hex.DecodeString(pubkey)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &tapchannelrpc.SendPaymentRequest{
+		AssetId:     assetIdStr,
+		AssetAmount: uint64(amount),
+		PaymentRequest: &routerrpc.SendPaymentRequest{
+			Dest:              peerPubkey,
+			Amt:               int64(rfqmath.DefaultOnChainHtlcSat),
+			TimeoutSeconds:    30,
+			DestCustomRecords: make(map[uint64][]byte),
+		},
+	}
+
+	if outgoingChanId != 0 {
+		req.PaymentRequest.OutgoingChanIds = []uint64{uint64(outgoingChanId)}
+	}
+
+	destRecords := req.PaymentRequest.DestCustomRecords
+	_, isKeysend := destRecords[record.KeySendType]
+	var rHash []byte
+	var preimage lntypes.Preimage
+	if _, err := rand.Read(preimage[:]); err != nil {
+		return nil, err
+	}
+	if !isKeysend {
+		destRecords[record.KeySendType] = preimage[:]
+		hash := preimage.Hash()
+		rHash = hash[:]
+
+		req.PaymentRequest.PaymentHash = rHash
+
+	}
+	resp, err := client.SendPayment(context.Background(), req)
+	if err != nil {
+		btlLog.BoxAssetPush.Error("\nkeysend\n %v", err)
+		return nil, err
+	}
+	for {
+		resp1, err := resp.Recv()
+		if err != nil {
+			if err == io.EOF {
+				btlLog.BoxAssetPush.Error("\nkeysend io.EOF\n %v", err)
+				return nil, err
+			}
+			return nil, err
+		} else if resp1 != nil {
+			resp2 := resp1.GetPaymentResult()
+			if resp2 != nil {
+				if resp2.Status == 2 {
+					return resp2, nil
+				} else if resp2.Status == 3 {
+					return nil, err
+				}
+			}
+		}
+	}
+}
+
+func boxGetTapAddrs(serverIdentityPubkey string, assetId string, amt int64) (string, error) {
+	assetIdStr, err := hex.DecodeString(assetId)
+	if err != nil {
+		return "", err
+	}
+	node, err := nodemanage.GetNodeCoonPubKey(serverIdentityPubkey)
+	if err != nil {
+		return "", err
+	}
+
+	client := taprpc.NewTaprootAssetsClient(node.TapCon)
+	resp, err := client.NewAddr(context.Background(), &taprpc.NewAddrRequest{
+		AssetId: assetIdStr,
+		Amt:     uint64(amt),
+	})
+	if err != nil {
+		return "", err
+	}
+	return resp.Encoded, nil
+}
+
+func boxAddrReceives(serverIdentityPubkey string, assetAddr string) (*taprpc.AddrReceivesResponse, error) {
+	node, err := nodemanage.GetNodeCoonPubKey(serverIdentityPubkey)
+	if err != nil {
+		return nil, err
+	}
+	client := taprpc.NewTaprootAssetsClient(node.TapCon)
+	resp, err := client.AddrReceives(context.Background(), &taprpc.AddrReceivesRequest{
+		FilterAddr: assetAddr,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }

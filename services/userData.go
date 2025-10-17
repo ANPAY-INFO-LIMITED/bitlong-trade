@@ -43,12 +43,11 @@ func GetUserInfoData(username string) (*models.UserInfoData, error) {
 		Username:     username,
 		UserId:       int(user.ID),
 		CreatedAt:    user.CreatedAt,
-		Account:      account.UserAccountCode,
 		AccountId:    int(account.ID),
 		UserRecentIp: user.RecentIpAddresses,
 	}
 	if err != nil {
-		// @dev: return err here
+
 		return &userInfoData, err
 	}
 	return &userInfoData, nil
@@ -165,7 +164,7 @@ func GetUserAccountBtcBalanceData(username string) (*models.UserAccountBtcBalanc
 		Amount: int(balance),
 	}
 	if err != nil {
-		// @dev: return error info here
+
 		return &userAccountBtcBalanceData, err
 	}
 	return &userAccountBtcBalanceData, nil
@@ -192,47 +191,45 @@ func GetUserAccountAssetBalanceData(accountId int) (*[]models.UserAccountAssetBa
 	return &userAccountAssetBalanceDatas, nil
 }
 
-// GetUserData
-// @Description: Get user data
 func GetUserData(username string) (*models.UserData, error) {
 	var userData models.UserData
 	errorInfos := new([]string)
 	userInfo, err := GetUserInfoData(username)
 	if err != nil {
 		*errorInfos = append(*errorInfos, err.Error())
-		//return nil, utils.AppendErrorInfo(err, "GetUserInfoData")
+
 	}
 	userBtcBalance, err := GetUserBtcBalanceData(username)
 	if err != nil {
 		*errorInfos = append(*errorInfos, err.Error())
-		//return nil, utils.AppendErrorInfo(err, "GetUserBtcBalanceData")
+
 	}
 	userAssetBalance, err := GetUserAssetBalanceData(username)
 	if err != nil {
 		*errorInfos = append(*errorInfos, err.Error())
-		//return nil, utils.AppendErrorInfo(err, "GetUserAssetBalanceData")
+
 	}
 	userAddrReceive, err := GetUserAddrReceiveData(username)
 	if err != nil {
 		*errorInfos = append(*errorInfos, err.Error())
-		//return nil, utils.AppendErrorInfo(err, "GetUserAddrReceiveData")
+
 	}
 	userAssetTransfer, err := GetUserAssetTransferData(username)
 	if err != nil {
 		*errorInfos = append(*errorInfos, err.Error())
-		//return nil, utils.AppendErrorInfo(err, "GetUserAssetTransferData")
+
 	}
 	userAccountBtcBalance, err := GetUserAccountBtcBalanceData(username)
 	if err != nil {
 		*errorInfos = append(*errorInfos, err.Error())
-		//return nil, utils.AppendErrorInfo(err, "GetUserAccountBtcBalanceData")
+
 	}
 	var accountId int
 	accountId = userInfo.AccountId
 	userAccountAssetBalance, err := GetUserAccountAssetBalanceData(accountId)
 	if err != nil {
 		*errorInfos = append(*errorInfos, err.Error())
-		//return nil, utils.AppendErrorInfo(err, "GetUserAccountAssetBalanceData")
+
 	}
 	userData = models.UserData{
 		QueryTime:               time.Now(),

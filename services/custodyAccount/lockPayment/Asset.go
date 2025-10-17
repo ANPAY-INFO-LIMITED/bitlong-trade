@@ -10,15 +10,13 @@ import (
 	"trade/models"
 	cModels "trade/models/custodyModels"
 	caccount "trade/services/custodyAccount/account"
-	"trade/services/custodyAccount/defaultAccount/custodyAssets"
+	"trade/services/custodyAccount/defaultAccount/custodyBalance"
 )
 
-// GetAssetBalance 获取用户资产余额
 func GetAssetBalance(usr *caccount.UserInfo, assetId string) (err error, unlock float64, locked float64, tag1 float64) {
-	tx := middleware.DB.Begin()
-	defer tx.Rollback()
+	db := middleware.DB
 	lockedBalance := cModels.LockBalance{}
-	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, assetId).First(&lockedBalance).Error; err != nil {
+	if err = db.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, assetId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			btlLog.CUST.Error(err.Error())
 			return ServiceError, 0, 0, 0
@@ -30,7 +28,7 @@ func GetAssetBalance(usr *caccount.UserInfo, assetId string) (err error, unlock 
 	tag1 = lockedBalance.Tag1
 
 	assetBalance := cModels.AccountBalance{}
-	if err = tx.Where("account_id =? AND asset_id =?", usr.Account.ID, assetId).First(&assetBalance).Error; err != nil {
+	if err = db.Where("account_id =? AND asset_id =?", usr.Account.ID, assetId).First(&assetBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			btlLog.CUST.Error(err.Error())
 			return ServiceError, 0, 0, 0
@@ -39,26 +37,22 @@ func GetAssetBalance(usr *caccount.UserInfo, assetId string) (err error, unlock 
 		err = nil
 	}
 	unlock = assetBalance.Amount
-
-	tx.Commit()
 	return
 }
 
-// LockAsset 冻结Asset
 func LockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount float64, tag int) error {
 
 	tx := middleware.DB.Begin()
 	defer tx.Rollback()
 	var err error
 
-	// lock btc
 	lockedBalance := cModels.LockBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, assetId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			btlLog.CUST.Error(err.Error())
 			return ServiceError
 		}
-		// Init Balance record
+
 		lockedBalance.AssetId = assetId
 		lockedBalance.AccountID = usr.LockAccount.ID
 		lockedBalance.Amount = 0
@@ -76,7 +70,6 @@ func LockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount f
 		return ServiceError
 	}
 
-	// lockBill record
 	lockBill := cModels.LockBill{
 		AccountID: usr.LockAccount.ID,
 		AssetId:   assetId,
@@ -95,7 +88,7 @@ func LockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount f
 		return ServiceError
 	}
 	Invoice := InvoiceLocked
-	// update user account record
+
 	balanceBill := models.Balance{
 		AccountId:   usr.Account.ID,
 		BillType:    models.BiLLTypeLock,
@@ -115,7 +108,7 @@ func LockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount f
 		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
-	_, err = custodyAssets.LessAssetBalance(tx, usr, balanceBill.Amount, balanceBill.ID, *balanceBill.AssetId, cModels.ChangeTypeLock)
+	_, err = custodyBalance.LessAssetBalance(tx, usr, balanceBill.Amount, balanceBill.ID, *balanceBill.AssetId, cModels.ChangeTypeLock)
 	if err != nil {
 		return err
 	}
@@ -128,7 +121,6 @@ func UnlockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount
 	defer tx.Rollback()
 	var err error
 
-	// check locked balance
 	lockedBalance := cModels.LockBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, assetId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -137,7 +129,7 @@ func UnlockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount
 		}
 		lockedBalance.Amount = 0
 	}
-	// tag 1.0 check awardAmount
+
 	if tag == 0 {
 		if lockedBalance.Amount < amount {
 			return NoEnoughBalance
@@ -145,13 +137,13 @@ func UnlockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount
 		if (lockedBalance.Amount - lockedBalance.Tag1) < amount {
 			return fmt.Errorf("%w,have  %f is disable unlock", NoEnoughBalance, lockedBalance.Tag1)
 		}
-		// update locked balance
+
 		lockedBalance.Amount -= amount
 	} else if tag == 1 {
 		if lockedBalance.Tag1 < amount {
 			return fmt.Errorf("%w,have  %f ", NoEnoughBalance, lockedBalance.Tag1)
 		}
-		// update locked balance
+
 		lockedBalance.Amount -= amount
 		lockedBalance.Tag1 -= amount
 	} else {
@@ -163,7 +155,6 @@ func UnlockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount
 		return ServiceError
 	}
 
-	// unlockBill record
 	unlockBill := cModels.LockBill{
 		AccountID: usr.LockAccount.ID,
 		AssetId:   assetId,
@@ -183,7 +174,7 @@ func UnlockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount
 	}
 
 	Invoice := InvoiceUnlocked
-	// update user account record
+
 	balanceBill := models.Balance{
 		AccountId:   usr.Account.ID,
 		BillType:    models.BiLLTypeLock,
@@ -203,8 +194,8 @@ func UnlockAsset(usr *caccount.UserInfo, lockedId string, assetId string, amount
 		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
-	// update user account
-	_, err = custodyAssets.AddAssetBalance(tx, usr, balanceBill.Amount, balanceBill.ID, *balanceBill.AssetId, cModels.ChangeTypeUnlock)
+
+	_, err = custodyBalance.AddAssetBalance(tx, usr, balanceBill.Amount, balanceBill.ID, *balanceBill.AssetId, cModels.ChangeTypeUnlock)
 	if err != nil {
 		return err
 	}
@@ -217,7 +208,7 @@ func transferLockedAsset(usr *caccount.UserInfo, lockedId string, assetId string
 	defer tx.Rollback()
 
 	var err error
-	// check locked balance
+
 	lockedBalance := cModels.LockBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, assetId).First(&lockedBalance).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -233,13 +224,13 @@ func transferLockedAsset(usr *caccount.UserInfo, lockedId string, assetId string
 		if (lockedBalance.Amount - lockedBalance.Tag1) < amount {
 			return fmt.Errorf("%w,have  %f is disable unlock", NoEnoughBalance, lockedBalance.Tag1)
 		}
-		// update locked balance
+
 		lockedBalance.Amount -= amount
 	} else if tag == 1 {
 		if lockedBalance.Tag1 < amount {
 			return fmt.Errorf("%w,have  %f ", NoEnoughBalance, lockedBalance.Tag1)
 		}
-		// update locked balance
+
 		lockedBalance.Amount -= amount
 		lockedBalance.Tag1 -= amount
 	} else {
@@ -250,7 +241,6 @@ func transferLockedAsset(usr *caccount.UserInfo, lockedId string, assetId string
 		return ServiceError
 	}
 
-	// unlockBill record
 	transferBill := cModels.LockBill{
 		AccountID: usr.LockAccount.ID,
 		AssetId:   assetId,
@@ -269,7 +259,6 @@ func transferLockedAsset(usr *caccount.UserInfo, lockedId string, assetId string
 		return ServiceError
 	}
 
-	// Create transferBTC BillExt
 	BillExt := cModels.LockBillExt{
 		BillId:     transferBill.ID,
 		LockId:     lockedId,
@@ -290,7 +279,6 @@ func transferLockedAsset(usr *caccount.UserInfo, lockedId string, assetId string
 		invoice = InvoicePendingOderAward
 	}
 
-	// update user account record
 	balanceBill := models.Balance{
 		AccountId:   toUser.Account.ID,
 		BillType:    models.BillTypePendingOder,
@@ -311,8 +299,7 @@ func transferLockedAsset(usr *caccount.UserInfo, lockedId string, assetId string
 		return ServiceError
 	}
 
-	// update user account
-	_, err = custodyAssets.AddAssetBalance(tx, toUser, balanceBill.Amount, balanceBill.ID, *balanceBill.AssetId, cModels.ChangeTypeLockedTransfer)
+	_, err = custodyBalance.AddAssetBalance(tx, toUser, balanceBill.Amount, balanceBill.ID, *balanceBill.AssetId, cModels.ChangeTypeLockedTransfer)
 	if err != nil {
 		return err
 	}
@@ -326,7 +313,7 @@ func transferAsset(usr *caccount.UserInfo, lockedId string, assetId string, amou
 	defer tx.Rollback()
 
 	var err error
-	// Create transferBTC Bill
+
 	transferBill := cModels.LockBill{
 		AccountID: usr.LockAccount.ID,
 		LockId:    lockedId,
@@ -344,7 +331,7 @@ func transferAsset(usr *caccount.UserInfo, lockedId string, assetId string, amou
 		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
-	// Create transferBTC BillExt
+
 	BillExt := cModels.LockBillExt{
 		BillId:     transferBill.ID,
 		LockId:     lockedId,
@@ -370,7 +357,7 @@ func transferAsset(usr *caccount.UserInfo, lockedId string, assetId string, amou
 	if usr.User.Username == FeeNpubkey {
 		payInvoice = InvoicePendingOderAward
 	}
-	// transfer balance record
+
 	balanceBill := models.Balance{
 		AccountId:   usr.Account.ID,
 		BillType:    models.BillTypePendingOder,
@@ -390,14 +377,13 @@ func transferAsset(usr *caccount.UserInfo, lockedId string, assetId string, amou
 		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
-	// update user account
-	_, err = custodyAssets.LessAssetBalance(tx, usr, balanceBill.Amount, balanceBill.ID, *balanceBill.AssetId, cModels.ChangeTypeLockedTransfer)
+
+	_, err = custodyBalance.LessAssetBalance(tx, usr, balanceBill.Amount, balanceBill.ID, *balanceBill.AssetId, cModels.ChangeTypeLockedTransfer)
 	if err != nil {
 		return err
 	}
 	tx.Commit()
 
-	//Second tx
 	txRev := middleware.DB.Begin()
 	defer txRev.Rollback()
 
@@ -406,7 +392,6 @@ func transferAsset(usr *caccount.UserInfo, lockedId string, assetId string, amou
 		recInvoice = InvoicePendingOderAward
 	}
 
-	// update user account record
 	balanceBillRev := models.Balance{
 		AccountId:   toUser.Account.ID,
 		BillType:    models.BillTypePendingOder,
@@ -426,15 +411,14 @@ func transferAsset(usr *caccount.UserInfo, lockedId string, assetId string, amou
 		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
-	// update billExt record
+
 	BillExt.Status = cModels.LockBillExtStatusSuccess
 	if err = txRev.Save(&BillExt).Error; err != nil {
 		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
-	// update user account
-	_, err = custodyAssets.AddAssetBalance(txRev, toUser, balanceBillRev.Amount, balanceBillRev.ID, *balanceBillRev.AssetId, cModels.ChangeTypeLockedTransfer)
+	_, err = custodyBalance.AddAssetBalance(txRev, toUser, balanceBillRev.Amount, balanceBillRev.ID, *balanceBillRev.AssetId, cModels.ChangeTypeLockedTransfer)
 	if err != nil {
 		return err
 	}

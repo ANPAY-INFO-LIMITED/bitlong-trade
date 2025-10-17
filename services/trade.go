@@ -51,7 +51,7 @@ func (ts *TransactionService) processMessageQueue() {
 func (ts *TransactionService) ProcessMessage(client *models.Client, msg []byte) {
 	select {
 	case ts.messageQueue <- messageTask{client: client, message: msg}:
-		// Message added to queue
+
 	default:
 		log.Println("Message queue is full, dropping message")
 	}
@@ -117,7 +117,7 @@ func (ts *TransactionService) BroadcastMessage(message interface{}) error {
 	for _, client := range ts.Clients {
 		select {
 		case client.Send <- jsonMessage:
-			// Message sent successfully
+
 		default:
 			go ts.RemoveClient(client)
 			close(client.Send)
@@ -362,7 +362,7 @@ func (ts *TransactionService) startDataCollection(subscriptionKey string, interv
 			ts.Mutex.RLock()
 			if len(ts.subscriptionManager.subscriptions[subscriptionKey]) == 0 {
 				ts.Mutex.RUnlock()
-				return // Stop if there are no more subscribers
+				return
 			}
 			data := ts.collectData(subscriptionKey)
 			ts.Mutex.RUnlock()

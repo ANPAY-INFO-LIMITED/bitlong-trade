@@ -1,8 +1,9 @@
 package handlers
 
 import (
-	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
 	"trade/models"
@@ -250,9 +251,9 @@ func GetAssetManagedUtxoLimitAndOffset(c *gin.Context) {
 	offset := getAssetManagedUtxoLimitAndOffsetRequest.Offset
 
 	{
-		// @dev: total page number
+
 		number, err := services.GetAssetManagedUtxoPageNumberByPageSize(assetId, limit)
-		// @dev: limit is pageSize
+
 		pageNumber := offset/limit + 1
 		if pageNumber > number {
 			err = errors.New("page number must be greater than max value " + strconv.Itoa(number))
@@ -323,4 +324,74 @@ func GetAssetManagedUtxoPageNumberByPageSize(c *gin.Context) {
 		Code:    models.SUCCESS,
 		Data:    pageNumber,
 	})
+}
+
+func GetAssetManagedUtxoPc(c *gin.Context) {
+
+	var req struct {
+		AssetId string `json:"asset_id"`
+		Limit   int    `json:"limit"`
+		Offset  int    `json:"offset"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logrus.Errorln(errors.Wrap(err, "c.ShouldBindJSON"))
+		c.JSON(http.StatusOK, models.RespLnc[*models.AssetManagedUtxo]{
+			Code: models.ToCode(models.ShouldBindJsonErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*models.AssetManagedUtxo]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	if req.AssetId == "" || req.Limit < 0 || req.Offset < 0 {
+		c.JSON(http.StatusOK, models.RespLnc[*models.AssetManagedUtxo]{
+			Code: models.ToCode(models.InvalidReq),
+			Msg:  invalidReq.Error(),
+			Data: models.LncT[*models.AssetManagedUtxo]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	count, err := services.GetAssetManagedUtxoCount(req.AssetId)
+	if err != nil {
+		c.JSON(http.StatusOK, models.RespLnc[*models.AssetManagedUtxo]{
+			Code: models.ToCode(models.GetAssetManagedUtxoCountErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*models.AssetManagedUtxo]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	utxos, err := services.GetAssetManagedUtxo(req.AssetId, req.Limit, req.Offset)
+	if err != nil {
+		c.JSON(http.StatusOK, models.RespLnc[*models.AssetManagedUtxo]{
+			Code: models.ToCode(models.GetAssetManagedUtxoErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*models.AssetManagedUtxo]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.RespLnc[*models.AssetManagedUtxo]{
+		Code: models.ToCode(models.SUCCESS),
+		Msg:  models.NullStr,
+		Data: models.LncT[*models.AssetManagedUtxo]{
+			List:  utxos,
+			Count: count,
+		},
+	})
+	return
+
 }

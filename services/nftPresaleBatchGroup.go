@@ -199,8 +199,6 @@ func ValidateStartAndEndTimeForNftPresale(startTime int, endTime int) error {
 	return nil
 }
 
-// CreateBatchGroupAndNftPresales
-// @Description: create batchGroup and nftPresales
 func CreateBatchGroupAndNftPresales(nftPresaleBatchGroup *models.NftPresaleBatchGroup, nftPresales *[]models.NftPresale) error {
 	var err error
 	if nftPresaleBatchGroup == nil {
@@ -210,13 +208,13 @@ func CreateBatchGroupAndNftPresales(nftPresaleBatchGroup *models.NftPresaleBatch
 		return errors.New("NftPresales is nil")
 	}
 	tx := middleware.DB.Begin()
-	// @dev: 1. Create nftPresaleBatchGroup
+
 	err = tx.Create(nftPresaleBatchGroup).Error
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-	// @dev: Get ID
+
 	batchGroupId := nftPresaleBatchGroup.ID
 	if batchGroupId == 0 {
 		tx.Rollback()
@@ -225,7 +223,7 @@ func CreateBatchGroupAndNftPresales(nftPresaleBatchGroup *models.NftPresaleBatch
 	for i := range *nftPresales {
 		(*nftPresales)[i].BatchGroupId = int(batchGroupId)
 	}
-	// @dev: 2. Create nftPresales
+
 	err = tx.Create(nftPresales).Error
 	if err != nil {
 		tx.Rollback()
@@ -234,21 +232,19 @@ func CreateBatchGroupAndNftPresales(nftPresaleBatchGroup *models.NftPresaleBatch
 	return tx.Commit().Error
 }
 
-// ProcessNftPresaleBatchGroupLaunchRequestAndCreate
-// @Description: Process nftPresaleBatchGroupLaunchRequest and then create records in db
 func ProcessNftPresaleBatchGroupLaunchRequestAndCreate(nftPresaleBatchGroupLaunchRequest *models.NftPresaleBatchGroupLaunchRequest) error {
 	if nftPresaleBatchGroupLaunchRequest == nil {
 		return errors.New("NftPresaleBatchGroupLaunchRequest is nil")
 	}
-	// @dev: Value copy
+
 	batchGroupSetRequest := nftPresaleBatchGroupLaunchRequest.BatchGroupSetRequest
-	// @dev: GroupKey and GroupName
+
 	groupKey := batchGroupSetRequest.GroupKey
 	if groupKey == "" {
 		return errors.New("GroupKey is empty")
 	}
 	var groupName string
-	// @dev: network
+
 	network, err := api.NetworkStringToNetwork(config.GetLoadConfig().NetWork)
 	if err != nil {
 		return utils.AppendErrorInfo(err, "NetworkStringToNetwork")
@@ -258,49 +254,33 @@ func ProcessNftPresaleBatchGroupLaunchRequestAndCreate(nftPresaleBatchGroupLaunc
 			return utils.AppendErrorInfo(err, "GetGroupNameByGroupKey")
 		}
 	}
-	// @dev: startTime and endTime
+
 	{
-		//if batchGroupSetRequest.StartTime == "" {
-		//	return errors.New("StartTime is empty")
-		//}
-		//var startTime int
-		//start, err := utils.DateTimeStringToTime(batchGroupSetRequest.StartTime)
-		//if err != nil {
-		//	return utils.AppendErrorInfo(err, "DateTimeStringToTime")
-		//}
-		//startTime = int(uint(start.Unix()))
-		//var endTime int
-		//if batchGroupSetRequest.EndTime != "" {
-		//	end, err := utils.DateTimeStringToTime(batchGroupSetRequest.EndTime)
-		//	if err != nil {
-		//		return utils.AppendErrorInfo(err, "DateTimeStringToTime")
-		//	}
-		//	endTime = int(end.Unix())
-		//}
+
 	}
 	startTime := batchGroupSetRequest.StartTime
 	endTime := batchGroupSetRequest.EndTime
 	if startTime == 0 {
-		// @dev: Do not return error, but set to now timestamp
+
 		startTime = utils.GetTimestamp()
 		err = errors.New("start time is invalid(" + strconv.Itoa(startTime) + ")")
 		btlLog.PreSale.Info("%v, it has been set to now", err)
 	}
-	// @dev: Validate startTime and endTime
+
 	err = ValidateStartAndEndTimeForNftPresale(startTime, endTime)
 	if err != nil {
 		return utils.AppendErrorInfo(err, "ValidateStartAndEndTimeForNftPresale")
 	}
-	// @dev: Info
+
 	info := batchGroupSetRequest.Info
-	// @dev: Pointer
+
 	nftPresaleSetRequests := nftPresaleBatchGroupLaunchRequest.NftPresaleSetRequests
 	if nftPresaleSetRequests == nil {
 		return errors.New("NftPresales is nil")
 	} else if len(*nftPresaleSetRequests) == 0 {
 		return errors.New("NftPresales is empty (length is 0)")
 	}
-	// @dev: Process NftPresales, result includes NftPresales, Supply, LowestPrice, HighestPrice
+
 	processedResult, err := ProcessLaunchRequestNftPresales(nftPresaleSetRequests, uint(startTime), uint(endTime), info, groupKey)
 	if err != nil {
 		return utils.AppendErrorInfo(err, "ProcessLaunchRequestNftPresales")
@@ -317,7 +297,7 @@ func ProcessNftPresaleBatchGroupLaunchRequestAndCreate(nftPresaleBatchGroupLaunc
 	if processedResult.NftPresales == nil {
 		return errors.New("processedResult.NftPresales is nil")
 	}
-	// @dev: NftPresaleBatchGroup
+
 	var nftPresaleBatchGroup = models.NftPresaleBatchGroup{
 		GroupKey:     groupKey,
 		GroupName:    groupName,
@@ -330,7 +310,7 @@ func ProcessNftPresaleBatchGroupLaunchRequestAndCreate(nftPresaleBatchGroupLaunc
 		Info:         info,
 	}
 	nftPresales := processedResult.NftPresales
-	// @dev: Create records in db
+
 	err = CreateBatchGroupAndNftPresales(&nftPresaleBatchGroup, nftPresales)
 	if err != nil {
 		return utils.AppendErrorInfo(err, "CreateBatchGroupAndNftPresales")
@@ -338,8 +318,6 @@ func ProcessNftPresaleBatchGroupLaunchRequestAndCreate(nftPresaleBatchGroupLaunc
 	return nil
 }
 
-// GetBatchGroups
-// @Description: Get batch groups
 func GetBatchGroups(state models.NftPresaleBatchGroupState) (*[]models.NftPresaleBatchGroup, error) {
 	var nftPresaleBatchGroups *[]models.NftPresaleBatchGroup
 	var err error
@@ -375,8 +353,6 @@ func GetBatchGroups(state models.NftPresaleBatchGroupState) (*[]models.NftPresal
 	}
 	return nftPresaleBatchGroups, nil
 }
-
-// @dev: Simplify
 
 func NftPresaleBatchGroupToNftPresaleBatchGroupSimplified(nftPresaleBatchGroup *models.NftPresaleBatchGroup) *models.NftPresaleBatchGroupSimplified {
 	if nftPresaleBatchGroup == nil {

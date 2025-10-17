@@ -7,7 +7,7 @@ type AccountAssetReceive struct {
 	Timestamp int64         `gorm:"column:timestamp;type:bigint;" json:"timestamp"`
 	OutPoint  string        `gorm:"column:out_point;type:varchar(100);unique;not null;" json:"outPoint"`
 	InvoiceId uint          `gorm:"column:invoice_id;type:varchar(128);" json:"invoiceId"`
-	Amount    float64       `gorm:"type:decimal(15,2);column:amount" json:"amount"`
+	Amount    float64       `gorm:"type:decimal(25,2);column:amount" json:"amount"`
 	Status    AddressStatus `gorm:"column:status;type:smallint" json:"status"`
 }
 

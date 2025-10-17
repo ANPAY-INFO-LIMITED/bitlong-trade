@@ -5,25 +5,33 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
-	"github.com/robfig/cron/v3"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
+	"trade/api"
 	"trade/btlLog"
 	"trade/config"
 	"trade/dao"
 	"trade/middleware"
-	"trade/routers"
-	"trade/routers/RouterSecond"
+	"trade/routes"
+	"trade/routes/RouterSecond"
 	"trade/services"
+	"trade/services/confs"
 	"trade/services/custodyAccount"
+	"trade/services/forwardtrans"
+	"trade/services/nodemanage"
+	"trade/services/servicesrpc"
 	"trade/task"
 	"trade/utils"
+
+	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
+	"github.com/robfig/cron/v3"
 )
 
 func main() {
@@ -41,7 +49,7 @@ func main() {
 	if mode != gin.ReleaseMode {
 		utils.PrintTitle(false, "Initialize")
 	}
-	// Initialize the database connection
+
 	if err = middleware.InitMysql(); err != nil {
 		log.Printf("Failed to initialize database: %v", err)
 		return
@@ -60,7 +68,11 @@ func main() {
 	if !checkStart() {
 		return
 	}
-	// Setup cron jobs
+
+	go func() {
+		_ = confs.ReadConfDefault()
+	}()
+
 	services.CheckIfAutoUpdateScheduledTask()
 	var jobs []task.Job
 	if jobs, err = task.LoadJobs(); err != nil {
@@ -69,7 +81,7 @@ func main() {
 	}
 	c := cron.New(cron.WithSeconds())
 	for _, job := range jobs {
-		// Schedule each job using cron
+
 		_, err = c.AddFunc(job.CronExpression, func() {
 			task.ExecuteWithLock(job.Name)
 		})
@@ -79,14 +91,14 @@ func main() {
 		}
 	}
 	c.Start()
-	defer c.Stop() // Ensure cron scheduler is stopped on shutdown
-	// Setup HTTP server
+	defer c.Stop()
+
 	if mode != gin.ReleaseMode {
 		utils.PrintTitle(true, "Setup Router")
 	}
 	go middleware.MonitorDatabaseConnections()
 
-	r := routers.SetupRouter()
+	r := routes.SetupRoutes()
 	bind := loadConfig.GinConfig.Bind
 	port := loadConfig.GinConfig.Port
 	if port == "" {
@@ -96,13 +108,13 @@ func main() {
 		Addr:    bind + ":" + port,
 		Handler: r,
 	}
-	// Start HTTP server in a goroutine
+
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			fmt.Printf("listen: %s\n", err)
 		}
 	}()
-	// Setup HTTP server2
+
 	r2 := RouterSecond.SetupRouter()
 	r2bind := "127.0.0.1"
 	if config.GetConfig().NetWork == "regtest" {
@@ -117,23 +129,36 @@ func main() {
 		Handler: r2,
 	}
 
-	// Start HTTP server in a goroutine
 	go func() {
 		if err := srv2.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			fmt.Printf("listen: %s\n", err)
 		}
 	}()
 
-	// Create a channel to listen to interrupt signals
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
-	// Block until a signal is received
+
+	go func() {
+		for {
+			if !checkLitdStatus(1) {
+				signalChan <- syscall.SIGTERM
+				return
+			}
+			time.Sleep(time.Second * 10)
+		}
+	}()
+
 	sig := <-signalChan
 	log.Printf("Received signal: %s", sig)
-	// Gracefully shutdown the server, waiting max 30 seconds for current operations to complete
+
+	defer func() {
+		closeLitd(loadConfig)
+	}()
+
 	_, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	// Close Redis connection
+	defer nodemanage.CloseMineNodes()
+
 	defer func(client *redis.Client) {
 		if err = client.Close(); err != nil {
 			log.Printf("Failed to close Redis connection: %v", err)
@@ -142,7 +167,7 @@ func main() {
 			log.Println("Redis connection closed successfully.")
 		}
 	}(middleware.Client)
-	// Close database connection
+
 	var db *sql.DB
 	if db, err = middleware.DB.DB(); err != nil {
 		log.Println(err)
@@ -156,15 +181,14 @@ func main() {
 			log.Println("Database connection closed successfully.")
 		}
 	}(db)
-	// Perform any other shutdown tasks here
+
 	log.Println("Shutting down the server...")
-	os.Exit(0)
+
 }
 
-// Check config
 func checkStart() bool {
 	cfg := config.GetConfig()
-	//检查区块网络配置
+
 	switch cfg.NetWork {
 	case "testnet":
 		log.Println("Running on testnet")
@@ -176,15 +200,91 @@ func checkStart() bool {
 		log.Println("NetWork need set testnet, mainnet or regtest")
 		return false
 	}
-	//加载日志系统
+
 	if err := btlLog.InitBtlLog(); err != nil {
 		log.Printf("Failed to initialize btl log: %v", err)
 		return false
 	}
-	//加载托管账户系统
+
+	if !checkLitdStatus(1) {
+
+		closeLitd(cfg)
+		time.Sleep(time.Second * 5)
+
+		if cfg.ApiConfig.Litd.StartCommand != "" {
+			btlLog.START.Info("Start Lit node...")
+			cmd := exec.Command("/bin/bash", cfg.ApiConfig.Litd.StartCommand)
+
+			err := cmd.Start()
+			if err != nil {
+				btlLog.START.Error("Start Lit error: %v", err)
+				return false
+			}
+			if !checkLitdStatus(10) {
+				return false
+			}
+			btlLog.START.Info("Start Lit node success")
+		} else {
+			return false
+		}
+	}
+
 	ctx := context.Background()
 	if !custodyAccount.CustodyStart(ctx, cfg) {
 		return false
 	}
+
+	nodemanage.InitNodeManager()
+	api.SubscriptionBoxTx()
+
+	err := forwardtrans.LoadMappingCoon()
+	if err != nil {
+		return false
+	}
+	forwardtrans.FwdtDaemon()
 	return true
+}
+
+func checkLitdStatus(retire int) bool {
+	for retire > 0 {
+		status, err := servicesrpc.LitdStatus()
+		if err != nil || status == nil {
+			retire--
+		}
+		if status != nil {
+			if status.SubServers["taproot-assets"].GetRunning() {
+				return true
+			}
+			if status.SubServers["taproot-assets"].GetError() != "" {
+				btlLog.START.Error("Litd status error: %v", err)
+				return false
+			}
+		}
+		if retire != 0 {
+			time.Sleep(time.Second * 10)
+		}
+	}
+	btlLog.START.Info("Litd Is not running")
+	return false
+}
+
+func closeLitd(cfg *config.Config) {
+
+	if cfg.NetWork == "mainnet" && runtime.GOOS != "windows" {
+		if _, err := os.Stat("/root/mainnet-trade/not_close_litd"); err == nil {
+			return
+		}
+	}
+
+	if cfg.ApiConfig.Litd.CloseCommand != "" {
+		cmd := exec.Command("bash", cfg.ApiConfig.Litd.CloseCommand)
+
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			btlLog.START.Error("Close litd error..: %v\n", err.Error())
+			return
+		}
+		btlLog.START.Info("Close litd output: %s\n", output)
+		log.Println("Shutting down the Lit node...")
+	}
 }

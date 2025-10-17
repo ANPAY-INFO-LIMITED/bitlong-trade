@@ -21,10 +21,9 @@ func MintAppend(groupKey string, groupName string, description string, imgPathPr
 		return fmt.Errorf("in valid start or end (%d,%d)\n", start, end)
 	}
 	for i := start; i <= end; i++ {
-		// including start and end
+
 		name := fmt.Sprintf("%s#%d", groupName, i)
 
-		// TODO: Path need to modify
 		attributesPath := attributesPathPrefix + groupName + "#" + strconv.Itoa(i) + attributesSuffix
 		imgPath := imgPathPrefix + groupName + "#" + strconv.Itoa(i%10000) + imgSuffix
 
@@ -44,7 +43,7 @@ func MintAppend(groupKey string, groupName string, description string, imgPathPr
 		}
 		btlLog.MintNft.Info("\nMint %s MintNftAssetAppend\n%v", name, utils.ValueJsonString(mintResponse))
 	}
-	// Auto fee rate
+
 	feeRateSatPerKw := services.FeeRateSatPerBToSatPerKw(int(feeRate))
 	finalizeResponse, err := api.FinalizeBatchAndGetResponse(feeRateSatPerKw)
 	if err != nil {

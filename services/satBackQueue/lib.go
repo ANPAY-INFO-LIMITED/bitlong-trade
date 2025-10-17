@@ -18,7 +18,7 @@ func sortTokens(tokenA string, tokenB string) (token0 string, token1 string, err
 		err = errors.New("invalid tokenB length(" + strconv.Itoa(len(tokenB)) + ")")
 		return "", "", err
 	}
-	// @dev: sat is always token0
+
 	if tokenA == TokenSatTag {
 		token0, token1 = tokenA, tokenB
 	} else if tokenB == TokenSatTag {

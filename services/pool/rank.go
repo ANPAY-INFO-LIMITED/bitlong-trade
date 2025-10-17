@@ -1,7 +1,7 @@
 package pool
 
 import (
-	"errors"
+	"fmt"
 	"gorm.io/gorm"
 	"trade/middleware"
 	"trade/utils"
@@ -24,8 +24,11 @@ func getAllPoolPairScan() ([]PoolPairScan, error) {
 	return poolPairScan, nil
 }
 
-func poolPairName(token0, token1 string) string {
-	return "pool" + token0 + token1
+func poolPairName(pairId uint, poolType uint, token0, token1 string) string {
+	if poolType == PoolTypeFee {
+		return "pool" + fmt.Sprintf("%d", pairId) + "FEE" + token0 + token1
+	}
+	return "pool" + fmt.Sprintf("%d", pairId) + "RSV" + token0 + token1
 }
 
 type PoolPairTokenAccountBalance struct {
@@ -42,7 +45,7 @@ type PoolPairTokenAccountBalanceInfo struct {
 }
 
 func getPoolPairTokenAccountBalanceInfos(pairId uint, token0 string, token1 string) ([]PoolPairTokenAccountBalanceInfo, error) {
-	// only token0 is possible to be TokenSatTag
+
 	if token0 == TokenSatTag {
 		token0 = "00"
 	}
@@ -92,13 +95,13 @@ func updatePoolPairTokenAccountBalance(tx *gorm.DB, poolPairTokenAccountBalanceI
 	if token == "00" {
 		token = TokenSatTag
 	}
-	//get PoolPairTokenAccountBalance
+
 	var poolPairTokenAccountBalance PoolPairTokenAccountBalance
 	err = tx.Table("pool_pair_token_account_balances").
 		Where("pair_id = ? AND token = ?", pairId, token).
 		First(&poolPairTokenAccountBalance).Error
 	if err != nil {
-		// no PoolPairTokenAccountBalance, create one
+
 		err = tx.Table("pool_pair_token_account_balances").
 			Create(&PoolPairTokenAccountBalance{
 				PairId:  pairId,
@@ -109,7 +112,7 @@ func updatePoolPairTokenAccountBalance(tx *gorm.DB, poolPairTokenAccountBalanceI
 			return utils.AppendErrorInfo(err, "create PoolPairTokenAccountBalance")
 		}
 	}
-	//update PoolPairTokenAccountBalance
+
 	err = tx.Table("pool_pair_token_account_balances").
 		Where("pair_id = ? AND token = ?", pairId, token).
 		Updates(map[string]any{
@@ -157,71 +160,77 @@ type PoolAccountNameAndBalance struct {
 }
 
 type PoolPairTokenAccountBalanceScan struct {
-	Token0  string  `json:"token0"`
-	Token1  string  `json:"token1"`
-	Balance float64 `json:"balance"`
+	AccountId string   `gorm:"column:account_id"`
+	Balance   float64  `gorm:"column:balance"`
+	Type      uint     `gorm:"column:type"`
+	PairId    uint     `gorm:"column:pair_id"`
+	Token     []string `json:"token"`
 }
 
-func GetPoolAccountNameAndBalancesCount(token string) (int64, error) {
-	if token == "00" {
-		token = TokenSatTag
-	}
-	var count int64
-
-	err := middleware.DB.Table("pool_pair_token_account_balances").
-		Joins("JOIN pool_pairs ON pool_pairs.id = pool_pair_token_account_balances.pair_id").
-		Where("token = ?", token).
-		Count(&count).Error
-
-	if err != nil {
-		return 0, utils.AppendErrorInfo(err, "select pool_pair_token_account_balances count")
-	}
-
-	return count, nil
-}
-
-func GetPoolAccountNameAndBalances(token string, limit int, offset int) ([]PoolAccountNameAndBalance, error) {
-	if token == "00" {
-		token = TokenSatTag
-	}
-	var poolPairTokenAccountBalanceScans []PoolPairTokenAccountBalanceScan
-
-	err := middleware.DB.Table("pool_pair_token_account_balances").
-		Select("pool_pairs.token0, pool_pairs.token1, pool_pair_token_account_balances.balance").
-		Joins("JOIN pool_pairs ON pool_pairs.id = pool_pair_token_account_balances.pair_id").
-		Where("token = ?", token).
-		Order("pool_pair_token_account_balances.balance DESC").
-		Limit(limit).
-		Offset(offset).
-		Scan(&poolPairTokenAccountBalanceScans).Error
-
+func GetPoolAccountNameAndBalances(token string) ([]PoolAccountNameAndBalance, error) {
+	var poolscans []PoolPairTokenAccountBalanceScan
+	err := middleware.DB.Raw(balancesSql, token).Scan(&poolscans).Error
 	if err != nil {
 		return nil, utils.AppendErrorInfo(err, "select pool_pair_token_account_balances")
 	}
-
 	var poolAccountNameAndBalances []PoolAccountNameAndBalance
-	for _, poolPairTokenAccountBalanceScan := range poolPairTokenAccountBalanceScans {
+	for _, scan := range poolscans {
+		err = middleware.DB.Raw(getaccountInfoSql, scan.AccountId).Scan(&scan.Token).Error
+		if err != nil {
+			return nil, utils.AppendErrorInfo(err, "select pool_pair_token_account_balances")
+		}
+		if len(scan.Token) != 2 {
+			continue
+		}
 		poolAccountNameAndBalances = append(poolAccountNameAndBalances, PoolAccountNameAndBalance{
-			Name:    poolPairName(poolPairTokenAccountBalanceScan.Token0, poolPairTokenAccountBalanceScan.Token1),
-			Balance: poolPairTokenAccountBalanceScan.Balance,
+			Name:    poolPairName(scan.PairId, scan.Type, scan.Token[0], scan.Token[1]),
+			Balance: scan.Balance,
 		})
 	}
-
 	return poolAccountNameAndBalances, nil
 }
 
+var balancesSql = `
+SELECT pool_account_id as account_id,balance as balance,custody_pool_accounts.type as type,custody_pool_accounts.pair_id as pair_id
+FROM custody_pool_account_balances
+JOIN custody_pool_accounts ON custody_pool_accounts.id = pool_account_id
+WHERE asset_id = ? and balance > 0
+`
+var getaccountInfoSql = `
+SELECT asset_id
+FROM custody_pool_account_assetId
+where pool_account_id = ?
+`
+
 func GetPoolAccountTotalBalance(token string) (float64, error) {
-	if token == "00" {
-		token = TokenSatTag
-	}
 	var err error
 	var balances float64
-	err = middleware.DB.Table("pool_pair_token_account_balances").
-		Select("COALESCE(sum(balance), 0) as balances").
-		Where("token = ?", token).
-		Scan(&balances).Error
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return 0, utils.AppendErrorInfo(err, "select pool_pair_token_account_balances")
+	db := middleware.DB
+	err = db.Raw(totalsql, token).Scan(&balances).Error
+	if err != nil {
+		return 0, utils.AppendErrorInfo(err, "get pool account total balance error")
 	}
 	return balances, nil
 }
+
+var totalsql = `
+SELECT COALESCE(sum(balance), 0) as balances
+FROM custody_pool_account_balances
+where asset_id = ? and balance > 0`
+
+func GetPoolAccountNameAndBalancesCount(token string) (int64, error) {
+	var err error
+	var count int64
+	db := middleware.DB
+	err = db.Raw(countsql, token).Scan(&count).Error
+	if err != nil {
+		return 0, utils.AppendErrorInfo(err, "get pool account count error")
+	}
+	return count, nil
+}
+
+var countsql = `
+SELECT COUNT(*) as count
+FROM custody_pool_account_balances
+where asset_id = ? and balance > 0
+`

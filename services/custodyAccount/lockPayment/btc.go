@@ -10,6 +10,7 @@ import (
 	"trade/models"
 	cModels "trade/models/custodyModels"
 	caccount "trade/services/custodyAccount/account"
+	"trade/services/custodyAccount/defaultAccount/custodyBalance"
 	"trade/services/custodyAccount/defaultAccount/custodyBtc"
 )
 
@@ -34,13 +35,12 @@ func GetBtcBalance(usr *caccount.UserInfo) (err error, unlock float64, locked, t
 	return
 }
 
-// LockBTC 冻结BTC
 func LockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int) error {
 	tx, back := middleware.GetTx()
 	defer back()
 
 	var err error
-	// lock btc
+
 	lockedBalance := cModels.LockBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, btcId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -48,7 +48,7 @@ func LockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int) e
 			btlLog.CUST.Error(err.Error())
 			return ServiceError
 		}
-		// Init Balance record
+
 		lockedBalance.AssetId = btcId
 		lockedBalance.AccountID = usr.LockAccount.ID
 		lockedBalance.Amount = 0
@@ -66,7 +66,6 @@ func LockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int) e
 		return ServiceError
 	}
 
-	// lockBill record
 	lockBill := cModels.LockBill{
 		AccountID: usr.LockAccount.ID,
 		AssetId:   btcId,
@@ -87,7 +86,7 @@ func LockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int) e
 
 	BtcId := btcId
 	Invoice := InvoiceLocked
-	// update user account record
+
 	balanceBill := models.Balance{
 		AccountId:   usr.Account.ID,
 		BillType:    models.BiLLTypeLock,
@@ -108,7 +107,7 @@ func LockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int) e
 		return ServiceError
 	}
 
-	_, err = custodyBtc.LessBtcBalance(tx, usr, amount, balanceBill.ID, cModels.ChangeTypeLock)
+	_, err = custodyBalance.LessBtcBalance(tx, usr, amount, balanceBill.ID, cModels.ChangeTypeLock)
 	if err != nil {
 		return err
 	}
@@ -117,13 +116,11 @@ func LockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int) e
 	return nil
 }
 
-// UnlockBTC 解冻BTC
 func UnlockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int) error {
 	tx, back := middleware.GetTx()
 	defer back()
 	var err error
 
-	// check locked balance
 	lockedBalance := cModels.LockBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, btcId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -132,7 +129,7 @@ func UnlockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int)
 		}
 		lockedBalance.Amount = 0
 	}
-	// tag 1.0 check awardAmount
+
 	if tag == 0 {
 		if lockedBalance.Amount < amount {
 			return NoEnoughBalance
@@ -140,13 +137,13 @@ func UnlockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int)
 		if (lockedBalance.Amount - lockedBalance.Tag1) < amount {
 			return fmt.Errorf("%w,have  %f is disable unlock", NoEnoughBalance, lockedBalance.Tag1)
 		}
-		// update locked balance
+
 		lockedBalance.Amount -= amount
 	} else if tag == 1 {
 		if lockedBalance.Tag1 < amount {
 			return fmt.Errorf("%w,have  %f ", NoEnoughBalance, lockedBalance.Tag1)
 		}
-		// update locked balance
+
 		lockedBalance.Amount -= amount
 		lockedBalance.Tag1 -= amount
 	} else {
@@ -158,7 +155,6 @@ func UnlockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int)
 		return ServiceError
 	}
 
-	// unlockBill record
 	unlockBill := cModels.LockBill{
 		AccountID: usr.LockAccount.ID,
 		AssetId:   btcId,
@@ -180,7 +176,6 @@ func UnlockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int)
 	BtcId := btcId
 	Invoice := InvoiceUnlocked
 
-	// update user account record
 	balanceBill := models.Balance{
 		AccountId:   usr.Account.ID,
 		BillType:    models.BiLLTypeLock,
@@ -201,7 +196,7 @@ func UnlockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int)
 		return ServiceError
 	}
 
-	_, err = custodyBtc.AddBtcBalance(tx, usr, amount, balanceBill.ID, cModels.ChangeTypeUnlock)
+	_, err = custodyBalance.AddBtcBalance(tx, usr, amount, balanceBill.ID, cModels.ChangeTypeUnlock)
 	if err != nil {
 		return err
 	}
@@ -209,7 +204,6 @@ func UnlockBTC(usr *caccount.UserInfo, lockedId string, amount float64, tag int)
 	return nil
 }
 
-// transferLockedBTC 转账冻结的BTC
 func transferLockedBTC(usr *caccount.UserInfo, lockedId string, amount float64, toUser *caccount.UserInfo, tag int) error {
 	tx, back := middleware.GetTx()
 	defer back()
@@ -217,7 +211,6 @@ func transferLockedBTC(usr *caccount.UserInfo, lockedId string, amount float64, 
 
 	var err error
 
-	// check locked balance
 	lockedBalance := cModels.LockBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, btcId).First(&lockedBalance).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -234,13 +227,13 @@ func transferLockedBTC(usr *caccount.UserInfo, lockedId string, amount float64, 
 		if (lockedBalance.Amount - lockedBalance.Tag1) < amount {
 			return fmt.Errorf("%w,have  %f is disable unlock", NoEnoughBalance, lockedBalance.Tag1)
 		}
-		// update locked balance
+
 		lockedBalance.Amount -= amount
 	} else if tag == 1 {
 		if lockedBalance.Tag1 < amount {
 			return fmt.Errorf("%w,have  %f ", NoEnoughBalance, lockedBalance.Tag1)
 		}
-		// update locked balance
+
 		lockedBalance.Amount -= amount
 		lockedBalance.Tag1 -= amount
 	} else {
@@ -251,7 +244,6 @@ func transferLockedBTC(usr *caccount.UserInfo, lockedId string, amount float64, 
 		return ServiceError
 	}
 
-	// unlockBill record
 	transferBill := cModels.LockBill{
 		AccountID: usr.LockAccount.ID,
 		AssetId:   btcId,
@@ -270,7 +262,6 @@ func transferLockedBTC(usr *caccount.UserInfo, lockedId string, amount float64, 
 		return ServiceError
 	}
 
-	// Create transferBTC BillExt
 	BillExt := cModels.LockBillExt{
 		BillId:     transferBill.ID,
 		LockId:     lockedId,
@@ -297,7 +288,6 @@ func transferLockedBTC(usr *caccount.UserInfo, lockedId string, amount float64, 
 		invoice = InvoicePendingOderAward
 	}
 
-	// update user account record
 	balanceBill := models.Balance{
 		AccountId:   toUser.Account.ID,
 		BillType:    models.BillTypePendingOder,
@@ -318,7 +308,7 @@ func transferLockedBTC(usr *caccount.UserInfo, lockedId string, amount float64, 
 		return ServiceError
 	}
 
-	_, err = custodyBtc.AddBtcBalance(tx, toUser, amount, balanceBill.ID, cModels.ChangeTypeLockedTransfer)
+	_, err = custodyBalance.AddBtcBalance(tx, toUser, amount, balanceBill.ID, cModels.ChangeTypeLockedTransfer)
 	if err != nil {
 		btlLog.CUST.Error(err.Error())
 		return ServiceError
@@ -328,14 +318,13 @@ func transferLockedBTC(usr *caccount.UserInfo, lockedId string, amount float64, 
 	return nil
 }
 
-// transferBTC 转账非冻结的BTC
 func transferBTC(usr *caccount.UserInfo, lockedId string, amount float64, toUser *caccount.UserInfo) error {
 	BtcId := btcId
 	tx, back := middleware.GetTx()
 	defer back()
 
 	var err error
-	// Create transferBTC Bill
+
 	transferBill := cModels.LockBill{
 		AccountID: usr.LockAccount.ID,
 		LockId:    lockedId,
@@ -353,7 +342,7 @@ func transferBTC(usr *caccount.UserInfo, lockedId string, amount float64, toUser
 		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
-	// Create transferBTC BillExt
+
 	BillExt := cModels.LockBillExt{
 		BillId:     transferBill.ID,
 		LockId:     lockedId,
@@ -374,7 +363,6 @@ func transferBTC(usr *caccount.UserInfo, lockedId string, amount float64, toUser
 		payInvoice = InvoicePendingOderAward
 	}
 
-	// transfer balance record
 	balanceBill := models.Balance{
 		AccountId:   usr.Account.ID,
 		BillType:    models.BillTypePendingOder,
@@ -394,7 +382,7 @@ func transferBTC(usr *caccount.UserInfo, lockedId string, amount float64, toUser
 		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
-	_, err = custodyBtc.LessBtcBalance(tx, usr, amount, balanceBill.ID, cModels.ChangeTypeLockedTransfer)
+	_, err = custodyBalance.LessBtcBalance(tx, usr, amount, balanceBill.ID, cModels.ChangeTypeLockedTransfer)
 	if err != nil {
 		return err
 	}
@@ -404,7 +392,6 @@ func transferBTC(usr *caccount.UserInfo, lockedId string, amount float64, toUser
 		recInvoice = InvoicePendingOderAward
 	}
 
-	// update user account record
 	balanceBillRev := models.Balance{
 		AccountId:   toUser.Account.ID,
 		BillType:    models.BillTypePendingOder,
@@ -424,14 +411,14 @@ func transferBTC(usr *caccount.UserInfo, lockedId string, amount float64, toUser
 		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
-	// update billExt record
+
 	BillExt.Status = cModels.LockBillExtStatusSuccess
 	if err = tx.Save(&BillExt).Error; err != nil {
 		btlLog.CUST.Error(err.Error())
 		return ServiceError
 	}
 
-	_, err = custodyBtc.AddBtcBalance(tx, toUser, amount, balanceBillRev.ID, cModels.ChangeTypeLockedTransfer)
+	_, err = custodyBalance.AddBtcBalance(tx, toUser, amount, balanceBillRev.ID, cModels.ChangeTypeLockedTransfer)
 	if err != nil {
 		btlLog.CUST.Error(err.Error())
 		return ServiceError

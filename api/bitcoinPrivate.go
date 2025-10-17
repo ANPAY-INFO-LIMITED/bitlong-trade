@@ -241,23 +241,7 @@ func decodeScript(network models.Network, encodedPubKeyScript string) (transacti
 }
 
 func getRawTransactionAndDecodeOutputScript(txid string) (err error) {
-	//connCfg := getBitcoinConnConfig()
-	//client, err := rpcclient.New(connCfg, nil)
-	//if err != nil {
-	//	return
-	//}
-	//defer client.Shutdown()
-	//var blockHash chainhash.Hash
-	//err = chainhash.Decode(&blockHash, txid)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//var response *btcjson.GetTransactionResult
-	//response, err = client.GetTransaction(&blockHash)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//return response, nil
+
 	return nil
 }
 
@@ -363,9 +347,9 @@ func getUri(network models.Network) (string, error) {
 		return "", errors.New("invalid network")
 	}
 	if wallet == "" {
-		uri = fmt.Sprintf("http://%s:%s@%s:%d", user, password, ip, port)
+		uri = fmt.Sprintf("http: 
 	} else {
-		uri = fmt.Sprintf("http://%s:%s@%s:%d/wallet/%s", user, password, ip, port, wallet)
+		uri = fmt.Sprintf("http: 
 	}
 	return uri, nil
 }

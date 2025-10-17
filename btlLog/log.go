@@ -96,9 +96,14 @@ var (
 	defaultLogFile      *os.File
 	defaultErrorLogFile *os.File
 
+	startLogFile *os.File
+
 	custErrorLogFile *os.File
 	CaccountLogFile  *os.File
 	CLimitLogFile    *os.File
+	CSwapLogFile     *os.File
+
+	fwdtLogFile *os.File
 
 	presaleLogFile     *os.File
 	mintNftFile        *os.File
@@ -114,6 +119,16 @@ var (
 	mintNftLogFile                     *os.File
 	scheduledTaskLogFile               *os.File
 	poolPairTokenAccountBalanceLogFile *os.File
+	openChannelLogFile                 *os.File
+	psbtTlSwapLogFile                  *os.File
+	PoolPureLogFile                    *os.File
+	boxAssetPushLogFile                *os.File
+	boxAssetPushTaskLogFile            *os.File
+	boxDeviceBackupLogFile             *os.File
+	boxDeviceLogFile                   *os.File
+	boxChannelInfosLogFile             *os.File
+
+	lntLogFile *os.File
 )
 
 func getLogFile(dirPath string, fileName string) (*os.File, error) {
@@ -130,14 +145,14 @@ func openLogFile() error {
 	var err error
 	dirPath := "./logs"
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-		// 如果目录不存在，创建目录
+
 		err := os.MkdirAll(dirPath, 0755)
 		if err != nil {
 			return err
 		}
 		fmt.Println("目录已创建:", dirPath)
 	}
-	//defaultLogFile
+
 	defaultLogFile, err = getLogFile(dirPath, "output.log")
 	if err != nil {
 		return err
@@ -147,7 +162,11 @@ func openLogFile() error {
 		return err
 	}
 
-	//CUSTLogFiles
+	startLogFile, err = getLogFile(dirPath, "start.log")
+	if err != nil {
+		return err
+	}
+
 	custErrorLogFile, err = getLogFile(dirPath, "cust_error.log")
 	if err != nil {
 		return err
@@ -160,8 +179,16 @@ func openLogFile() error {
 	if err != nil {
 		return err
 	}
+	CSwapLogFile, err = getLogFile(dirPath, "cSwap.log")
+	if err != nil {
+		return err
+	}
 
-	//OtherLogFiles
+	fwdtLogFile, err = getLogFile(dirPath, "fwdt.log")
+	if err != nil {
+		return err
+	}
+
 	presaleLogFile, err = utils.GetLogFile("./logs/trade.presale.log")
 	if err != nil {
 		return err
@@ -214,6 +241,44 @@ func openLogFile() error {
 	if err != nil {
 		return err
 	}
+	openChannelLogFile, err = utils.GetLogFile("./logs/trade.open_channel.log")
+	if err != nil {
+		return err
+	}
+	psbtTlSwapLogFile, err = utils.GetLogFile("./logs/trade.psbt_tl_swap.log")
+	if err != nil {
+		return err
+	}
+	PoolPureLogFile, err = utils.GetLogFile("./logs/trade.pool.pure.log")
+	if err != nil {
+		return err
+	}
+	boxAssetPushLogFile, err = utils.GetLogFile("./logs/trade.box_asset_push.log")
+	if err != nil {
+		return err
+	}
+	boxAssetPushTaskLogFile, err = utils.GetLogFile("./logs/trade.box_asset_push_task.log")
+	if err != nil {
+		return err
+	}
+
+	boxDeviceBackupLogFile, err = utils.GetLogFile("./logs/trade.box_device_backup.log")
+	if err != nil {
+		return err
+	}
+	boxDeviceLogFile, err = utils.GetLogFile("./logs/trade.box_device.log")
+	if err != nil {
+		return err
+	}
+	boxChannelInfosLogFile, err = utils.GetLogFile("./logs/trade.box_channel_infos.log")
+	if err != nil {
+		return err
+	}
+
+	lntLogFile, err = utils.GetLogFile("./logs/trade.lnt.log")
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -232,9 +297,13 @@ func backupLogFile(filePath string) {
 }
 
 var (
+	START                       *ServicesLogger
 	CUST                        *ServicesLogger
 	CACC                        *ServicesLogger
 	CLMT                        *ServicesLogger
+	CSWAP                       *ServicesLogger
+	SWIC                        *ServicesLogger
+	NODE                        *ServicesLogger
 	FairLaunchDebugLogger       *ServicesLogger
 	SendFairLaunchMintedAsset   *ServicesLogger
 	FEE                         *ServicesLogger
@@ -247,15 +316,35 @@ var (
 	DateIpLogin                 *ServicesLogger
 	PushQueue                   *ServicesLogger
 	PoolPairTokenAccountBalance *ServicesLogger
+	OpenChannel                 *ServicesLogger
+	PsbtTlSwap                  *ServicesLogger
+	PoolPure                    *ServicesLogger
+	BoxAssetPush                *ServicesLogger
+	BoxAssetPushTask            *ServicesLogger
+	BoxChannelInfos             *ServicesLogger
+	BoxDevice                   *ServicesLogger
+	BoxDeviceBackup             *ServicesLogger
+	Lnt                         *ServicesLogger
+	FWDT                        *ServicesLogger
 )
 
 func loadDefaultLog() {
 	Level := INFO
-
+	{
+		START = NewLogger("START", INFO, nil, true, startLogFile)
+	}
 	{
 		CUST = NewLogger("CUST", Level, custErrorLogFile, true, defaultLogFile)
 		CACC = NewLogger("CACC", Level, custErrorLogFile, false, CaccountLogFile)
 		CLMT = NewLogger("CLMT", Level, custErrorLogFile, false, CLimitLogFile)
+		CSWAP = NewLogger("CSWP", Level, custErrorLogFile, true, CSwapLogFile)
+	}
+	{
+		FWDT = NewLogger("FWDT", Level, nil, false, fwdtLogFile)
+	}
+	{
+		SWIC = NewLogger("SWIC", Level, nil, true, defaultLogFile)
+		NODE = NewLogger("NODE", Level, nil, true, defaultLogFile)
 	}
 	{
 		FairLaunchDebugLogger = NewLogger("FLDL", Level, nil, false, defaultLogFile, fairLaunchLogFile)
@@ -270,5 +359,14 @@ func loadDefaultLog() {
 		DateIpLogin = NewLogger("DILR", Level, nil, true, defaultLogFile, dateIpLoginLogFile)
 		PushQueue = NewLogger("PUSH", Level, nil, true, defaultLogFile, pushQueueLogFile)
 		PoolPairTokenAccountBalance = NewLogger("PTAB", Level, nil, true, defaultLogFile, poolPairTokenAccountBalanceLogFile)
+		OpenChannel = NewLogger("OPCH", Level, nil, true, defaultLogFile, openChannelLogFile)
+		PsbtTlSwap = NewLogger("PTLS", Level, nil, true, defaultLogFile, psbtTlSwapLogFile)
+		PoolPure = NewLogger("PLPR", Level, nil, true, defaultLogFile, PoolPureLogFile)
+		BoxAssetPush = NewLogger("BAPU", Level, nil, true, defaultLogFile, boxAssetPushLogFile)
+		BoxAssetPushTask = NewLogger("BAPT", Level, nil, true, defaultLogFile, boxAssetPushTaskLogFile)
+		BoxDeviceBackup = NewLogger("BDBK", Level, nil, true, defaultLogFile, boxDeviceBackupLogFile)
+		BoxDevice = NewLogger("BDVC", Level, nil, true, defaultLogFile, boxDeviceLogFile)
+		BoxChannelInfos = NewLogger("BCIN", Level, nil, true, defaultLogFile, boxChannelInfosLogFile)
+		Lnt = NewLogger("LNT", Level, nil, true, defaultLogFile, lntLogFile)
 	}
 }

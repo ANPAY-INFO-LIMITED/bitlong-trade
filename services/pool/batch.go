@@ -10,7 +10,6 @@ import (
 
 type PoolBatchType int64
 
-// TODO: Reserve
 const (
 	BatchCreated PoolBatchType = iota
 	BatchPending
@@ -96,60 +95,9 @@ type PoolWithdrawAwardBatch struct {
 	State            PoolBatchType `json:"state" gorm:"index"`
 }
 
-// Request
-
-type PoolAddLiquidityRequest struct {
-	TokenA         string `json:"token_a" gorm:"type:varchar(255);index"`
-	TokenB         string `json:"token_b" gorm:"type:varchar(255);index"`
-	AmountADesired string `json:"amount_a_desired" gorm:"type:varchar(255);index"`
-	AmountBDesired string `json:"amount_b_desired" gorm:"type:varchar(255);index"`
-	AmountAMin     string `json:"amount_a_min" gorm:"type:varchar(255);index"`
-	AmountBMin     string `json:"amount_b_min" gorm:"type:varchar(255);index"`
-	Username       string `json:"username" gorm:"type:varchar(255);index"`
-}
-
-type PoolRemoveLiquidityRequest struct {
-	TokenA     string `json:"token_a" gorm:"type:varchar(255);index"`
-	TokenB     string `json:"token_b" gorm:"type:varchar(255);index"`
-	Liquidity  string `json:"liquidity" gorm:"type:varchar(255);index"`
-	AmountAMin string `json:"amount_a_min" gorm:"type:varchar(255);index"`
-	AmountBMin string `json:"amount_b_min" gorm:"type:varchar(255);index"`
-	Username   string `json:"username" gorm:"type:varchar(255);index"`
-	FeeK       uint16 `json:"fee_k" gorm:"index"`
-}
-
-type PoolSwapExactTokenForTokenNoPathRequest struct {
-	TokenIn          string `json:"token_in" gorm:"type:varchar(255);index"`
-	TokenOut         string `json:"token_out" gorm:"type:varchar(255);index"`
-	AmountIn         string `json:"amount_in" gorm:"type:varchar(255);index"`
-	AmountOutMin     string `json:"amount_out_min" gorm:"type:varchar(255);index"`
-	Username         string `json:"username" gorm:"type:varchar(255);index"`
-	ProjectPartyFeeK uint16 `json:"project_party_fee_k" gorm:"index"`
-	LpAwardFeeK      uint16 `json:"lp_award_fee_k" gorm:"index"`
-}
-
-type PoolSwapTokenForExactTokenNoPathRequest struct {
-	TokenIn          string `json:"token_in" gorm:"type:varchar(255);index"`
-	TokenOut         string `json:"token_out" gorm:"type:varchar(255);index"`
-	AmountOut        string `json:"amount_out" gorm:"type:varchar(255);index"`
-	AmountInMax      string `json:"amount_in_max" gorm:"type:varchar(255);index"`
-	Username         string `json:"username" gorm:"type:varchar(255);index"`
-	ProjectPartyFeeK uint16 `json:"project_party_fee_k" gorm:"index"`
-	LpAwardFeeK      uint16 `json:"lp_award_fee_k" gorm:"index"`
-}
-
-type PoolWithdrawAwardRequest struct {
-	TokenA   string `json:"token_a"`
-	TokenB   string `json:"token_b"`
-	Username string `json:"username" gorm:"type:varchar(255);index"`
-	Amount   string `json:"amount" gorm:"type:varchar(255);index"`
-}
-
 func Create(data any) (err error) {
 	return middleware.DB.Create(data).Error
 }
-
-// process
 
 func ProcessPoolAddLiquidityBatchRequest(request *PoolAddLiquidityRequest, requestUser string) (poolAddLiquidityBatch *PoolAddLiquidityBatch, err error) {
 	if request == nil {
@@ -246,10 +194,7 @@ func ProcessPoolSwapExactTokenForTokenNoPathBatchRequest(request *PoolSwapExactT
 		err = errors.New("amount_in is empty")
 		return new(PoolSwapExactTokenForTokenNoPathBatch), err
 	}
-	if request.AmountOutMin == "" {
-		err = errors.New("amount_out_min is empty")
-		return new(PoolSwapExactTokenForTokenNoPathBatch), err
-	}
+
 	if request.Username == "" {
 		err = errors.New("username is empty")
 		return new(PoolSwapExactTokenForTokenNoPathBatch), err
@@ -287,10 +232,7 @@ func ProcessPoolSwapTokenForExactTokenNoPathBatchRequest(request *PoolSwapTokenF
 		err = errors.New("amount_out is empty")
 		return new(PoolSwapTokenForExactTokenNoPathBatch), err
 	}
-	if request.AmountInMax == "" {
-		err = errors.New("amount_in_max is empty")
-		return new(PoolSwapTokenForExactTokenNoPathBatch), err
-	}
+
 	if request.Username == "" {
 		err = errors.New("username is empty")
 		return new(PoolSwapTokenForExactTokenNoPathBatch), err
@@ -334,8 +276,6 @@ func ProcessPoolWithdrawAwardBatchRequest(request *PoolWithdrawAwardRequest, req
 		Amount:      request.Amount,
 	}, nil
 }
-
-// info
 
 type PoolAddLiquidityBatchInfo struct {
 	ID              uint          `json:"id"`
@@ -404,8 +344,6 @@ type PoolWithdrawAwardBatchInfo struct {
 	ResultErr        string        `json:"result_err"`
 	State            PoolBatchType `json:"state"`
 }
-
-// query
 
 func QueryAddLiquidityBatchCount(username string) (count int64, err error) {
 	tx := middleware.DB.Begin()

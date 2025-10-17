@@ -9,8 +9,6 @@ type AssetIssuanceStore struct {
 	DB *gorm.DB
 }
 
-// AssetIssuance
-
 func (a *AssetIssuanceStore) CreateAssetIssuance(tx *gorm.DB, assetIssuance *models.AssetIssuance) error {
 	return tx.Create(assetIssuance).Error
 }

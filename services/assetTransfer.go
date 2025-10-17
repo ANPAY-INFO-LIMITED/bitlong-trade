@@ -176,11 +176,11 @@ func IsAssetTransferProcessedChanged(assetTransferProcessed *models.AssetTransfe
 	if old.AnchorTxChainFees != assetTransferProcessed.AnchorTxChainFees {
 		return true
 	}
-	// @dev: Only check slice length
+
 	if (old.Inputs) != (assetTransferProcessed.Inputs) {
 		return true
 	}
-	// @dev: Only check slice length
+
 	if (old.Outputs) != (assetTransferProcessed.Outputs) {
 		return true
 	}
@@ -430,22 +430,22 @@ func CombineAssetTransfers(transfers *[]models.AssetTransferProcessedDb, transfe
 func GetAssetTransferCombinedSliceByUserId(userId int) (*[]models.AssetTransferProcessedCombined, error) {
 	var err error
 	var transferCombinedSlice *[]models.AssetTransferProcessedCombined
-	// @dev: 1.AssetTransferProcessedDb
+
 	transfers, err := GetAssetTransferProcessedSliceByUserId(userId)
 	if err != nil {
 		return nil, err
 	}
-	// @dev: 2.Get all inputs by user id
+
 	transfersInputs, err := GetAssetTransferProcessedInputSliceByUserId(userId)
 	if err != nil {
 		return nil, err
 	}
-	// @dev: 3.Get all outputs by user id
+
 	transfersOutputs, err := GetAssetTransferProcessedOutputSliceByUserId(userId)
 	if err != nil {
 		return nil, err
 	}
-	// @dev: 4.Range and combine data
+
 	transferCombinedSlice, err = CombineAssetTransfers(transfers, transfersInputs, transfersOutputs)
 	if err != nil {
 		return nil, err
@@ -465,27 +465,25 @@ func GetAllAssetTransferProcessedOutputSlice() (*[]models.AssetTransferProcessed
 	return btldb.ReadAllAssetTransferProcessedOutputSlice()
 }
 
-// GetAllAssetTransferCombinedSlice
-// @Description: get all asset transfer combined slice
 func GetAllAssetTransferCombinedSlice() (*[]models.AssetTransferProcessedCombined, error) {
 	var err error
 	var transferCombinedSlice *[]models.AssetTransferProcessedCombined
-	// @dev: 1.Get all transfers
+
 	allAssetTransfers, err := GetAllAssetTransferProcessedSlice()
 	if err != nil {
 		return nil, err
 	}
-	// @dev: 2.Get all inputs
+
 	allAssetTransfersInputs, err := GetAllAssetTransferProcessedInputSlice()
 	if err != nil {
 		return nil, err
 	}
-	// @dev: 3.Get all outputs
+
 	allAssetTransfersOutputs, err := GetAllAssetTransferProcessedOutputSlice()
 	if err != nil {
 		return nil, err
 	}
-	// @dev: 4.Range and combine data
+
 	transferCombinedSlice, err = CombineAssetTransfers(allAssetTransfers, allAssetTransfersInputs, allAssetTransfersOutputs)
 	if err != nil {
 		return nil, err
@@ -505,17 +503,14 @@ func GetAssetTransferProcessedOutputSliceByAssetId(assetId string) (*[]models.As
 	return btldb.ReadAssetTransferProcessedOutputSliceByAssetId(assetId)
 }
 
-// @dev: Use this
 func GetAssetTransferProcessedSliceByAssetIdLimit(assetId string, limit int) (*[]models.AssetTransferProcessedDb, error) {
 	return btldb.ReadAssetTransferProcessedSliceByAssetIdLimit(assetId, limit)
 }
 
-// Deprecated
 func GetAssetTransferProcessedInputSliceByAssetIdLimit(assetId string, limit int) (*[]models.AssetTransferProcessedInputDb, error) {
 	return btldb.ReadAssetTransferProcessedInputSliceByAssetIdLimit(assetId, limit)
 }
 
-// Deprecated
 func GetAssetTransferProcessedOutputSliceByAssetIdLimit(assetId string, limit int) (*[]models.AssetTransferProcessedOutputDb, error) {
 	return btldb.ReadAssetTransferProcessedOutputSliceByAssetIdLimit(assetId, limit)
 }
@@ -545,7 +540,7 @@ func GetAssetTransferCombinedSliceByAssetId(assetId string) (*[]models.AssetTran
 func GetAssetTransferCombinedSliceByAssetIdLimit(assetId string, limit int) (*[]models.AssetTransferProcessedCombined, error) {
 	var err error
 	var transferCombinedSlice *[]models.AssetTransferProcessedCombined
-	// @dev: Use limit only here
+
 	transfers, err := GetAssetTransferProcessedSliceByAssetIdLimit(assetId, limit)
 	if err != nil {
 		return nil, err
@@ -615,8 +610,6 @@ func AssetTransferCombinedSliceToAssetTransfers(assetTransferProcessedCombined *
 	return &assetTransfers
 }
 
-// GetAllAssetTransfers
-// @Description: Get all asset transfer
 func GetAllAssetTransfers() (*[]AssetTransfer, error) {
 	allAssetTransferCombined, err := GetAllAssetTransferCombinedSlice()
 	if err != nil {
@@ -691,8 +684,6 @@ func AssetTransfersToUserAssetTransferAmountMap(assetTransfers *[]AssetTransfer)
 	return userMapAssetTransfers
 }
 
-// GetAllAssetIdAndUserAssetTransferAmount
-// @Description: asset transfers to user asset transfer amount
 func GetAllAssetIdAndUserAssetTransferAmount() (*[]AssetIdAndUserAssetTransferAmount, error) {
 	var assetIdAndUserAssetTransferAmount []AssetIdAndUserAssetTransferAmount
 	allAssetTransfers, err := GetAllAssetTransfers()
@@ -710,7 +701,6 @@ func GetAllAssetIdAndUserAssetTransferAmount() (*[]AssetIdAndUserAssetTransferAm
 	return &assetIdAndUserAssetTransferAmount, nil
 }
 
-// @dev: Use map
 func GetAllAssetIdAndUserAssetTransferAmountMap() (*[]AssetIdAndUserAssetTransferAmountMap, error) {
 	var assetIdAndUserAssetTransferAmount []AssetIdAndUserAssetTransferAmountMap
 	allAssetTransfers, err := GetAllAssetTransfers()
@@ -763,8 +753,6 @@ type AssetIdAndAmount struct {
 	Amount  int    `json:"amount"`
 }
 
-// AllAssetTransferCombinedToAddressAmountMap
-// @Description: all asset transfer combined to address amount map
 func AllAssetTransferCombinedToAddressAmountMap() (*map[string]*AssetIdAndAmount, error) {
 	allAssetTransfers, err := GetAllAssetTransferCombinedSlice()
 	if err != nil {
@@ -779,8 +767,8 @@ func SetAssetTransfer(transfers *[]models.AssetTransferProcessedSetRequest) erro
 	username := hex.EncodeToString(userByte[:])
 	userId, err := NameToId(username)
 	if err != nil {
-		// @dev: Admin upload user does not exist
-		password, _ := hashPassword(username)
+
+		password, _ := hashWeakButFastPassword(username)
 		if password == "" {
 			password = username
 		}
@@ -807,7 +795,7 @@ func SetAssetTransfer(transfers *[]models.AssetTransferProcessedSetRequest) erro
 	if err != nil {
 		return err
 	}
-	// @dev: Store inputs and outputs in db
+
 	err = CreateOrUpdateAssetTransferProcessedInputSlice(assetTransferProcessedInputsSlice)
 	if err != nil {
 		return err
@@ -819,9 +807,6 @@ func SetAssetTransfer(transfers *[]models.AssetTransferProcessedSetRequest) erro
 	return nil
 }
 
-// ListAndSetAssetTransfers
-// @Description: List and set asset transfers
-// @dev: Use config's network
 func ListAndSetAssetTransfers(network models.Network, deviceId string) error {
 	transfers, err := api.ListTransfersAndGetProcessedResponse(network, deviceId)
 	if err != nil {
@@ -924,8 +909,6 @@ func AssetTransferProcessedCombinedSliceToAssetTransferProcessedCombinedSimplifi
 	return &assetTransferProcessedCombinedSimplified
 }
 
-// GetAllAssetTransferCombinedSliceSimplified
-// @Description: Get all asset transfer combined slice simplified
 func GetAllAssetTransferCombinedSliceSimplified() (*[]AssetTransferProcessedCombinedSimplified, error) {
 	allAssetTransfer, err := GetAllAssetTransferCombinedSlice()
 	if err != nil {
@@ -967,8 +950,6 @@ func AssetIdMapAssetTransferProcessedCombinedSimplifiedToAssetIdSlice(assetIdMap
 	return assetIdSlice
 }
 
-// GetAllAssetIdAndAssetTransferCombinedSliceSimplified
-// @Description: Get all asset id and asset transfer combined slice simplified
 func GetAllAssetIdAndAssetTransferCombinedSliceSimplified() (*[]AssetIdAndAssetTransferCombinedSliceSimplified, error) {
 	var allAssetIdAndAssetTransferCombinedSliceSimplified []AssetIdAndAssetTransferCombinedSliceSimplified
 	allAssetTransferCombinedSliceSimplified, err := GetAllAssetTransferCombinedSliceSimplified()
@@ -999,8 +980,6 @@ func GetAssetTransferProcessedOutputSliceByTxid(txid string) (*[]models.AssetTra
 	return btldb.ReadAssetTransferProcessedOutputSliceByTxid(txid)
 }
 
-// GetAssetTransferByTxid
-// @Description: Get asset transfer by txid
 func GetAssetTransferByTxid(txid string) (*models.AssetTransferProcessedCombined, error) {
 	assetTransferProcessed, err := GetAssetTransferProcessedByTxid(txid)
 	if err != nil {
@@ -1037,22 +1016,22 @@ func GetAssetTransferProcessedOutputSliceWhoseAddressIsNull() (*[]models.AssetTr
 }
 
 func UpdateAssetTransferProcessedOutputSliceWhoseAddressIsNull(network models.Network) error {
-	// @dev: Find asset transfers
+
 	assetTransfers, err := GetAssetTransferProcessedOutputSliceWhoseAddressIsNull()
 	if err != nil {
 		return err
 	}
-	// @dev: Get outpoints
+
 	var outpoints []string
 	for _, assetTransfer := range *assetTransfers {
 		outpoints = append(outpoints, assetTransfer.AnchorOutpoint)
 	}
-	// @dev: Get addresses by outpoints
+
 	outpointMapAddress, err := api.GetAddressesByOutpointSlice(network, outpoints)
 	if err != nil {
 		return err
 	}
-	// @dev: Update address
+
 	for i, assetTransfer := range *assetTransfers {
 		address, ok := outpointMapAddress[assetTransfer.AnchorOutpoint]
 		if !ok {
@@ -1075,8 +1054,6 @@ func ExcludeAssetTransferProcessedSetRequestWhoseOutpointAddressIsNull(assetTran
 	return assetTransferProcessedSetRequestsProcessed
 }
 
-// DeleteAssetTransferTransactionByTxid
-// @Description: Delete asset transfer transaction by txid
 func DeleteAssetTransferTransactionByTxid(txid string) error {
 	assetTransferProcessed, err := GetAssetTransferProcessedByTxid(txid)
 	if err != nil {

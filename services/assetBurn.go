@@ -43,7 +43,6 @@ func AssetBurnsToAssetBurnTotal(assetBurns *[]models.AssetBurn) *AssetBurnTotal 
 	return &assetBurnTotal
 }
 
-// @dev: Get total burn amount by asset id
 func GetAssetBurnTotal(assetId string) (*AssetBurnTotal, error) {
 	assetBurns, err := GetAssetBurnsByAssetId(assetId)
 	if err != nil {

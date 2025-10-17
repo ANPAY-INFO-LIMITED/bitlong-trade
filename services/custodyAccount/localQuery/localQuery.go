@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"gorm.io/gorm"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"trade/middleware"
@@ -40,11 +42,11 @@ type BillsResult struct {
 }
 
 type BillListWithUser struct {
-	ID          uint                `gorm:"primarykey" json:"id"`
+	ID          uint                `gorm:"column:id;primarykey" json:"id"`
 	UserName    string              `gorm:"column:user_name" json:"username"`
 	BillType    models.BalanceType  `gorm:"column:bill_type;type:smallint" json:"billType"`
 	Away        models.BalanceAway  `gorm:"column:away;type:smallint" json:"away"`
-	Amount      float64             `gorm:"column:amount;type:decimal(10,2)" json:"amount"`
+	Amount      float64             `gorm:"column:amount;type:decimal(25,2)" json:"amount"`
 	ServerFee   uint64              `gorm:"column:server_fee;type:bigint unsigned" json:"serverFee"`
 	AssetId     *string             `gorm:"column:asset_id;type:varchar(512);default:'00'" json:"assetId"`
 	Invoice     *string             `gorm:"column:invoice;type:varchar(512)" json:"invoice"`
@@ -63,7 +65,6 @@ func BillQuery(quest BillQueryQuest) (*[]BillListWithUser, int64, error) {
 	if !quest.IncludeFailed {
 		q = q.Where("state =?", 1)
 	}
-
 	if quest.UserName != "" {
 		account := models.Account{
 			UserName: quest.UserName,
@@ -126,7 +127,6 @@ func BillQuery(quest BillQueryQuest) (*[]BillListWithUser, int64, error) {
 		Joins("LEFT JOIN user_account ON user_account.id = bill_balance.account_id").
 		Joins("LEFT JOIN bill_balance_type_ext ON bill_balance.id = bill_balance_type_ext.balance_id")
 
-	// 查询总记录数
 	var total int64
 	err = q.Model(&models.Balance{}).Count(&total).Error
 	if err != nil || total == 0 {
@@ -148,7 +148,7 @@ func BillQuery(quest BillQueryQuest) (*[]BillListWithUser, int64, error) {
 			BillType:    bill.BillType,
 			Away:        bill.Away,
 			Amount:      bill.Amount,
-			ServerFee:   bill.ServerFee,
+			ServerFee:   uint64(bill.ServerFee),
 			AssetId:     bill.AssetId,
 			Invoice:     bill.Invoice,
 			PaymentHash: bill.PaymentHash,
@@ -158,6 +158,101 @@ func BillQuery(quest BillQueryQuest) (*[]BillListWithUser, int64, error) {
 		})
 	}
 	return &billListWithUser, total, nil
+}
+
+func BillQueryPool(quest BillQueryQuest) (*[]BillListWithUser, int64, error) {
+	decodepoolfunc := func(input string) ([]string, error) {
+		re := regexp.MustCompile(`^pool(\d+)(RSV|FEE)(.*)$`)
+		matches := re.FindStringSubmatch(input)
+
+		if len(matches) != 4 {
+			return nil, errors.New("格式不匹配")
+		}
+		return matches, nil
+	}
+	poolinfo, err := decodepoolfunc(quest.UserName)
+	if err != nil {
+		return nil, 0, err
+	}
+	pairId, err := strconv.Atoi(poolinfo[1])
+	if err != nil {
+		return nil, 0, err
+	}
+	poolType := 0
+
+	if poolinfo[2] == "FEE" {
+		poolType = 1
+	}
+	if quest.AssetId == "" {
+		quest.AssetId = "00"
+	}
+	if quest.AmountMax == 0 {
+		quest.AmountMax = 99999999999999
+	}
+	if quest.TimeStart == "" {
+		quest.TimeStart = "2006-01-02 15:04:05"
+	}
+	if quest.TimeEnd == "" {
+		quest.TimeEnd = time.Now().Format("2006-01-02 15:04:05")
+	}
+	if quest.PageSize == 0 {
+		quest.PageSize = 500
+	}
+	if quest.PageSize == 0 {
+		quest.PageSize = 500
+	}
+
+	countsql := `
+select  count(*)
+	from custody_pool_account_bills
+	left join custody_pool_accounts on custody_pool_accounts.id = custody_pool_account_bills.pool_account_id
+	where custody_pool_accounts.pair_id = ? and custody_pool_accounts.type = ?
+	and  asset_id = ? 
+	and custody_pool_account_bills.created_at > ? and custody_pool_account_bills.created_at < ?
+	and amount > ? and amount < ?
+`
+	sql := `
+select  custody_pool_accounts.pair_id AS id, ? as user_name,0 as bill_type,
+	custody_pool_account_bills.away as away,amount as Amount, custody_pool_account_bills.asset_id as AssetId,
+	custody_pool_account_bills.target as invoice,custody_pool_account_bills.payment_hash as payment_hash,
+	custody_pool_account_bills.created_at as created_at,'pooltransfer' as type,1 as State
+	from custody_pool_account_bills
+	left join custody_pool_accounts on custody_pool_accounts.id = custody_pool_account_bills.pool_account_id
+	where custody_pool_accounts.pair_id = ? and custody_pool_accounts.type = ?
+	and  asset_id = ? 
+	and custody_pool_account_bills.created_at > ? and custody_pool_account_bills.created_at < ?
+	and amount > ? and amount < ?
+`
+	if quest.Invoice != "" {
+		invoicessql := fmt.Sprintf("AND target = '%s' \n", quest.Invoice)
+		countsql += invoicessql
+		sql += invoicessql
+	}
+	if quest.PaymentHash != "" {
+		hashsql := fmt.Sprintf("and payment_hash = '%s'\n", quest.PaymentHash)
+		countsql += hashsql
+		sql += hashsql
+	}
+	if quest.Away != 2 {
+		awaysql := fmt.Sprintf("AND away = %d \n", quest.Away)
+		countsql += awaysql
+		sql += awaysql
+	}
+	db := middleware.DB
+	var count int64
+	err = db.Debug().Raw(countsql, pairId, poolType, quest.AssetId, quest.TimeStart, quest.TimeEnd,
+		quest.AmountMin, quest.AmountMax).Scan(&count).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	limitsql := fmt.Sprintf("limit %d \n offset %d \n", quest.PageSize, (quest.Page)*quest.PageSize)
+	var poolbills []BillListWithUser
+	err = db.Debug().Raw(sql+limitsql, quest.UserName, pairId, poolType, quest.AssetId, quest.TimeStart, quest.TimeEnd,
+		quest.AmountMin, quest.AmountMax).Scan(&poolbills).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	return &poolbills, count, nil
 }
 
 type BalanceQueryQuest struct {
@@ -282,15 +377,6 @@ type GetAssetListResp struct {
 	Amount   float64 `json:"amount" gorm:"column:amount"`
 }
 
-type assetTotal struct {
-	AssetId     string
-	Count       int64
-	TotalAmount float64
-	LocalTime   time.Time
-}
-
-var balanceMap = make(map[string]*assetTotal)
-
 func GetAssetList(quest GetAssetListQuest) (*[]GetAssetListResp, int64, float64) {
 	db := middleware.DB
 	var assetList []GetAssetListResp
@@ -302,63 +388,15 @@ func GetAssetList(quest GetAssetListQuest) (*[]GetAssetListResp, int64, float64)
 	if quest.AssetId == "" {
 		return &assetList, 0, 0
 	} else if quest.AssetId != "00" {
-		if _, ok := balanceMap[quest.AssetId]; !ok {
-			err = db.Raw(assetListQueryCT, quest.AssetId, quest.AssetId, quest.AssetId).Scan(&ct).Error
-			if err != nil {
-				return nil, 0, 0
-			}
-			balanceMap[quest.AssetId] = &assetTotal{
-				AssetId:     quest.AssetId,
-				Count:       ct.Count,
-				TotalAmount: ct.Total,
-				LocalTime:   time.Now(),
-			}
-		} else {
-			if balanceMap[quest.AssetId].LocalTime.Sub(time.Now()) > 1*time.Hour {
-				err = db.Raw(assetListQueryCT, quest.AssetId, quest.AssetId, quest.AssetId).Scan(&ct).Error
-				if err != nil {
-					return nil, 0, 0
-				}
-				balanceMap[quest.AssetId].TotalAmount = ct.Total
-				balanceMap[quest.AssetId].Count = ct.Count
-				balanceMap[quest.AssetId].LocalTime = time.Now()
-			}
-			ct.Total = balanceMap[quest.AssetId].TotalAmount
-			ct.Count = balanceMap[quest.AssetId].Count
-		}
-		err = db.Raw(assetListQuery, quest.AssetId, quest.AssetId, quest.AssetId, quest.PageSize, (quest.Page)*quest.PageSize).
+		err = db.Raw(assetListQueryCT, quest.AssetId, quest.AssetId, quest.AssetId).Scan(&ct).Error
+		err = db.Raw(assetListQuery, quest.AssetId, quest.AssetId, quest.AssetId, (quest.Page+1)*quest.PageSize, 0).
 			Scan(&assetList).Error
 		if err != nil {
 			return nil, 0, 0
 		}
 	} else {
-		if _, ok := balanceMap[quest.AssetId]; !ok {
-			err = db.Raw(btcListQueryCT).Scan(&ct).Error
-			if err != nil {
-				return nil, 0, 0
-			}
-
-			balanceMap[quest.AssetId] = &assetTotal{
-				AssetId:     quest.AssetId,
-				Count:       ct.Count,
-				TotalAmount: ct.Total,
-				LocalTime:   time.Now(),
-			}
-
-		} else {
-			if balanceMap[quest.AssetId].LocalTime.Sub(time.Now()) > 1*time.Hour {
-				err = db.Raw(btcListQueryCT).Scan(&ct).Error
-				if err != nil {
-					return nil, 0, 0
-				}
-				balanceMap[quest.AssetId].Count = ct.Count
-				balanceMap[quest.AssetId].TotalAmount = ct.Total
-				balanceMap[quest.AssetId].LocalTime = time.Now()
-			}
-			ct.Total = balanceMap[quest.AssetId].TotalAmount
-			ct.Count = balanceMap[quest.AssetId].Count
-		}
-		err = db.Raw(btcListQuery, quest.PageSize, (quest.Page)*quest.PageSize).Scan(&assetList).Error
+		err = db.Raw(btcListQueryCT).Scan(&ct).Error
+		err = db.Raw(btcListQuery, (quest.Page+1)*quest.PageSize, 0).Scan(&assetList).Error
 		if err != nil {
 			return nil, 0, 0
 		}
@@ -459,7 +497,7 @@ type LockedBillsQueryQuest struct {
 type LockedBillsQueryResp struct {
 	ID       uint      `gorm:"primarykey" json:"id"`
 	UserName string    `gorm:"column:user_name" json:"username"`
-	Amount   float64   `gorm:"column:amount;type:decimal(10,2)" json:"amount"`
+	Amount   float64   `gorm:"column:amount;type:decimal(25,2)" json:"amount"`
 	AssetId  *string   `gorm:"column:asset_id;type:varchar(512);default:'00'" json:"assetId"`
 	LockedId *string   `gorm:"column:lockId;type:varchar(512)" json:"LockedId"`
 	Time     time.Time `gorm:"column:created_at" json:"time"`

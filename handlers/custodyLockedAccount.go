@@ -10,7 +10,7 @@ import (
 )
 
 func QueryLockedPayments(c *gin.Context) {
-	// 获取登录用户信息
+
 	userName := c.MustGet("username").(string)
 	invoiceRequest := struct {
 		AssetId string `json:"asset_id"`
@@ -27,7 +27,7 @@ func QueryLockedPayments(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, models.MakeJsonErrorResultForHttp(models.DefaultErr, "用户不存在", nil))
 		return
 	}
-	// 查询账户交易记录
+
 	p, err := custodyAccount.LockPaymentToPaymentList(e.UserInfo, invoiceRequest.AssetId, invoiceRequest.Page, invoiceRequest.Size, invoiceRequest.Away)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -35,6 +35,6 @@ func QueryLockedPayments(c *gin.Context) {
 		return
 	}
 	p.Sort()
-	// 返回结果
+
 	c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "", p))
 }

@@ -21,7 +21,7 @@ func sortTokens(tokenA string, tokenB string) (token0 string, token1 string, err
 		err = errors.New("invalid tokenB length(" + strconv.Itoa(len(tokenB)) + ")")
 		return "", "", err
 	}
-	// @dev: sat is always token0
+
 	if tokenA == TokenSatTag {
 		token0, token1 = tokenA, tokenB
 	} else if tokenB == TokenSatTag {
@@ -38,8 +38,6 @@ func sortTokens(tokenA string, tokenB string) (token0 string, token1 string, err
 	return token0, token1, nil
 }
 
-// quote
-// given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
 func quote(amountA string, reserveA string, reserveB string) (amountB string, err error) {
 	_amountA, success := new(big.Int).SetString(amountA, 10)
 	if !success {
@@ -65,49 +63,6 @@ func quote(amountA string, reserveA string, reserveB string) (amountB string, er
 	return _amountB.String(), nil
 }
 
-// getAmountOut
-// @Description:
-//
-//	x_0y_0=(x_0 + dx)(y_0 - dy)
-//
-//	x_0:	reserveIn
-//	y_0:	reserveOut
-//	dx:		amountIn
-//	dy:		amountOut
-//
-//	dx with fee: dx(1 - f)
-//
-//			dx(1 - f)y_0
-//	dy = —————————————————————
-//			x_0 + dx(1 - f)
-//
-// ========================================
-//
-//	define: 	f = k / 1000
-//
-//					 k
-//			dx(1 - ——————)y_0
-//					1000
-//	dy = ——————————————————————————
-//						   k
-//			x_0 + dx(1 - ——————)
-//						  1000
-//
-// ========================================
-//
-//			dx(1000 - k)y_0
-//	dy = ——————————————————————————
-//			1000x_0 + dx(1000 - k)
-//
-// ========================================
-//
-// @dev: e.g. fee rate is 3/1000 (0.3%)
-//
-//			dx(997)y_0
-//	dy = —————————————————————— (k = 3)
-//			1000x_0 + dx(997)
-//
-// given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
 func getAmountOut(amountIn string, reserveIn string, reserveOut string, feeK uint16) (amountOut string, err error) {
 	if !(feeK <= 1000) {
 		err = errors.New("invalid fee rate k(" + strconv.FormatUint(uint64(feeK), 10) + "), must less equal than 1000")
@@ -135,59 +90,18 @@ func getAmountOut(amountIn string, reserveIn string, reserveOut string, feeK uin
 	}
 	k := new(big.Int).SetUint64(uint64(feeK))
 	oneThousand := new(big.Int).SetUint64(1000)
-	// @dev: dx(1000 - k)
+
 	amountInWithFee := new(big.Int).Mul(_amountIn, new(big.Int).Sub(oneThousand, k))
-	// @dev: numerator dx(1000 - k)y_0
+
 	numerator := new(big.Int).Mul(_reserveOut, amountInWithFee)
-	// @dev: denominator 1000x_0 + dx(1000 - k)
+
 	denominator := new(big.Int).Add(new(big.Int).Mul(_reserveIn, oneThousand), amountInWithFee)
-	// @dev: dy = numerator / denominator
+
 	_amountOut := new(big.Int).Div(numerator, denominator)
 	amountOut = _amountOut.String()
 	return amountOut, nil
 }
 
-// getAmountIn
-// @Description:
-//
-//	x_0y_0=(x_0 + dx)(y_0 - dy)
-//
-//	x_0:	reserveIn
-//	y_0:	reserveOut
-//	dx:		amountIn
-//	dy:		amountOut
-//
-//	dx with fee: dx(1 - f)
-//
-//			x_0dy		   1
-//	dx = ————————————— —————————
-//			y_0 - dy	 1 - f
-//
-// ========================================
-//
-//	define: 	f = k / 1000
-//
-//				x_0dy
-//	dx = ——————————————————————————
-//						   	 k
-//			(y_0 - dy)(1 - ——————)
-//						  	1000
-//
-// ========================================
-//
-//				1000x_0dy
-//	dx = ——————————————————————————
-//			(y_0 - dy)(1000 - k)
-//
-// ========================================
-//
-// @dev: e.g. fee rate is 3/1000 (0.3%)
-//
-//				1000x_0dy
-//	dx = —————————————————————————— (k = 3)
-//			(y_0 - dy)(997)
-//
-// given an output amount of an asset and pair reserves, returns a required input amount of the other asset
 func getAmountIn(amountOut string, reserveIn string, reserveOut string, feeK uint16) (amountIn string, err error) {
 	if !(feeK <= 1000) {
 		err = errors.New("invalid fee rate k(" + strconv.FormatUint(uint64(feeK), 10) + "), must less equal than 1000")
@@ -215,17 +129,17 @@ func getAmountIn(amountOut string, reserveIn string, reserveOut string, feeK uin
 	}
 	k := new(big.Int).SetUint64(uint64(feeK))
 	oneThousand := new(big.Int).SetUint64(1000)
-	// @dev: numerator 1000x_0dy
+
 	numerator := new(big.Int).Mul(new(big.Int).Mul(_reserveIn, _amountOut), oneThousand)
-	// @dev: denominator (y_0 - dy)(1000 - k)
+
 	denominator := new(big.Int).Mul(new(big.Int).Sub(_reserveOut, _amountOut), new(big.Int).Sub(oneThousand, k))
-	// @dev: Addition of 1 is to compensate for the loss of precision that may result from integer division
+
 	one := new(big.Int).SetUint64(1)
 	m := new(big.Int)
-	// @dev: dy, mod = numerator div mod denominator
+
 	_amountIn, m := new(big.Int).DivMod(numerator, denominator, m)
 	if m.Sign() != 0 {
-		// @dev: dy = (numerator / denominator) + 1
+
 		_amountIn = new(big.Int).Add(_amountIn, one)
 	}
 	amountIn = _amountIn.String()
@@ -259,16 +173,10 @@ func quoteBig(_amountA *big.Int, _reserveA *big.Int, _reserveB *big.Int) (_amoun
 		return new(big.Int), err
 	}
 	_amountB = new(big.Int).Div(new(big.Int).Mul(_amountA, _reserveB), _reserveA)
-	//fmt.Printf("[quoteBig] _amountB: %v;(_amountA:%v * _reserveB:%v / _reserveA:%v)\n", _amountB, _amountA, _reserveB, _reserveA)
+
 	return _amountB, nil
 }
 
-// getAmountOutBig
-// @Description:
-//
-//			dx(1000 - k)y_0
-//	dy = ——————————————————————————
-//			1000x_0 + dx(1000 - k)
 func getAmountOutBig(_amountIn *big.Int, _reserveIn *big.Int, _reserveOut *big.Int, feeK uint16) (_amountOut *big.Int, err error) {
 	if !(feeK <= 1000) {
 		err = errors.New("invalid fee rate k(" + strconv.FormatUint(uint64(feeK), 10) + "), must less equal than 1000")
@@ -284,23 +192,17 @@ func getAmountOutBig(_amountIn *big.Int, _reserveIn *big.Int, _reserveOut *big.I
 	}
 	k := new(big.Int).SetUint64(uint64(feeK))
 	oneThousand := new(big.Int).SetUint64(1000)
-	// @dev: dx(1000 - k)
+
 	amountInWithFee := new(big.Int).Mul(_amountIn, new(big.Int).Sub(oneThousand, k))
-	// @dev: numerator dx(1000 - k)y_0
+
 	numerator := new(big.Int).Mul(_reserveOut, amountInWithFee)
-	// @dev: denominator 1000x_0 + dx(1000 - k)
+
 	denominator := new(big.Int).Add(new(big.Int).Mul(_reserveIn, oneThousand), amountInWithFee)
-	// @dev: dy = numerator / denominator
+
 	_amountOut = new(big.Int).Div(numerator, denominator)
 	return _amountOut, nil
 }
 
-// getAmountInBig
-// @Description:
-//
-//				1000x_0dy
-//	dx = ——————————————————————————
-//			(y_0 - dy)(1000 - k)
 func getAmountInBig(_amountOut *big.Int, _reserveIn *big.Int, _reserveOut *big.Int, feeK uint16) (_amountIn *big.Int, err error) {
 	if !(feeK <= 1000) {
 		err = errors.New("invalid fee rate k(" + strconv.FormatUint(uint64(feeK), 10) + "), must less equal than 1000")
@@ -316,17 +218,17 @@ func getAmountInBig(_amountOut *big.Int, _reserveIn *big.Int, _reserveOut *big.I
 	}
 	k := new(big.Int).SetUint64(uint64(feeK))
 	oneThousand := new(big.Int).SetUint64(1000)
-	// @dev: numerator 1000x_0dy
+
 	numerator := new(big.Int).Mul(new(big.Int).Mul(_reserveIn, _amountOut), oneThousand)
-	// @dev: denominator (y_0 - dy)(1000 - k)
+
 	denominator := new(big.Int).Mul(new(big.Int).Sub(_reserveOut, _amountOut), new(big.Int).Sub(oneThousand, k))
-	// @dev: Addition of 1 is to compensate for the loss of precision that may result from integer division
+
 	one := new(big.Int).SetUint64(1)
 	m := new(big.Int)
-	// @dev: dy, mod = numerator div mod denominator
+
 	_amountIn, m = new(big.Int).DivMod(numerator, denominator, m)
 	if m.Sign() != 0 {
-		// @dev: dy = (numerator / denominator) + 1
+
 		_amountIn = new(big.Int).Add(_amountIn, one)
 	}
 	return _amountIn, nil
@@ -374,12 +276,6 @@ func _addLiquidity(_amount0Desired *big.Int, _amount1Desired *big.Int, _amount0M
 	return _amount0, _amount1, nil
 }
 
-// getAmountOutBigWithoutFee
-// @Description:
-//
-//			dx * y_0
-//	dy = ——————————————————————————
-//			x_0 + dx
 func getAmountOutBigWithoutFee(_amountIn *big.Int, _reserveIn *big.Int, _reserveOut *big.Int) (_amountOut *big.Int, err error) {
 	if !(_amountIn.Sign() > 0) {
 		err = errors.New("insufficientInputAmount(" + _amountIn.String() + ")")
@@ -389,21 +285,15 @@ func getAmountOutBigWithoutFee(_amountIn *big.Int, _reserveIn *big.Int, _reserve
 		err = errors.New("insufficientLiquidity(" + _reserveIn.String() + "," + _reserveOut.String() + ")")
 		return new(big.Int), err
 	}
-	// @dev: numerator dx * y_0
+
 	numerator := new(big.Int).Mul(_amountIn, _reserveOut)
-	// @dev: denominator x_0 + dx
+
 	denominator := new(big.Int).Add(_reserveIn, _amountIn)
-	// @dev: dy = numerator / denominator
+
 	_amountOut = new(big.Int).Div(numerator, denominator)
 	return _amountOut, nil
 }
 
-// getAmountInBigWithoutFee
-// @Description:
-//
-//				x_0 * dy
-//	dx = ——————————————————————————
-//				y_0 - dy
 func getAmountInBigWithoutFee(_amountOut *big.Int, _reserveIn *big.Int, _reserveOut *big.Int) (_amountIn *big.Int, err error) {
 	if !(_amountOut.Sign() > 0) {
 		err = errors.New("insufficientOutputAmount(" + _amountOut.String() + ")")
@@ -414,17 +304,16 @@ func getAmountInBigWithoutFee(_amountOut *big.Int, _reserveIn *big.Int, _reserve
 		return new(big.Int), err
 	}
 
-	// @dev: numerator x_0 * dy
 	numerator := new(big.Int).Mul(_reserveIn, _amountOut)
-	// @dev: denominator y_0 - dy
+
 	denominator := new(big.Int).Sub(_reserveOut, _amountOut)
-	// @dev: Addition of 1 is to compensate for the loss of precision that may result from integer division
+
 	one := new(big.Int).SetUint64(1)
 	m := new(big.Int)
-	// @dev: dy, mod = numerator div mod denominator
+
 	_amountIn, m = new(big.Int).DivMod(numerator, denominator, m)
 	if m.Sign() != 0 {
-		// @dev: dy = (numerator / denominator) + 1
+
 		_amountIn = new(big.Int).Add(_amountIn, one)
 	}
 	return _amountIn, nil

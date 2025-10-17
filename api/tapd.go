@@ -3,16 +3,20 @@ package api
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/lightninglabs/taproot-assets/proof"
-	"github.com/lightninglabs/taproot-assets/taprpc"
-	"github.com/lightninglabs/taproot-assets/taprpc/mintrpc"
-	"github.com/lightninglabs/taproot-assets/taprpc/universerpc"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"trade/config"
 	"trade/models"
 	"trade/utils"
+
+	"github.com/lightninglabs/taproot-assets/proof"
+	"github.com/lightninglabs/taproot-assets/taprpc"
+	"github.com/lightninglabs/taproot-assets/taprpc/mintrpc"
+	"github.com/lightninglabs/taproot-assets/taprpc/tapchannelrpc"
+	"github.com/lightninglabs/taproot-assets/taprpc/universerpc"
+	"github.com/lightningnetwork/lnd/lnrpc"
 )
 
 func GetAssetInfo(id string) (*models.AssetIssuanceLeaf, error) {
@@ -58,9 +62,9 @@ func GetAssetsNameMap(assetIds []string) (map[string]string, error) {
 		if err != nil {
 			return nil, utils.AppendErrorInfo(err, "GetAssetName")
 		}
-		//if name != "" {
+
 		assetsNameMap[assetId] = name
-		//}
+
 	}
 	return assetsNameMap, nil
 }
@@ -72,11 +76,11 @@ func AddGroupAssetAndGetResponse(name string, assetTypeIsCollectible bool, meta 
 func NewAddrAndGetResponse(assetId string, amt int) (*taprpc.Addr, error) {
 	proofCourierAddr := config.GetLoadConfig().ApiConfig.Tapd.UniverseHost
 	if proofCourierAddr != "" {
-		if !strings.HasPrefix(proofCourierAddr, "universerpc://") {
-			proofCourierAddr = "universerpc://" + proofCourierAddr
-		}
+		if !strings.HasPrefix(proofCourierAddr, "universerpc: 
+			proofCourierAddr = "universerpc: 
 	}
-	return newAddr(assetId, amt, proofCourierAddr)
+}
+return newAddr(assetId, amt, proofCourierAddr)
 }
 
 func NewAddrAndGetStringResponse(assetId string, amt int) (string, error) {
@@ -314,7 +318,7 @@ func ListBalancesAndGetShortResponse() (*[]ListBalancesShortResponse, error) {
 }
 
 func SyncAssetIssuanceAndGetResponse(universeHost string, assetId string) (*universerpc.SyncResponse, error) {
-	//universeHost := "mainnet.universe.lightning.finance:10029"
+
 	if universeHost == "" {
 		return nil, errors.New("universe host is empty")
 	}
@@ -543,12 +547,10 @@ type AssetMeta struct {
 	MetaHash string `json:"meta_hash"`
 }
 
-// FetchAssetMetaByAssetId
-// @Description: Fetch asset meta by asset id
 func FetchAssetMetaByAssetId(assetId string) (*AssetMeta, error) {
 	response, err := FetchAssetMetaAndGetResponse(assetId)
 	if err != nil {
-		return nil, err
+		return &AssetMeta{}, err
 	}
 	assetMeta := AssetMeta{
 		Data:     string(response.Data),
@@ -566,7 +568,6 @@ func QueryProofAndGetResponse(isGroup bool, id string, outpoint string, scriptKe
 	return queryProof(isGroup, id, outpoint, scriptKey, proofType)
 }
 
-// @dev: Has not been used now
 type QueryProofAndResponse struct {
 	Req struct {
 		ID struct {
@@ -646,8 +647,6 @@ type QueryProofAndResponse struct {
 	MultiverseInclusionProof string `json:"multiverse_inclusion_proof"`
 }
 
-// QueryProofToGetAssetId
-// @Description: Query proof to get asset id
 func QueryProofToGetAssetId(groupKey string, outpoint string, scriptKey string) (string, error) {
 	response, err := QueryProofAndGetResponse(true, groupKey, outpoint, scriptKey, universerpc.ProofType_PROOF_TYPE_ISSUANCE)
 	if err != nil {
@@ -657,8 +656,6 @@ func QueryProofToGetAssetId(groupKey string, outpoint string, scriptKey string) 
 	return assetId, nil
 }
 
-// MintNftAsset
-// @Description: Mint nft asset
 func MintNftAsset(name string, meta *Meta, newGroupedAsset bool, groupedAsset bool, groupKey string) (*mintrpc.MintAssetResponse, error) {
 	if name == "" {
 		return nil, errors.New("null string name is not supported")
@@ -698,7 +695,7 @@ func MintNftAssetAppend(name string, meta *Meta, groupKey string) (*mintrpc.Mint
 }
 
 func GetGroupFirstImageData(network models.Network, groupKey string) (imageData string, err error) {
-	// @dev: 1. Get outpoints by group key
+
 	assetKeys, err := AssetLeafKeys(true, groupKey, universerpc.ProofType_PROOF_TYPE_ISSUANCE)
 	if err != nil {
 		return "", utils.AppendErrorInfo(err, "AssetLeafKeys")
@@ -715,7 +712,7 @@ func GetGroupFirstImageData(network models.Network, groupKey string) (imageData 
 		outpoints = append(outpoints, assetKey.OpStr)
 		opMapScriptKey[assetKey.OpStr] = assetKey.ScriptKeyBytes
 	}
-	// @dev: 2. Get time by outpoints
+
 	outpointTime, err := GetTimesByOutpointSlice(network, outpoints)
 	if err != nil {
 		return "", utils.AppendErrorInfo(err, "GetTimesByOutpointSlice")
@@ -738,33 +735,63 @@ func GetGroupFirstImageData(network models.Network, groupKey string) (imageData 
 		return "", utils.AppendErrorInfo(err, "")
 	}
 	{
-		// @dev: Do not check length here
-		//if len(outpoints) != len(outpointTime) {
-		//	err = errors.New("length of outpoints(" + strconv.Itoa(len(outpoints)) + ") is not equal length of outpointTime(" + strconv.Itoa(len(outpointTime)) + ")")
-		//	return "", utils.AppendErrorInfo(err, "")
-		//}
+
 	}
-	// @dev: 3. Sort outpoints by time
+
 	func(tak []timeAndAssetKey) {
 		sort.Slice(tak, func(i, j int) bool {
 			return (tak)[i].Time < (tak)[j].Time
 		})
 	}(timeAndAssetKeys)
-	// @dev: 4. Get first asset of group
+
 	firstAssetKey := timeAndAssetKeys[0]
-	// @dev: Get asset id by outpoint
+
 	assetId, err := QueryProofToGetAssetId(groupKey, firstAssetKey.OpStr, firstAssetKey.ScriptKeyBytes)
 	if err != nil {
 		return "", utils.AppendErrorInfo(err, "QueryProofToGetAssetId")
 	}
-	// @dev: Get asset meta by asset id
+
 	assetMeta, err := FetchAssetMetaByAssetId(assetId)
 	if err != nil {
 		return "", utils.AppendErrorInfo(err, "FetchAssetMetaByAssetId")
 	}
-	// @dev: Decode metadata and determines whether the group name is empty
+
 	var meta Meta
 	meta.GetMetaFromStr(assetMeta.Data)
 	imageData = meta.ImageData
 	return imageData, nil
+}
+
+func FundChannel(assetId string, assetAmount int, peerPubkey string, feeRate int, pushSat int, localAmt int) (string, error) {
+	resp, err := fundChannel(assetId, assetAmount, peerPubkey, feeRate, pushSat, localAmt)
+	if err != nil {
+		return "", err
+	}
+	resp1 := fmt.Sprintf("%s:%d", resp.Txid, resp.OutputIndex)
+	return resp1, nil
+}
+
+func BoxFundChannel(assetId string, assetAmount int64, peerPubkey string, feeRate int, pushSat int, localAmt int, serverIdentityPubkey string) (string, error) {
+	resp, err := boxFundChannel(assetId, assetAmount, peerPubkey, feeRate, pushSat, localAmt, serverIdentityPubkey)
+	if err != nil {
+		return "", err
+	}
+	resp1 := fmt.Sprintf("%s:%d", resp.Txid, resp.OutputIndex)
+	return resp1, nil
+}
+
+func KeySendToAssetChannel(assetId string, amount int64, pubkey string, outgoingChanId int) (*lnrpc.Payment, error) {
+	return keySendToAssetChannel(assetId, amount, pubkey, outgoingChanId)
+}
+
+func BoxKeySendToAssetChannel(client tapchannelrpc.TaprootAssetChannelsClient, assetId string, amount int64, pubkey string, outgoingChanId int64, serverIdentityPubkey string) (*lnrpc.Payment, error) {
+	return boxKeySendToAssetChannel(client, assetId, amount, pubkey, outgoingChanId, serverIdentityPubkey)
+}
+
+func BoxGetTapAddrs(serverIdentityPubkey string, assetId string, amt int64) (string, error) {
+	return boxGetTapAddrs(serverIdentityPubkey, assetId, amt)
+}
+
+func BoxAddrReceives(serverIdentityPubkey string, assetAddr string) (*taprpc.AddrReceivesResponse, error) {
+	return boxAddrReceives(serverIdentityPubkey, assetAddr)
 }

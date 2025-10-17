@@ -10,8 +10,7 @@ import (
 	"trade/models"
 	cModels "trade/models/custodyModels"
 	caccount "trade/services/custodyAccount/account"
-	"trade/services/custodyAccount/defaultAccount/custodyAssets"
-	"trade/services/custodyAccount/defaultAccount/custodyBtc"
+	"trade/services/custodyAccount/defaultAccount/custodyBalance"
 )
 
 var (
@@ -30,7 +29,6 @@ func PutInAwardLockBTC(usr *caccount.UserInfo, amount float64, memo *string, loc
 	defer back()
 	var err error
 
-	// send btc award
 	lockedBalance := cModels.LockBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, btcId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -38,7 +36,7 @@ func PutInAwardLockBTC(usr *caccount.UserInfo, amount float64, memo *string, loc
 			btlLog.CUST.Error(err.Error())
 			return nil, ServiceError
 		}
-		// Init Balance record
+
 		lockedBalance.AssetId = btcId
 		lockedBalance.AccountID = usr.LockAccount.ID
 		lockedBalance.Amount = 0
@@ -50,7 +48,6 @@ func PutInAwardLockBTC(usr *caccount.UserInfo, amount float64, memo *string, loc
 		return nil, ServiceError
 	}
 
-	//create locked balance bill
 	lockBill := cModels.LockBill{
 		AccountID: usr.LockAccount.ID,
 		AssetId:   btcId,
@@ -69,7 +66,6 @@ func PutInAwardLockBTC(usr *caccount.UserInfo, amount float64, memo *string, loc
 		return nil, ServiceError
 	}
 
-	// Build a database AccountAward
 	award := models.AccountAward{
 		AccountID: usr.Account.ID,
 		AssetId:   btcId,
@@ -81,7 +77,6 @@ func PutInAwardLockBTC(usr *caccount.UserInfo, amount float64, memo *string, loc
 		return nil, err
 	}
 
-	//Build a database AwardIdempotent
 	Idempotent := models.AccountAwardIdempotent{
 		AwardId:    award.ID,
 		Idempotent: lockedId,
@@ -97,7 +92,6 @@ func PutInAwardLockBTC(usr *caccount.UserInfo, amount float64, memo *string, loc
 		return nil, ServiceError
 	}
 
-	// Build a database  AccountAwardExt
 	awardExt := models.AccountAwardExt{
 		BalanceId:   lockBill.ID,
 		AwardId:     award.ID,
@@ -108,7 +102,6 @@ func PutInAwardLockBTC(usr *caccount.UserInfo, amount float64, memo *string, loc
 		return nil, err
 	}
 
-	//扣除admin账户对应的金额
 	var adminUsr *caccount.UserInfo
 	adminUsr, err = caccount.GetUserInfo("admin")
 	if err != nil {
@@ -140,7 +133,7 @@ func PutInAwardLockBTC(usr *caccount.UserInfo, amount float64, memo *string, loc
 		btlLog.CUST.Error(err.Error())
 		return nil, err
 	}
-	_, err = custodyBtc.LessBtcBalance(tx, adminUsr, payba.Amount, payba.ID, cModels.ChangeTypeOfferAward)
+	_, err = custodyBalance.LessBtcBalance(tx, adminUsr, payba.Amount, payba.ID, cModels.ChangeTypeOfferAward)
 	if err != nil {
 		btlLog.CUST.Error(err.Error())
 		return nil, err
@@ -160,7 +153,6 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 	defer back()
 	var err error
 
-	// Check if the asset is award type
 	var in models.AwardInventory
 	err = tx.Where("asset_Id =? ", assetId).First(&in).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -177,7 +169,6 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 		return nil, NoEnoughAward
 	}
 
-	// send btc award
 	lockedBalance := cModels.LockBalance{}
 	if err = tx.Where("account_id =? AND asset_id =?", usr.LockAccount.ID, assetId).First(&lockedBalance).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -185,7 +176,7 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 			btlLog.CUST.Error(err.Error())
 			return nil, ServiceError
 		}
-		// Init Balance record
+
 		lockedBalance.AssetId = assetId
 		lockedBalance.AccountID = usr.LockAccount.ID
 		lockedBalance.Amount = 0
@@ -197,7 +188,6 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 		return nil, ServiceError
 	}
 
-	//create locked balance bill
 	lockBill := cModels.LockBill{
 		AccountID: usr.LockAccount.ID,
 		AssetId:   assetId,
@@ -216,7 +206,6 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 		return nil, ServiceError
 	}
 
-	// Build a database AccountAward
 	award := models.AccountAward{
 		AccountID: usr.Account.ID,
 		AssetId:   assetId,
@@ -227,7 +216,7 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 		btlLog.CUST.Error(err.Error())
 		return nil, err
 	}
-	//Build a database AwardIdempotent
+
 	Idempotent := models.AccountAwardIdempotent{
 		AwardId:    award.ID,
 		Idempotent: lockedId,
@@ -243,7 +232,6 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 		return nil, ServiceError
 	}
 
-	// Build a database  AccountAwardExt
 	awardExt := models.AccountAwardExt{
 		BalanceId:   lockBill.ID,
 		AwardId:     award.ID,
@@ -253,7 +241,7 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 		btlLog.CUST.Error(err.Error())
 		return nil, err
 	}
-	//扣除admin账户对应的金额
+
 	var adminUsr *caccount.UserInfo
 	adminUsr, err = caccount.GetUserInfo("admin")
 	if err != nil {
@@ -285,7 +273,7 @@ func PutInAwardLockAsset(usr *caccount.UserInfo, assetId string, amount float64,
 		btlLog.CUST.Error(err.Error())
 		return nil, err
 	}
-	_, err = custodyAssets.LessAssetBalance(tx, adminUsr, payba.Amount, payba.ID, assetId, cModels.ChangeTypeOfferAward)
+	_, err = custodyBalance.LessAssetBalance(tx, adminUsr, payba.Amount, payba.ID, assetId, cModels.ChangeTypeOfferAward)
 	if err != nil {
 		btlLog.CUST.Error(err.Error())
 		return nil, err

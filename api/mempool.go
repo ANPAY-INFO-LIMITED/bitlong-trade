@@ -17,7 +17,7 @@ type MempoolGetRecommendedFeesResponse struct {
 }
 
 func MempoolGetRecommendedFees() (*MempoolGetRecommendedFeesResponse, error) {
-	url := "https://mempool.space/api/v1/fees/recommended"
+	url := "https: 
 	client := &http.Client{}
 	var jsonData []byte
 	request, err := http.NewRequest("GET", url, bytes.NewBuffer(jsonData))

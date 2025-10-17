@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gorm.io/gorm"
 	"strings"
+	"sync"
 	"time"
 	"trade/btlLog"
 	"trade/middleware"
@@ -18,10 +18,11 @@ import (
 	"trade/services/custodyAccount/custodyBase/custodyFee"
 	"trade/services/custodyAccount/custodyBase/custodyLimit"
 	"trade/services/custodyAccount/custodyBase/custodyPayTN"
+	"trade/services/custodyAccount/defaultAccount/custodyBalance"
 	rpc "trade/services/servicesrpc"
-)
 
-//构建用户的BTC通道事件
+	"gorm.io/gorm"
+)
 
 type BtcChannelEvent struct {
 	UserInfo *caccount.UserInfo
@@ -61,11 +62,9 @@ func NewBtcChannelEventByUserId(UserId uint) (*BtcChannelEvent, error) {
 	return &e, nil
 }
 
-//获取余额
-
 func (e *BtcChannelEvent) GetBalance() ([]cBase.Balance, error) {
 	DB := middleware.DB
-	balance := getBtcBalance(DB, e.UserInfo.Account.ID)
+	balance := custodyBalance.GetBtcBalance(DB, e.UserInfo.Account.ID)
 	balances := []cBase.Balance{
 		{
 			AssetId: "00",
@@ -75,27 +74,21 @@ func (e *BtcChannelEvent) GetBalance() ([]cBase.Balance, error) {
 	return balances, nil
 }
 
-//请求发票
-
 var CreateInvoiceErr = errors.New("CreateInvoiceErr")
 
-func (e *BtcChannelEvent) ApplyPayReq(Request cBase.PayReqApplyRequest) (cBase.PayReqApplyResponse, error) {
-	var applyRequest *BtcApplyInvoiceRequest
-	var ok bool
-	if applyRequest, ok = Request.(*BtcApplyInvoiceRequest); !ok {
-		return nil, errors.New("invalid apply request")
+func (e *BtcChannelEvent) ApplyPayReq(applyRequest *BtcApplyInvoiceRequest) (*BtcApplyInvoice, error) {
+	if false {
+		return nil, errors.New("测试期间，发票申请关闭")
 	}
-	//调用Lit节点发票申请接口
+
 	invoice, err := rpc.InvoiceCreate(applyRequest.Amount, applyRequest.Memo)
 	if err != nil {
 		btlLog.CUST.Error(err.Error())
 		return nil, fmt.Errorf("%w: %s", CreateInvoiceErr, err.Error())
 	}
-	//TODO:取消Find接口
-	//获取发票信息
+
 	info, _ := rpc.InvoiceFind(invoice.RHash)
 
-	//构建invoice对象
 	var invoiceModel models.Invoice
 	invoiceModel.UserID = e.UserInfo.User.ID
 	invoiceModel.Invoice = invoice.PaymentRequest
@@ -107,7 +100,7 @@ func (e *BtcChannelEvent) ApplyPayReq(Request cBase.PayReqApplyRequest) (cBase.P
 	invoiceModel.CreateDate = &template
 	expiry := int(info.Expiry)
 	invoiceModel.Expiry = &expiry
-	//写入数据库
+
 	err = btldb.CreateInvoice(&invoiceModel)
 	if err != nil {
 		btlLog.CUST.Error(err.Error(), models.ReadDbErr)
@@ -119,10 +112,13 @@ func (e *BtcChannelEvent) ApplyPayReq(Request cBase.PayReqApplyRequest) (cBase.P
 	}, nil
 }
 
-func (e *BtcChannelEvent) QueryPayReq() ([]InvoiceResponce, error) {
+func (e *BtcChannelEvent) QueryPayReq(assetId string) ([]InvoiceResponce, error) {
+	if assetId == "" {
+		assetId = "00"
+	}
 	params := btldb.QueryParams{
 		"UserID":  e.UserInfo.User.ID,
-		"AssetId": "00",
+		"AssetId": assetId,
 	}
 	a, err := btldb.GenericQuery(&models.Invoice{}, params)
 	if err != nil {
@@ -137,6 +133,7 @@ func (e *BtcChannelEvent) QueryPayReq() ([]InvoiceResponce, error) {
 			i.AssetId = a[j].AssetId
 			i.Amount = int64(a[j].Amount)
 			i.Status = a[j].Status
+			i.Time = a[j].CreatedAt.Unix()
 			invoices = append(invoices, i)
 		}
 		return invoices, nil
@@ -144,14 +141,8 @@ func (e *BtcChannelEvent) QueryPayReq() ([]InvoiceResponce, error) {
 	return nil, nil
 }
 
-func (e *BtcChannelEvent) SendPayment(payRequest cBase.PayPacket) error {
-	var bt *BtcPacket
-	var ok bool
-	if bt, ok = payRequest.(*BtcPacket); !ok {
-		return errors.New("invalid pay request")
-	}
+func (e *BtcChannelEvent) SendPayment(bt *BtcPacket) error {
 	bt.err = make(chan error, 1)
-	//defer close(bt.err)
 
 	err := bt.VerifyPayReq(e.UserInfo)
 	if err != nil {
@@ -161,14 +152,14 @@ func (e *BtcChannelEvent) SendPayment(payRequest cBase.PayPacket) error {
 		if !control.GetTransferControl("00", control.TransferControlLocal) {
 			return errors.New("当前服务调用失败，请稍后再试")
 		}
-		//发起本地转账
+
 		bt.isInsideMission.err = bt.err
 		go e.payToInside(bt)
 	} else {
 		if !control.GetTransferControl("00", control.TransferControlOffChain) {
 			return errors.New("当前服务调用失败，请稍后再试")
 		}
-		//发起外部转账
+
 		go e.payToOutside(bt)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), cBase.Timeout)
@@ -182,10 +173,10 @@ func (e *BtcChannelEvent) SendPayment(payRequest cBase.PayPacket) error {
 			}
 			close(c)
 		}(bt.err)
-		//超时处理
+
 		return cBase.TimeoutErr
 	case err := <-bt.err:
-		//错误处理
+
 		return err
 	}
 }
@@ -194,7 +185,7 @@ func (e *BtcChannelEvent) SendPaymentToUser(receiverUserName string, amount floa
 	if !control.GetTransferControl("00", control.TransferControlLocal) {
 		return errors.New("当前服务调用失败，请稍后再试")
 	}
-	//检查接收方是否存在
+
 	var err error
 	receiver, err := caccount.GetUserInfo(receiverUserName)
 	if err != nil {
@@ -205,7 +196,6 @@ func (e *BtcChannelEvent) SendPaymentToUser(receiverUserName string, amount floa
 		return fmt.Errorf("%w: %w", caccount.CustodyAccountGetErr, err)
 	}
 
-	//验证余额，检查限额
 	limitType := custodyModels.LimitType{
 		AssetId:      "00",
 		TransferType: custodyModels.LimitTransferTypeLocal,
@@ -214,19 +204,19 @@ func (e *BtcChannelEvent) SendPaymentToUser(receiverUserName string, amount floa
 	if err != nil {
 		return err
 	}
-	if !CheckBtcBalance(middleware.DB, e.UserInfo, amount) {
+	if !custodyBalance.CheckBtcBalance(middleware.DB, e.UserInfo, amount) {
 		return NotSufficientFunds
 	}
-	//构建转账请求
+
 	m := custodyModels.AccountInsideMission{
 		AccountId:  e.UserInfo.Account.ID,
-		AssetId:    BtcId,
+		AssetId:    custodyBalance.BtcId,
 		Type:       custodyModels.AIMTypeBtc,
 		ReceiverId: receiver.Account.ID,
 		InvoiceId:  0,
 		Amount:     amount,
 		Fee:        float64(custodyFee.ChannelBtcInsideServiceFee),
-		FeeType:    BtcId,
+		FeeType:    custodyBalance.BtcId,
 		State:      custodyModels.AIMStatePending,
 	}
 	LogAIM(middleware.DB, &m)
@@ -240,13 +230,13 @@ func (e *BtcChannelEvent) SendPaymentToUser(receiverUserName string, amount floa
 func (e *BtcChannelEvent) payToInside(bt *BtcPacket) {
 	m := custodyModels.AccountInsideMission{
 		AccountId:  e.UserInfo.Account.ID,
-		AssetId:    BtcId,
+		AssetId:    custodyBalance.BtcId,
 		Type:       custodyModels.AIMTypeBtc,
 		ReceiverId: *bt.isInsideMission.insideInvoice.AccountID,
 		InvoiceId:  bt.isInsideMission.insideInvoice.ID,
 		Amount:     float64(bt.DecodePayReq.NumSatoshis),
 		Fee:        float64(custodyFee.ChannelBtcInsideServiceFee),
-		FeeType:    BtcId,
+		FeeType:    custodyBalance.BtcId,
 		State:      custodyModels.AIMStatePending,
 	}
 	LogAIM(middleware.DB, &m)
@@ -293,6 +283,44 @@ func (e *BtcChannelEvent) payToOutside(bt *BtcPacket) {
 	bt.err <- err
 }
 
+var payToOutSideMutex = new(sync.Mutex)
+
+func (e *BtcChannelEvent) PayToOutsideOnChain(address string, amount float64) error {
+	payToOutSideMutex.Lock()
+	defer payToOutSideMutex.Unlock()
+
+	if !verifyBtcAddress(address) {
+		return fmt.Errorf("%s is not a valid btc address", address)
+	}
+
+	endAmount := amount + 2500
+
+	limitType := custodyModels.LimitType{
+		AssetId:      "00",
+		TransferType: custodyModels.LimitTransferTypeOutside,
+	}
+	err := custodyLimit.CheckLimit(middleware.DB, e.UserInfo, &limitType, endAmount)
+	if err != nil {
+		return err
+	}
+	if !custodyBalance.CheckBtcBalance(middleware.DB, e.UserInfo, float64(endAmount)) {
+		return NotSufficientFunds
+	}
+	serverBalance, err := rpc.GetBalance()
+	if err != nil {
+		return fmt.Errorf("get server balance error:%s", err.Error())
+	}
+	if serverBalance.AccountBalance["default"].ConfirmedBalance-10000 < int64(endAmount) {
+		return fmt.Errorf("no enough server balance")
+	}
+	err = payBtcOnchain(e.UserInfo, address, amount)
+	if err != nil {
+		btlLog.CUST.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
 func (e *BtcChannelEvent) GetTransactionHistory(query *cBase.PaymentRequest) (*cBase.PaymentList, error) {
 
 	if query.Page <= 0 {
@@ -326,7 +354,6 @@ func (e *BtcChannelEvent) GetTransactionHistory(query *cBase.PaymentRequest) (*c
 			r.BillType = v.BillType
 			r.Away = v.Away
 			r.Target = v.Invoice
-			r.PaymentHash = v.PaymentHash
 			if *v.Invoice == "award" && v.PaymentHash != nil {
 				awardType := cBase.GetAwardType(*v.PaymentHash)
 				r.Target = &awardType
@@ -354,13 +381,19 @@ func (e *BtcChannelEvent) GetTransactionHistory(query *cBase.PaymentRequest) (*c
 					}
 				}
 			}
-			r.Invoice = v.Invoice
-			r.Address = v.Invoice
+			empty := ""
+			r.Invoice = &empty
+			r.Address = &empty
+			if v.PaymentHash != nil {
+				r.PaymentHash = v.PaymentHash
+			} else {
+				r.PaymentHash = &empty
+			}
 			r.Amount = v.Amount
 			btcAssetId := "00"
 			r.AssetId = &btcAssetId
 			r.State = v.State
-			r.Fee = v.ServerFee
+			r.Fee = uint64(v.ServerFee)
 			results.PaymentList = append(results.PaymentList, r)
 		}
 	}

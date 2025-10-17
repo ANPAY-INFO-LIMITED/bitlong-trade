@@ -9,14 +9,12 @@ import (
 
 var payOutsideMutex sync.Mutex
 
-// CreatePayOutside creates a new payOutside
 func CreatePayOutside(pay *custodyModels.PayOutside) error {
 	payOutsideMutex.Lock()
 	defer payOutsideMutex.Unlock()
 	return middleware.DB.Create(pay).Error
 }
 
-// ReadPayOutside retrieves an payOutside by  Id
 func ReadPayOutside(id uint) (*custodyModels.PayOutside, error) {
 	var pay custodyModels.PayOutside
 	err := middleware.DB.First(&pay, id).Error
@@ -29,7 +27,6 @@ func LoadPendingOutsides() (*[]custodyModels.PayOutside, error) {
 	return &pay, err
 }
 
-// UpdatePayOutside updates an existing payOutside
 func UpdatePayOutside(tx *gorm.DB, pay *custodyModels.PayOutside) error {
 	payOutsideMutex.Lock()
 	defer payOutsideMutex.Unlock()

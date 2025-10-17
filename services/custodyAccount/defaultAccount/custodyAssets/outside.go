@@ -14,7 +14,7 @@ import (
 var isAble = true
 
 func GoOutsideMission() {
-	ticker := time.NewTicker(1 * time.Minute) // 每10秒触发一次
+	ticker := time.NewTicker(1 * time.Minute)
 	go func() {
 		for {
 
@@ -23,7 +23,7 @@ func GoOutsideMission() {
 				startOutsideMission()
 				isAble = !isAble
 			}
-			<-ticker.C // 等待下一次触发
+			<-ticker.C
 		}
 	}()
 }
@@ -43,7 +43,7 @@ func startOutsideMission() {
 	if len(results) == 0 {
 		return
 	}
-	// get asset list
+
 	assets, err := rpc.ListAssets()
 	if err != nil {
 		return
@@ -63,7 +63,7 @@ func startOutsideMission() {
 		if outsideMissions == nil || len(outsideMissions) == 0 {
 			continue
 		}
-		//去重,筛选
+
 		missions := removeDuplicates(outsideMissions, list)
 		if len(missions) == 0 {
 			continue
@@ -73,7 +73,7 @@ func startOutsideMission() {
 		if err != nil || balance.AccountBalance["default"].ConfirmedBalance < int64(len(missions)*1000) {
 			continue
 		}
-		//todo 支付
+
 		payToOutside(&missions)
 	}
 }
@@ -86,31 +86,31 @@ func payToOutside(missions *[]custodyModels.PayOutside) {
 	var addr []string
 	var balances []*models.Balance
 	for index := range *missions {
-		//a.TxHash = txId
+
 		(*missions)[index].Status = custodyModels.PayOutsideStatusPaid
 		err = btldb.UpdatePayOutside(tx, &(*missions)[index])
 		if err != nil {
 			btlLog.CUST.Error("btldb.UpdatePayOutside error:%w", err)
 			return
 		}
-		//更新Balance表
+
 		balance, err := btldb.ReadBalance((*missions)[index].BalanceId)
 		if err != nil {
 			return
 		}
 		balances = append(balances, balance)
 		balance.State = models.STATE_SUCCESS
-		//balance.PaymentHash = &txId
+
 		err = btldb.UpdateBalance(tx, balance)
 		if err != nil {
-			btlLog.CUST.Error("payToOutside db error")
+			btlLog.CUST.Error("payToOutsideOnChain db error")
 			return
 		}
 		addr = append(addr, (*missions)[index].Address)
 	}
 	response, err := rpc.SendAssets(addr)
 	if err != nil {
-		btlLog.CUST.Error("rpc.SendAssets error:%v", err)
+		btlLog.CUST.Error("rpc.SendAssets error:%v,%v", err, addr)
 		return
 	}
 	tx.Commit()
@@ -147,13 +147,13 @@ func payToOutside(missions *[]custodyModels.PayOutside) {
 		balances[index].PaymentHash = &txId
 		err = btldb.UpdateBalance(db, balances[index])
 		if err != nil {
-			btlLog.CUST.Error("payToOutside db error")
+			btlLog.CUST.Error("payToOutsideOnChain db error")
 		}
 	}
 }
 
 func removeDuplicates(outsideMissions []custodyModels.PayOutside, list map[string]uint64) []custodyModels.PayOutside {
-	// 使用一个 map 来存储唯一的 address
+
 	unique := make(map[string]custodyModels.PayOutside)
 	amount := uint64(0)
 
@@ -167,7 +167,6 @@ func removeDuplicates(outsideMissions []custodyModels.PayOutside, list map[strin
 		}
 	}
 
-	// 将 map 中的值转换回切片
 	result := make([]custodyModels.PayOutside, 0, len(unique))
 	for _, outside := range unique {
 		result = append(result, outside)

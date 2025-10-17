@@ -3,7 +3,7 @@ package custodyAccount
 import (
 	"trade/middleware"
 	cBase "trade/services/custodyAccount/custodyBase"
-	"trade/services/custodyAccount/defaultAccount/custodyAssets"
+	"trade/services/custodyAccount/defaultAccount/custodyBalance"
 	"trade/services/custodyAccount/defaultAccount/custodyBtc"
 	"trade/services/custodyAccount/lockPayment"
 )
@@ -22,23 +22,30 @@ func GetAssetBalanceList(userName string) (*[]cBase.Balance, error) {
 		AssetId: "00",
 		Amount:  int64(unlockedBalance + lockedBalance),
 	}
-	temp := custodyAssets.GetAssetsBalances(middleware.DB, e.UserInfo.Account.ID)
-	for _, v := range *temp {
-		_, exists := list[v.AssetId]
-		if exists {
-			list[v.AssetId].Amount += int64(v.Amount)
-		} else {
-			list[v.AssetId] = &cBase.Balance{
-				AssetId: v.AssetId,
-				Amount:  int64(v.Amount),
+
+	temp, err := custodyBalance.GetAssetsBalances(middleware.DB, e.UserInfo.Account.ID)
+	if err != nil {
+		return nil, err
+	}
+	if temp != nil && len(*temp) > 0 {
+		for _, v := range *temp {
+			_, exists := list[v.AssetId]
+			if exists {
+				list[v.AssetId].Amount += int64(v.Amount)
+			} else {
+				list[v.AssetId] = &cBase.Balance{
+					AssetId: v.AssetId,
+					Amount:  int64(v.Amount),
+				}
 			}
 		}
 	}
+
 	getBalances, err := lockPayment.GetBalances(e.UserInfo.User.Username)
 	if err != nil {
 		return nil, err
 	}
-	if getBalances != nil {
+	if getBalances != nil && len(*getBalances) > 0 {
 		for _, v := range *getBalances {
 			_, exists := list[v.AssetId]
 			if exists {
@@ -51,6 +58,7 @@ func GetAssetBalanceList(userName string) (*[]cBase.Balance, error) {
 			}
 		}
 	}
+
 	var result []cBase.Balance
 	for _, v := range list {
 		result = append(result, *v)

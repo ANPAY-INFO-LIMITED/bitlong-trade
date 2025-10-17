@@ -159,8 +159,6 @@ func CreateOrUpdateAssetLocalMints(transfers *[]models.AssetLocalMint) (err erro
 	return btldb.UpdateAssetLocalMints(&assetLocalMints)
 }
 
-// SetAssetLocalMint
-// @Description: Set asset local mint
 func SetAssetLocalMint(assetLocalMint *models.AssetLocalMint) error {
 	return btldb.CreateAssetLocalMint(assetLocalMint)
 }
@@ -226,11 +224,10 @@ func GetAllAssetLocalMintSimplified() (*[]AssetLocalMintSimplified, error) {
 }
 
 type AssetLocalMintInfoScan struct {
-	//name,asset_meta_data,amount,new_grouped_asset,group_key,grouped_asset,batch_txid,asset_id,username
 	ID              uint      `json:"id"`
 	CreatedAt       time.Time `json:"created_at"`
 	Name            string    `json:"name" gorm:"type:varchar(255)"`
-	AssetMetaData   string    `json:"asset_meta_data"` // hex to string
+	AssetMetaData   string    `json:"asset_meta_data"`
 	Amount          int       `json:"amount"`
 	NewGroupedAsset bool      `json:"new_grouped_asset"`
 	GroupKey        string    `json:"group_key" gorm:"type:varchar(255)"`

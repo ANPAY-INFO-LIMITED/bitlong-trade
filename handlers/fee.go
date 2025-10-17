@@ -19,10 +19,10 @@ func QueryFeeRate(c *gin.Context) {
 		})
 		return
 	}
-	// @dev: Add 1 rat per b fee rate for recommend fee rate
+
 	satPerKw := feeRate.SatPerKw.FastestFee + services.FeeRateSatPerBToSatPerKw(1)
 	satPerB := feeRate.SatPerB.FastestFee + 1
-	// @dev: Sat per b has been self-incremented
+
 	btcPerKb := services.FeeRateSatPerBToBtcPerKb(satPerB)
 	c.JSON(http.StatusOK, models.JsonResult{
 		Success: true,

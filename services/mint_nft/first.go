@@ -30,7 +30,7 @@ func MintFirst(groupName string, description string, attributesPath string, imgP
 		return fmt.Errorf("\nMint %s MintNftAssetFirst\n%v", name, err)
 	}
 	btlLog.MintNft.Info("\nMint %s MintNftAssetFirst\n%v", name, utils.ValueJsonString(mintResponse))
-	// Auto fee rate
+
 	feeRateSatPerKw := services.FeeRateSatPerBToSatPerKw(int(feeRate))
 	finalizeResponse, err := api.FinalizeBatchAndGetResponse(feeRateSatPerKw)
 	if err != nil {

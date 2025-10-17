@@ -12,8 +12,8 @@ import (
 	"trade/models/custodyModels"
 	"trade/models/custodyModels/pAccount"
 	"trade/services/custodyAccount/account"
-	"trade/services/custodyAccount/defaultAccount/custodyAssets"
-	"trade/services/custodyAccount/defaultAccount/custodyBtc"
+	"trade/services/custodyAccount/defaultAccount/Award"
+	"trade/services/custodyAccount/defaultAccount/custodyBalance"
 )
 
 const btcId = "00"
@@ -91,26 +91,26 @@ func UserPayToPAccount(tx *gorm.DB, pairId uint, poolType uint, username string,
 	if err = tx.Create(b).Error; err != nil {
 		return 0, ErrorDbError
 	}
-	//创建扣款记录
+
 	switch token {
 	case btcId:
-		_, err = custodyBtc.LessBtcBalance(tx, usr, amount, b.ID, custodyModels.ChangeTypePayToPoolAccount)
+		_, err = custodyBalance.LessBtcBalance(tx, usr, amount, b.ID, custodyModels.ChangeTypePayToPoolAccount)
 		if err != nil {
-			if errors.Is(err, custodyBtc.NotEnoughBalance) {
+			if errors.Is(err, custodyBalance.NotEnoughBalance) {
 				return 0, ErrorNotEnoughBalance
 			}
 			btlLog.CUST.Error("LessBtcBalance error:%s", err)
 			return 0, ErrorDbError
 		}
 	default:
-		_, err = custodyAssets.LessAssetBalance(tx, usr, amount, b.ID, token, custodyModels.ChangeTypePayToPoolAccount)
+		_, err = custodyBalance.LessAssetBalance(tx, usr, amount, b.ID, token, custodyModels.ChangeTypePayToPoolAccount)
 		if err != nil {
-			if errors.Is(err, custodyAssets.NotEnoughAssetBalance) {
+			if errors.Is(err, custodyBalance.NotEnoughAssetBalance) {
 				btlLog.CUST.Error("NotEnoughAssetBalance:%s,assetId:%, amount:%f", err, token, amount)
 				return 0, ErrorNotEnoughBalance
 			}
 			btlLog.CUST.Error("LessAssetBalance error:%s", err)
-			//todo 处理余额不足的情况
+
 			return 0, ErrorDbError
 		}
 	}
@@ -138,16 +138,16 @@ func PAccountToUserPay(tx *gorm.DB, username string, pairId uint, poolType uint,
 	if err = tx.Create(b).Error; err != nil {
 		return 0, ErrorDbError
 	}
-	//创建收款记录
+
 	switch token {
 	case btcId:
-		_, err = custodyBtc.AddBtcBalance(tx, usr, amount, b.ID, custodyModels.ChangeTypeReceiveFromPoolAccount)
+		_, err = custodyBalance.AddBtcBalance(tx, usr, amount, b.ID, custodyModels.ChangeTypeReceiveFromPoolAccount)
 		if err != nil {
 			btlLog.CUST.Error("AddBtcBalance error:%s", err)
 			return 0, ErrorDbError
 		}
 	default:
-		_, err = custodyAssets.AddAssetBalance(tx, usr, amount, b.ID, token, custodyModels.ChangeTypeReceiveFromPoolAccount)
+		_, err = custodyBalance.AddAssetBalance(tx, usr, amount, b.ID, token, custodyModels.ChangeTypeReceiveFromPoolAccount)
 		if err != nil {
 			btlLog.CUST.Error("AddAssetBalance error:%s", err)
 			return 0, ErrorDbError
@@ -229,7 +229,7 @@ func AwardSat(username string, _amount *big.Int, transferDesc string) (uint, err
 		return 0, err
 	}
 	awardType := "swapLP"
-	award, err := custodyBtc.PutInAward(usr, "", int(amount), &awardType, transferDesc)
+	award, err := Award.PutInAward(usr, "", int(amount), &awardType, transferDesc)
 	if err != nil {
 		return 0, err
 	}
@@ -260,9 +260,9 @@ func GetPoolAccountInfo(pairId uint, poolType uint) (*PAccountInfo, error) {
 }
 
 func bigIntToFloat64(bi *big.Int) float64 {
-	// 将*big.Int转换为int64
+
 	intValue := bi.Int64()
-	// 将int64转换为float64并返回
+
 	return float64(intValue)
 }
 
@@ -292,4 +292,23 @@ func getBillBalanceModel(usr *account.UserInfo, amount float64, assetId string, 
 	ba.State = models.STATE_SUCCESS
 	ba.TypeExt = &models.BalanceTypeExt{Type: typeExt}
 	return &ba
+}
+
+func CleanPoolAccount(PairId uint, PoolType uint) {
+	info, err := GetPoolAccountInfo(PairId, PoolType)
+	if err != nil {
+		return
+	}
+	for _, balance := range *info.Balances {
+		if balance.Balance > 0 {
+			tx, back := middleware.GetTx()
+			amount := big.NewInt(int64(balance.Balance))
+			_, err := PAccountToUserPay(tx, "admin", PairId, PoolType, balance.AssetId, amount, "clean pool account")
+			if err != nil {
+				back()
+				return
+			}
+			tx.Commit()
+		}
+	}
 }

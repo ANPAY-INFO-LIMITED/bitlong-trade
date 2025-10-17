@@ -42,7 +42,7 @@ func GetUserLimit(userName, LimitType string, page, pageSize int) (int64, *[]Use
 			q = q.Where("user_limit.limit_type =?", value)
 		}
 	}
-	// 获取今日0点的时间
+
 	todayStart := time.Now().Truncate(24 * time.Hour).Add(-8 * time.Hour)
 
 	q = q.Table("user_limit").
@@ -126,7 +126,7 @@ func SetUserTodayLimit(userName, limitType string, amount int, count int) error 
 	if err != nil {
 		return err
 	}
-	//检查用户的限制等级是否存在
+
 	userLimit := custodyModels.Limit{}
 	err = db.Where("user_id =? and limit_type =?", usr.ID, TypeID).First(&userLimit).Error
 	if err != nil {
@@ -142,11 +142,11 @@ func SetUserTodayLimit(userName, limitType string, amount int, count int) error 
 			return err
 		}
 	}
-	// 获取今日0点的时间
+
 	todayStart := time.Now().Truncate(24 * time.Hour).Add(-8 * time.Hour)
 
 	var bill custodyModels.LimitBill
-	// 增加一个条件，筛选今日0点开始的记录
+
 	err = db.Where("created_at >= ?", todayStart).Where("user_id =? and limit_type =?", usr.ID, TypeID).First(&bill).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -279,18 +279,6 @@ func CreateOrUpdateLimitTypeLevel(limitName string, level int, amount int, count
 	return err
 
 }
-
-// func GetLimitLevel(userName, limitType string) (int, error) {
-//
-// }
-//
-// func SetLimitLevel(limitType int, level int, amount int, count int) error {
-//
-// }
-//
-// func GetUsersLimit(limitType int, level int) (map[string]int, error) {
-//
-// }
 
 var typeMapInt = make(map[string]uint)
 var typeMapStr = make(map[uint]string)

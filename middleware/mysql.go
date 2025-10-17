@@ -13,14 +13,12 @@ import (
 
 var (
 	DB   *gorm.DB
-	once sync.Once // 使用 sync.Once 确保只初始化一次
+	once sync.Once
 )
 
-// InitMysql 初始化数据库连接
 func InitMysql() error {
 	var err error
 
-	// 使用 sync.Once 确保只初始化一次，避免竞态条件
 	once.Do(func() {
 		loadConfig, loadErr := config.LoadConfig("config.yaml")
 		if loadErr != nil {
@@ -49,11 +47,10 @@ func InitMysql() error {
 			return
 		}
 
-		// 配置连接池
-		sqlDB.SetMaxIdleConns(15)  // 最大空闲连接数
-		sqlDB.SetMaxOpenConns(300) // 最大打开连接数
+		sqlDB.SetMaxIdleConns(15)
+		sqlDB.SetMaxOpenConns(300)
 		sqlDB.SetConnMaxIdleTime(5 * time.Minute)
-		sqlDB.SetConnMaxLifetime(5 * time.Minute) // 连接的最大存活时间
+		sqlDB.SetConnMaxLifetime(5 * time.Minute)
 
 		DB = gormDB
 	})

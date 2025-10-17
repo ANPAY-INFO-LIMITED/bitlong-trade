@@ -12,12 +12,13 @@ import (
 	"trade/services/custodyAccount/account"
 	"trade/services/custodyAccount/custodyBase/custodyLimit"
 	"trade/services/custodyAccount/custodyBase/custodyPayTN"
+	"trade/services/custodyAccount/defaultAccount/custodyBalance"
 	rpc "trade/services/servicesrpc"
 )
 
 func RunInsideStep(usr *account.UserInfo, mission *custodyModels.AccountInsideMission) error {
 	db := middleware.DB
-	//获取usrInfo
+
 	if usr == nil {
 		var a models.Account
 		if err := db.Where("id =?", mission.AccountId).First(&a).Error; err != nil {
@@ -26,7 +27,7 @@ func RunInsideStep(usr *account.UserInfo, mission *custodyModels.AccountInsideMi
 		}
 		usr, _ = account.GetUserInfo(a.UserName)
 	}
-	//获取发票信息
+
 	invoice := models.Invoice{}
 	if err := db.Where("id =?", mission.InvoiceId).First(&invoice).Error; err != nil {
 		btlLog.CUST.Error("GetInvoice error:%s", err)
@@ -41,7 +42,7 @@ func RunInsideStep(usr *account.UserInfo, mission *custodyModels.AccountInsideMi
 		Invoice: invoice.Invoice,
 		Hash:    DecodePayReq.PaymentHash,
 	}
-	//run steps
+
 	for {
 		InsideSteps(usr, mission, i)
 		LogAIM(middleware.DB, mission)
@@ -59,7 +60,7 @@ func RunInsideStep(usr *account.UserInfo, mission *custodyModels.AccountInsideMi
 
 func RunInsidePTNStep(usr *account.UserInfo, receiveUsr *account.UserInfo, mission *custodyModels.AccountInsideMission) error {
 	db := middleware.DB
-	//获取usrInfo
+
 	if usr == nil {
 		var a models.Account
 		if err := db.Where("id =?", mission.AccountId).First(&a).Error; err != nil {
@@ -76,7 +77,7 @@ func RunInsidePTNStep(usr *account.UserInfo, receiveUsr *account.UserInfo, missi
 		}
 		receiveUsr, _ = account.GetUserInfo(a.UserName)
 	}
-	//获取发票信息
+
 	PTN := custodyPayTN.PayToNpubKey{
 		NpubKey:     receiveUsr.User.Username,
 		Amount:      mission.Amount,
@@ -92,7 +93,7 @@ func RunInsidePTNStep(usr *account.UserInfo, receiveUsr *account.UserInfo, missi
 		Invoice: invoice,
 		Hash:    h,
 	}
-	//run steps
+
 	for {
 		InsideSteps(usr, mission, i)
 		LogAIM(middleware.DB, mission)
@@ -113,7 +114,7 @@ func InsideSteps(usr *account.UserInfo, mission *custodyModels.AccountInsideMiss
 	case custodyModels.AIMStatePending:
 		tx, back := middleware.GetTx()
 		defer back()
-		//创建BillBalance记录
+
 		balance := getBillBalanceModel(usr, mission.Amount, models.AWAY_OUT, i)
 		if err = tx.Create(balance).Error; err != nil {
 			btlLog.CUST.Error("CreateBillBalance error:%s", err)
@@ -122,24 +123,24 @@ func InsideSteps(usr *account.UserInfo, mission *custodyModels.AccountInsideMiss
 			return
 		}
 		mission.PayerBalanceId = balance.ID
-		//创建扣款记录
-		_, err = LessBtcBalance(tx, usr, mission.Amount, mission.PayerBalanceId, custodyModels.ChangeTypeBtcPayLocal)
+
+		_, err = custodyBalance.LessBtcBalance(tx, usr, mission.Amount, mission.PayerBalanceId, custodyModels.ChangeTypeBtcPayLocal)
 		if err != nil {
 			btlLog.CUST.Error("LessBtcBalance error:%s", err)
 			mission.Error = err.Error()
 			mission.State = custodyModels.AIMStateDone
 			return
 		}
-		//扣除手续费
-		err = PayFee(tx, usr, mission.Fee, mission.PayerBalanceId, &i.Invoice, &i.Hash)
+
+		err = custodyBalance.PayFee(tx, usr, mission.Fee, mission.PayerBalanceId, &i.Invoice, &i.Hash)
 		if err != nil {
 			btlLog.CUST.Error("PayFee error:%s", err)
 			mission.Error = err.Error()
 			mission.State = custodyModels.AIMStateDone
 			return
 		}
-		balance.ServerFee = uint64(mission.Fee)
-		//签收发票
+		balance.ServerFee = mission.Fee
+
 		err = tx.Model(&models.Invoice{}).
 			Where("id =?", mission.InvoiceId).
 			Updates(&models.Invoice{Status: models.InvoiceStatusLocal}).Error
@@ -149,7 +150,7 @@ func InsideSteps(usr *account.UserInfo, mission *custodyModels.AccountInsideMiss
 			mission.State = custodyModels.AIMStateDone
 			return
 		}
-		//更新状态
+
 		balance.State = models.STATE_SUCCESS
 		err = tx.Save(balance).Error
 		if err != nil {
@@ -161,7 +162,7 @@ func InsideSteps(usr *account.UserInfo, mission *custodyModels.AccountInsideMiss
 		mission.State = custodyModels.AIMStatePaid
 		tx.Commit()
 		go func() {
-			//更新额度
+
 			limitType := custodyModels.LimitType{
 				AssetId:      "00",
 				TransferType: custodyModels.LimitTransferTypeLocal,
@@ -171,9 +172,9 @@ func InsideSteps(usr *account.UserInfo, mission *custodyModels.AccountInsideMiss
 				btlLog.CUST.Error("额度限制未正常更新:%s", err.Error())
 				btlLog.CUST.Error("error PayInsideId:%v", mission.ID)
 			}
-			//取消发票
+
 			if strings.HasPrefix(i.Invoice, "ptn") {
-				//PTN发票不需要取消
+
 				return
 			}
 			h, _ := hex.DecodeString(i.Hash)
@@ -185,7 +186,7 @@ func InsideSteps(usr *account.UserInfo, mission *custodyModels.AccountInsideMiss
 		return
 
 	case custodyModels.AIMStatePaid:
-		//获取usrInfo
+
 		var a models.Account
 		if err = middleware.DB.Where("id =?", mission.ReceiverId).First(&a).Error; err != nil {
 			btlLog.CUST.Error("GetAccount error:%s", err)
@@ -200,7 +201,7 @@ func InsideSteps(usr *account.UserInfo, mission *custodyModels.AccountInsideMiss
 			mission.Error = err.Error()
 			return
 		}
-		//创建BillBalance记录
+
 		tx, back := middleware.GetTx()
 		defer back()
 		rBalance := getBillBalanceModel(rusr, mission.Amount, models.AWAY_IN, i)
@@ -211,8 +212,8 @@ func InsideSteps(usr *account.UserInfo, mission *custodyModels.AccountInsideMiss
 			return
 		}
 		mission.ReceiverBalanceId = rBalance.ID
-		//创建收款记录
-		_, err = AddBtcBalance(tx, rusr, mission.Amount, rBalance.ID, custodyModels.ChangeTypeBtcReceiveLocal)
+
+		_, err = custodyBalance.AddBtcBalance(tx, rusr, mission.Amount, rBalance.ID, custodyModels.ChangeTypeBtcReceiveLocal)
 		if err != nil {
 			mission.Retries += 1
 			mission.Error = err.Error()

@@ -1,9 +1,10 @@
 package config
 
 import (
-	"gopkg.in/yaml.v3"
 	"os"
 	"trade/utils"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
@@ -80,6 +81,13 @@ type Config struct {
 		BtcUtxo               bool `yaml:"btc_utxo" json:"btc_utxo"`
 		AssetBalanceBackend   bool `yaml:"asset_balance_info" json:"asset_balance_info"`
 		AssetMoreInfo         bool `yaml:"asset_more_info" json:"asset_more_info"`
+		AssetChannelNode      bool `yaml:"asset_channel_node" json:"asset_channel_node"`
+		AssetOrBtcChannel     bool `yaml:"asset_or_btc_channel" json:"asset_or_btc_channel"`
+		Confs                 bool `yaml:"confs" json:"confs"`
+		PsbtTlSwap            bool `yaml:"psbt_tl_swap" json:"psbt_tl_swap"`
+		BoxDevice             bool `yaml:"box_device" json:"box_device"`
+		BoxAssetPush          bool `yaml:"box_asset_push" json:"box_asset_push"`
+		TradeInOricle         bool `yaml:"trade_in_oricle" json:"trade_in_oricle"`
 	} `yaml:"router_disable" json:"router_disable"`
 	ApiConfig struct {
 		Lnd struct {
@@ -103,7 +111,33 @@ type Config struct {
 			Dir          string `yaml:"dir" json:"dir"`
 			TlsCertPath  string `yaml:"tls_cert_path" json:"tls_cert_path"`
 			MacaroonPath string `yaml:"macaroon_path" json:"macaroon_path"`
+			StartCommand string `yaml:"start_command" json:"start_command"`
+			CloseCommand string `yaml:"close_command" json:"close_command"`
 		} `yaml:"litd" json:"litd"`
+		BoxLit struct {
+			Lnd struct {
+				Host         string `yaml:"host" json:"host"`
+				Port         int    `yaml:"port" json:"port"`
+				Dir          string `yaml:"dir" json:"dir"`
+				TlsCertPath  string `yaml:"tls_cert_path" json:"tls_cert_path"`
+				MacaroonPath string `yaml:"macaroon_path" json:"macaroon_path"`
+			} `yaml:"lnd" json:"lnd"`
+			Tapd struct {
+				Host         string `yaml:"host" json:"host"`
+				Port         int    `yaml:"port" json:"port"`
+				Dir          string `yaml:"dir" json:"dir"`
+				TlsCertPath  string `yaml:"tls_cert_path" json:"tls_cert_path"`
+				MacaroonPath string `yaml:"macaroon_path" json:"macaroon_path"`
+				UniverseHost string `yaml:"universe_host" json:"universe_host"`
+			} `yaml:"tapd" json:"tapd"`
+			Litd struct {
+				Host         string `yaml:"host" json:"host"`
+				Port         int    `yaml:"port" json:"port"`
+				Dir          string `yaml:"dir" json:"dir"`
+				TlsCertPath  string `yaml:"tls_cert_path" json:"tls_cert_path"`
+				MacaroonPath string `yaml:"macaroon_path" json:"macaroon_path"`
+			} `yaml:"litd" json:"litd"`
+		} `yaml:"box_lit" json:"box_node"`
 		Bitcoind struct {
 			Mainnet struct {
 				Ip           string `yaml:"ip" json:"ip"`
@@ -133,9 +167,6 @@ type Config struct {
 				DisableTLS   bool   `yaml:"disable_tls" json:"disable_tls"`
 			} `yaml:"regtest" json:"regtest"`
 		} `yaml:"bitcoind" json:"bitcoind"`
-		CustodyAccount struct {
-			MacaroonDir string `yaml:"macaroon_dir" json:"macaroon_dir"`
-		} `yaml:"custody_account" json:"custody_account"`
 	} `yaml:"api_config" json:"api_config"`
 	FairLaunchConfig struct {
 		EstimateSmartFeeRateBlocks int  `yaml:"estimate_smart_fee_rate_blocks" json:"estimate_smart_fee_rate_blocks"`
@@ -146,6 +177,21 @@ type Config struct {
 	FrpsServer                string    `yaml:"frps_server" json:"frps_server"`
 	IsAutoMigrate             bool      `yaml:"is_auto_migrate" json:"is_auto_migrate"`
 	IsAutoUpdateScheduledTask bool      `yaml:"is_auto_update_scheduled_task" json:"is_auto_update_scheduled_task"`
+	PoolFeatureDisable        struct {
+		Add      bool `yaml:"add" json:"add"`
+		Remove   bool `yaml:"remove" json:"remove"`
+		SwapE    bool `yaml:"swap_e" json:"swap_e"`
+		SwapT    bool `yaml:"swap_t" json:"swap_t"`
+		Withdraw bool `yaml:"withdraw" json:"withdraw"`
+	} `yaml:"pool_feature_disable" json:"pool_feature_disable"`
+	PoolFeatureDisableByAssetId struct {
+		Add      []string `yaml:"add" json:"add"`
+		Remove   []string `yaml:"remove" json:"remove"`
+		SwapE    []string `yaml:"swap_e" json:"swap_e"`
+		SwapT    []string `yaml:"swap_t" json:"swap_t"`
+		Withdraw []string `yaml:"withdraw" json:"withdraw"`
+	} `yaml:"pool_feature_disable_by_asset_id" json:"pool_feature_disable_by_asset_id"`
+	FWDTransNodePubkey string `yaml:"fwd_trans_node_pubkey" json:"fwd_trans_node_pubkey"`
 }
 
 type BasicAuth struct {

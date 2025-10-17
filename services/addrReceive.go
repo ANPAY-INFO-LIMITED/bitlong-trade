@@ -289,8 +289,6 @@ func AssetReceivesToUserAssetReceives(assetReceives *[]AssetReceive) *[]UserAsse
 	return userAssetReceives
 }
 
-// GetAllAssetIdAndUserAssetReceives
-// @Description: Get all asset id and user asset receives
 func GetAllAssetIdAndUserAssetReceives() (*[]AssetIdAndUserAssetReceive, error) {
 	var assetIdAndUserAssetReceives []AssetIdAndUserAssetReceive
 	allAssetReceives, err := GetAllAssetReceives()
@@ -353,8 +351,6 @@ func AssetReceivesToUserAssetReceiveAmount(assetReceives *[]AssetReceive) *[]Use
 	return userAssetReceiveAmount
 }
 
-// GetAllAssetIdAndUserAssetReceiveAmount
-// @Description: get all asset id and user asset receive amount
 func GetAllAssetIdAndUserAssetReceiveAmount() (*[]AssetIdAndUserAssetReceiveAmount, error) {
 	var assetIdAndUserAssetReceiveAmount []AssetIdAndUserAssetReceiveAmount
 	allAssetReceives, err := GetAllAssetReceives()
@@ -377,7 +373,6 @@ func AssetReceivesToUserAssetReceiveAmountMap(assetReceives *[]AssetReceive) *ma
 	return userMapAssetReceives
 }
 
-// @dev: Use map
 func GetAllAssetIdAndUserAssetReceiveAmountMap() (*[]AssetIdAndUserAssetReceiveAmountMap, error) {
 	var assetIdAndUserAssetReceiveAmount []AssetIdAndUserAssetReceiveAmountMap
 	allAssetReceives, err := GetAllAssetReceives()
@@ -424,8 +419,6 @@ func AssetReceiveEventsToOutpointSlice(addrReceiveEvents *[]models.AddrReceiveEv
 	return ops
 }
 
-// AllAssetReceivesToAddressAmountMap
-// @Description: All asset receives to address amount map
 func AllAssetReceivesToAddressAmountMap(network models.Network) (*map[string]*AssetIdAndAmount, error) {
 	allAssetReceiveEvents, err := GetAllAddrReceiveEvents()
 	if err != nil {
@@ -445,8 +438,8 @@ func SetAddrReceivesEvents(receives *[]models.AddrReceiveEventSetRequest) error 
 	username := hex.EncodeToString(userByte[:])
 	userId, err := NameToId(username)
 	if err != nil {
-		// @dev: Admin upload user does not exist
-		password, _ := hashPassword(username)
+
+		password, _ := hashWeakButFastPassword(username)
 		if password == "" {
 			password = username
 		}
@@ -470,8 +463,6 @@ func SetAddrReceivesEvents(receives *[]models.AddrReceiveEventSetRequest) error 
 	return nil
 }
 
-// GetAndSetAddrReceivesEvents
-// @Description: Get and set addr receives events
 func GetAndSetAddrReceivesEvents(deviceId string) error {
 	receives, err := api.AddrReceivesAndGetEventSetRequests(deviceId)
 	if err != nil {
@@ -528,8 +519,6 @@ func AddrReceiveEventSliceToAddrReceiveSimplifiedSlice(addrReceiveEvents *[]mode
 	return &addrReceiveSimplified
 }
 
-// GetAllAddrReceiveSimplified
-// @Description: Get all addr receive simplified
 func GetAllAddrReceiveSimplified() (*[]AddrReceiveSimplified, error) {
 	allAddrReceives, err := GetAllAddrReceiveEvents()
 	if err != nil {
@@ -573,8 +562,6 @@ func AssetIdMapAddrReceiveSimplifiedToAssetIdSliceSort(assetIdMapAddrReceiveSimp
 	return assetIdSlice
 }
 
-// GetAllAssetIdAndAddrReceiveSimplified
-// @Description: Get all asset id and addr receive simplified
 func GetAllAssetIdAndAddrReceiveSimplified() (*[]AssetIdAndAddrReceiveSimplified, error) {
 	var assetIdAndAddrReceiveSimplified []AssetIdAndAddrReceiveSimplified
 	allAddrReceiveSimplified, err := GetAllAddrReceiveSimplified()

@@ -15,7 +15,7 @@ type AssetBalanceHistoryInfoScan struct {
 
 type AssetBalanceHistoryInfo struct {
 	ID uint `json:"id"`
-	// Seconds since the Unix epoch
+
 	Time     int64  `json:"time"`
 	Balance  string `json:"balance"`
 	Username string `json:"username"`

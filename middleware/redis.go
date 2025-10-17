@@ -3,12 +3,13 @@ package middleware
 import (
 	"context"
 	"fmt"
-	"github.com/go-redis/redis/v8"
-	"github.com/google/uuid"
 	"log"
 	"sync"
 	"time"
 	"trade/config"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 )
 
 var (
@@ -34,7 +35,7 @@ func RedisConnect() error {
 		})
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		// 检查连接是否成功
+
 		if _, err := Client.Ping(ctx).Result(); err != nil {
 			errs = fmt.Errorf("failed to connect to Redis: %w", err)
 		}
@@ -55,7 +56,7 @@ func RedisDel(key string) error {
 }
 
 func AcquireLock(key string, expiration time.Duration) (string, bool) {
-	uniqueID := uuid.New().String() // Generate a unique identifier
+	uniqueID := uuid.New().String()
 	result, err := Client.SetNX(ctx, key, uniqueID, expiration).Result()
 	if err != nil {
 		log.Println("Error acquiring lock:", err)
@@ -81,4 +82,20 @@ func ReleaseLock(key string, identifier string) {
 	} else if result.(int64) != 1 {
 		log.Println("Failed to release lock, not the owner")
 	}
+}
+
+func RedisSetNX(key string, value interface{}, expiration time.Duration) (bool, error) {
+	result := Client.SetNX(ctx, key, value, expiration)
+	if result.Err() != nil {
+		return false, result.Err()
+	}
+	return result.Val(), nil
+}
+
+func RedisDel1(key string) (int64, error) {
+	result := Client.Del(ctx, key)
+	if result.Err() != nil {
+		return 0, result.Err()
+	}
+	return result.Val(), nil
 }

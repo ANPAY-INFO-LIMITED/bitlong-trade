@@ -10,8 +10,8 @@ type AccountInsideMission struct {
 
 	ReceiverId uint    `gorm:"column:receiver_id;type:bigint unsigned" json:"receiverId"`
 	InvoiceId  uint    `gorm:"column:invoice_id;type:bigint unsigned" json:"invoiceId"`
-	Amount     float64 `gorm:"type:decimal(15,2);column:amount" json:"amount"`
-	Fee        float64 `gorm:"type:decimal(15,2);column:fee" json:"fee"`
+	Amount     float64 `gorm:"type:decimal(25,2);column:amount" json:"amount"`
+	Fee        float64 `gorm:"type:decimal(25,2);column:fee" json:"fee"`
 	FeeType    string  `gorm:"type:varchar(128);column:fee_type" json:"feeType"`
 
 	PayerBalanceId    uint `gorm:"column:balance_id;type:bigint unsigned" json:"balanceId"`

@@ -71,7 +71,6 @@ func BillBalancesToAccountAssetTransfers(billBalances *[]models.Balance) *[]Acco
 	return &accountAssetTransfer
 }
 
-// @dev: Use this now
 func GetAllAccountAssetTransfersByBillBalanceAssetTransferAndAwardAsset(assetId string) (*[]AccountAssetTransfer, error) {
 	billBalances, err := ReadBillBalanceAssetTransferAndAwardAssetByAssetId(assetId)
 	if err != nil {
@@ -99,8 +98,6 @@ func GetAllAccountAssetTransfersByBillBalanceAssetTransfer(assetId string) (*[]A
 	return accountAssetTransfers, nil
 }
 
-// GetAllAccountAssetTransfersByAssetId
-// @Description: Get all account asset transfers by asset id
 func GetAllAccountAssetTransfersByAssetId(assetId string) (*[]AccountAssetTransfer, error) {
 	if assetId == "00" {
 		return nil, errors.New("invalid asset id")
@@ -108,8 +105,6 @@ func GetAllAccountAssetTransfersByAssetId(assetId string) (*[]AccountAssetTransf
 	return GetAllAccountAssetTransfersByBillBalanceAssetTransferAndAwardAsset(assetId)
 }
 
-// GetAccountAssetTransfersLimitAndOffset
-// @Description: Get all account asset transfers by asset id limit and offset
 func GetAccountAssetTransfersLimitAndOffset(assetId string, limit int, offset int) (*[]AccountAssetTransfer, error) {
 	if assetId == "00" {
 		return nil, errors.New("invalid asset id")
@@ -130,7 +125,7 @@ type GetAccountAssetTransferPageNumberByPageSizeRequest struct {
 
 func GetAccountAssetTransferLength(assetId string) (int64, error) {
 	var count int64
-	// Query bill balance
+
 	err := middleware.DB.
 		Model(&models.Balance{}).
 		Where("amount <> ? AND bill_type IN ? AND asset_id = ?", 0, []models.BalanceType{models.BillTypeAssetTransfer, models.BillTypeAwardAsset}, assetId).

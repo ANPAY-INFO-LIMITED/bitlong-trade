@@ -163,7 +163,7 @@ func GetActiveUserBetween(start string, end string) (*[]LoginRecordInfo, error) 
 		return nil, err
 	}
 	var loginRecordInfos []LoginRecordInfo
-	// @dev: Do not select times
+
 	err = middleware.DB.Model(&models.LoginRecord{}).
 		Select("id, user_id, recent_ip_addresses, path, login_time").
 		Where("path = ? and login_time between ? and ?", "/login", _start.Unix(), _end.Unix()).
@@ -520,7 +520,7 @@ func GetNewUserPageNumber(start string, end string, size int) (int, error) {
 
 type userInfo struct {
 	CreatedAt         time.Time
-	Username          string `gorm:"unique;column:user_name;type:varchar(255)" json:"userName"` // 正确地将unique和column选项放在同一个gorm标签内
+	Username          string `gorm:"unique;column:user_name;type:varchar(255)" json:"userName"`
 	RecentIpAddresses string `json:"recent_ip_addresses" gorm:"type:varchar(255)"`
 	Status            int16  `json:"status"`
 }

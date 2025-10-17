@@ -26,17 +26,20 @@ func QueryBills(c *gin.Context) {
 		return
 	}
 	creds.Page = creds.Page - 1
-	a, count, err := localQuery.BillQuery(creds)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, Result{Errno: 500, ErrMsg: err.Error(), Data: nil})
-		return
-	}
+
 	Bill := struct {
 		Count int64                          `json:"count"`
 		Bills *[]localQuery.BillListWithUser `json:"bills"`
-	}{
-		Count: count,
-		Bills: a,
+	}{}
+	var err error
+	if len(creds.UserName) > 4 && creds.UserName[0:4] == "pool" {
+		Bill.Bills, Bill.Count, err = localQuery.BillQueryPool(creds)
+	} else {
+		Bill.Bills, Bill.Count, err = localQuery.BillQuery(creds)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, Result{Errno: 500, ErrMsg: err.Error(), Data: nil})
+		return
 	}
 	c.JSON(http.StatusOK, Result{Errno: 0, ErrMsg: "", Data: Bill})
 }
@@ -80,7 +83,6 @@ func QueryBalancesChange(c *gin.Context) {
 	c.JSON(http.StatusOK, Result{Errno: 0, ErrMsg: "", Data: a})
 }
 
-// GetBalanceList 获取总资产排行榜情况及通道内总金额
 func GetBalanceList(c *gin.Context) {
 	creds := struct {
 		AssetId  string `json:"assetId"`
@@ -182,4 +184,23 @@ func QueryChannelAssetInfo(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, Result{Errno: 0, ErrMsg: "", Data: assetIdInfo})
+}
+
+func QueryChannelAssetTotalWithoutAdmin(c *gin.Context) {
+	var creds localQuery.ChannelQueryQuest
+	if err := c.ShouldBindJSON(&creds); err != nil {
+		btlLog.CUST.Error("%v", err)
+		c.JSON(http.StatusBadRequest, Result{Errno: 400, ErrMsg: err.Error(), Data: nil})
+		return
+	}
+	if creds.AssetId == "" {
+		c.JSON(http.StatusBadRequest, Result{Errno: 400, ErrMsg: "AssetId must not be empty", Data: nil})
+		return
+	}
+	total, err := localQuery.QueryChannelAssetWithOutAdmin(&creds)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, Result{Errno: 500, ErrMsg: err.Error(), Data: nil})
+		return
+	}
+	c.JSON(http.StatusOK, Result{Errno: 0, ErrMsg: "", Data: total})
 }

@@ -7,6 +7,7 @@ import (
 	"trade/btlLog"
 	"trade/models"
 	"trade/services/custodyAccount/account"
+	"trade/services/custodyAccount/defaultAccount/Award"
 	"trade/services/custodyAccount/defaultAccount/custodyAssets"
 	"trade/services/custodyAccount/defaultAccount/custodyBtc"
 	"trade/services/custodyAccount/lockPayment"
@@ -40,7 +41,7 @@ func PutInSatoshiAward(c *gin.Context) {
 
 	switch creds.AccountType {
 	case "default":
-		award, err := custodyBtc.PutInAward(e.UserInfo, "", creds.Amount, &creds.Memo, creds.LockedId)
+		award, err := Award.PutInAward(e.UserInfo, "", creds.Amount, &creds.Memo, creds.LockedId)
 		if err != nil {
 			btlLog.CUST.Error("%v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -103,9 +104,9 @@ func PutAssetAward(c *gin.Context) {
 	}
 	switch creds.AccountType {
 	case "default":
-		award, err := custodyAssets.PutInAward(e.UserInfo, creds.AssetId, creds.Amount, &creds.Memo, creds.LockedId)
+		award, err := Award.PutInAssetAward(e.UserInfo, creds.AssetId, creds.Amount, &creds.Memo, creds.LockedId)
 		if err != nil {
-			btlLog.CUST.Error("%v", err)
+			btlLog.CUST.Error("%v,%v", err, creds.AssetId)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}

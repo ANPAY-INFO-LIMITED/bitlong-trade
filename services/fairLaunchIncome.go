@@ -12,8 +12,6 @@ func CreateFairLaunchIncome(tx *gorm.DB, fairLaunchIncome *models.FairLaunchInco
 	return btldb.CreateFairLaunchIncome(tx, fairLaunchIncome)
 }
 
-// @dev: Create FairLaunch Income Records By these functions
-
 func CreateFairLaunchIncomeOfUserPayIssuanceFee(tx *gorm.DB, fairLaunchInfoId int, feePaidId int, satAmount int, userId int, username string) error {
 	return CreateFairLaunchIncome(tx, &models.FairLaunchIncome{
 		AssetId:                "",
@@ -105,9 +103,8 @@ func UpdateFairLaunchIncomes(fairLaunchIncomes *[]models.FairLaunchIncome) error
 	return btldb.UpdateFairLaunchIncomes(fairLaunchIncomes)
 }
 
-// @dev: Scheduled task
 func UpdateFairLaunchIncomesSatAmountByTxids(network models.Network) error {
-	// @dev: Get fair launch incomes whose txid is not null
+
 	fairLaunchIncomes, err := GetFairLaunchIncomesWhoseTxidIsNotNullAndSatAmountIsZero()
 	if err != nil {
 		return err
@@ -118,17 +115,17 @@ func UpdateFairLaunchIncomesSatAmountByTxids(network models.Network) error {
 	var txids []string
 	txidMapId := make(map[string]int)
 	txidMapFee := make(map[string]int)
-	// @dev: Get txid slice and txid map income id
+
 	for _, fairLaunchIncome := range *fairLaunchIncomes {
 		txids = append(txids, fairLaunchIncome.Txid)
 		txidMapId[fairLaunchIncome.Txid] = int(fairLaunchIncome.ID)
 	}
-	// @dev: Get transactions by txids
+
 	rawTransactionResponse, err := api.GetRawTransactionsByTxids(network, txids)
 	if err != nil {
 		return err
 	}
-	// @dev: Get txid map fee
+
 	for _, rawTransaction := range *rawTransactionResponse {
 		if rawTransaction.Error != nil {
 			continue
@@ -137,7 +134,7 @@ func UpdateFairLaunchIncomesSatAmountByTxids(network models.Network) error {
 		txidMapFee[rawTransaction.Result.Txid] = utils.ToSat(fee)
 	}
 	var fairLaunchIncomesUpdated []models.FairLaunchIncome
-	// @dev: Set fee by txid
+
 	for _, fairLaunchIncome := range *fairLaunchIncomes {
 		fee, ok := txidMapFee[fairLaunchIncome.Txid]
 		if ok {
@@ -148,12 +145,10 @@ func UpdateFairLaunchIncomesSatAmountByTxids(network models.Network) error {
 	if len(fairLaunchIncomesUpdated) == 0 {
 		return nil
 	}
-	// @dev: Update fair launch incomes
+
 	return UpdateFairLaunchIncomes(&fairLaunchIncomesUpdated)
 }
 
 func GetFairLaunchIncomesByAssetId(assetId string) (*[]models.FairLaunchIncome, error) {
 	return btldb.ReadFairLaunchIncomesByAssetId(assetId)
 }
-
-// TODO: Query total incomes and spent by fair launch id

@@ -63,7 +63,7 @@ func Lock(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, &res)
 		return
 	}
-	//TODO Verification request
+
 	err := lockPayment.Lock(creds.Npubkey, creds.LockedId, creds.AssetId, creds.Amount, creds.Tag)
 	if err != nil {
 		res.Error = err.Error()
@@ -93,7 +93,7 @@ func Unlock(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, &res)
 		return
 	}
-	//TODO Verification request
+
 	err := lockPayment.Unlock(creds.Npubkey, creds.LockedId, creds.AssetId, creds.Amount, creds.Tag)
 	if err != nil {
 		res.Error = err.Error()
@@ -133,7 +133,7 @@ func PayAsset(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, &res)
 		return
 	}
-	//TODO Verification request
+
 	var err error
 	if creds.PayType == int8(PayTypeLock) {
 		err = lockPayment.TransferByLock(creds.LockedId, creds.PayerNpubkey, creds.ReceiverNpubkey, creds.AssetId, creds.Amount, creds.Tag)
@@ -147,6 +147,7 @@ func PayAsset(c *gin.Context) {
 	}
 	if err != nil {
 		res.ErrorCode = lockPayment.GetErrorCode(err)
+		res.TxId = err.Error()
 		c.JSON(http.StatusInternalServerError, &res)
 		return
 	}

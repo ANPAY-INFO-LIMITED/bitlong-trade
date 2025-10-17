@@ -38,14 +38,12 @@ func ReadFairLaunchIncome(id uint) (*models.FairLaunchIncome, error) {
 	return &fairLaunchIncome, err
 }
 
-// TODO: Useless
 func ReadFairLaunchIncomesByUserId(userId int) (*[]models.FairLaunchIncome, error) {
 	var fairLaunchIncomes []models.FairLaunchIncome
 	err := middleware.DB.Where("user_id = ?", userId).Find(&fairLaunchIncomes).Error
 	return &fairLaunchIncomes, err
 }
 
-// TODO: Useless
 func ReadFairLaunchIncomesByUserIdUpdatedAtDesc(userId int) (*[]models.FairLaunchIncome, error) {
 	var fairLaunchIncomes []models.FairLaunchIncome
 	err := middleware.DB.Where("user_id = ?", userId).Order("updated_at desc").Find(&fairLaunchIncomes).Error

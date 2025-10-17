@@ -4,14 +4,18 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
+	"trade/config"
 	"trade/middleware"
 	"trade/models"
 	"trade/services/pool"
 )
 
-// query
+var (
+	featureDisabled = errors.New("feature disabled")
+)
 
 func QueryPoolInfo(c *gin.Context) {
 	_ = c.MustGet("username").(string)
@@ -898,8 +902,6 @@ func QueryLpAwardRecords(c *gin.Context) {
 	})
 }
 
-// @dev: swapTr
-
 func QuerySwapTrsCount(c *gin.Context) {
 	tokenA := c.Query("token_a")
 	tokenB := c.Query("token_b")
@@ -1005,8 +1007,6 @@ func QuerySwapTrs(c *gin.Context) {
 		Data:   swapTrs,
 	})
 }
-
-// calc
 
 func CalcAddLiquidity(c *gin.Context) {
 	requestUser := c.MustGet("username").(string)
@@ -1153,8 +1153,8 @@ func CalcRemoveLiquidity(c *gin.Context) {
 
 func CalcSwapExactTokenForTokenNoPath(c *gin.Context) {
 	requestUser := c.MustGet("username").(string)
-	var poolSwapExactTokenForTokenNoPathBatchRequest pool.PoolSwapExactTokenForTokenNoPathRequest
-	err := c.ShouldBindJSON(&poolSwapExactTokenForTokenNoPathBatchRequest)
+	var req pool.PoolSwapExactTokenForTokenNoPathRequest
+	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.ShouldBindJsonErr.Code(),
@@ -1164,7 +1164,7 @@ func CalcSwapExactTokenForTokenNoPath(c *gin.Context) {
 		return
 	}
 
-	_, err = pool.ProcessPoolSwapExactTokenForTokenNoPathBatchRequest(&poolSwapExactTokenForTokenNoPathBatchRequest, requestUser)
+	_, err = pool.ProcessPoolSwapExactTokenForTokenNoPathBatchRequest(&req, requestUser)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.ProcessPoolSwapExactTokenForTokenNoPathBatchRequestErr.Code(),
@@ -1174,7 +1174,7 @@ func CalcSwapExactTokenForTokenNoPath(c *gin.Context) {
 		return
 	}
 
-	if !strings.Contains(requestUser, poolSwapExactTokenForTokenNoPathBatchRequest.Username) {
+	if !strings.Contains(requestUser, req.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -1190,15 +1190,7 @@ func CalcSwapExactTokenForTokenNoPath(c *gin.Context) {
 		swapRecord *pool.PoolSwapRecord
 	)
 
-	tokenIn := poolSwapExactTokenForTokenNoPathBatchRequest.TokenIn
-	tokenOut := poolSwapExactTokenForTokenNoPathBatchRequest.TokenOut
-	amountIn := poolSwapExactTokenForTokenNoPathBatchRequest.AmountIn
-	amountOutMin := poolSwapExactTokenForTokenNoPathBatchRequest.AmountOutMin
-	username := poolSwapExactTokenForTokenNoPathBatchRequest.Username
-	projectPartyFeeK := poolSwapExactTokenForTokenNoPathBatchRequest.ProjectPartyFeeK
-	lpAwardFeeK := poolSwapExactTokenForTokenNoPathBatchRequest.LpAwardFeeK
-
-	amountOut, swapRecord, err = pool.CalcSwapExactTokenForTokenNoPath(tokenIn, tokenOut, amountIn, amountOutMin, username, projectPartyFeeK, lpAwardFeeK)
+	amountOut, swapRecord, err = pool.CalcSwapExactTokenForTokenNoPath(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.CalcSwapExactTokenForTokenNoPathErr.Code(),
@@ -1222,8 +1214,8 @@ func CalcSwapExactTokenForTokenNoPath(c *gin.Context) {
 
 func CalcSwapTokenForExactTokenNoPath(c *gin.Context) {
 	requestUser := c.MustGet("username").(string)
-	var poolSwapTokenForExactTokenNoPathBatchRequest pool.PoolSwapTokenForExactTokenNoPathRequest
-	err := c.ShouldBindJSON(&poolSwapTokenForExactTokenNoPathBatchRequest)
+	var req pool.PoolSwapTokenForExactTokenNoPathRequest
+	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.ShouldBindJsonErr.Code(),
@@ -1233,7 +1225,7 @@ func CalcSwapTokenForExactTokenNoPath(c *gin.Context) {
 		return
 	}
 
-	_, err = pool.ProcessPoolSwapTokenForExactTokenNoPathBatchRequest(&poolSwapTokenForExactTokenNoPathBatchRequest, requestUser)
+	_, err = pool.ProcessPoolSwapTokenForExactTokenNoPathBatchRequest(&req, requestUser)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.ProcessPoolSwapTokenForExactTokenNoPathBatchRequestErr.Code(),
@@ -1243,7 +1235,7 @@ func CalcSwapTokenForExactTokenNoPath(c *gin.Context) {
 		return
 	}
 
-	if !strings.Contains(requestUser, poolSwapTokenForExactTokenNoPathBatchRequest.Username) {
+	if !strings.Contains(requestUser, req.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -1259,15 +1251,7 @@ func CalcSwapTokenForExactTokenNoPath(c *gin.Context) {
 		swapRecord *pool.PoolSwapRecord
 	)
 
-	tokenIn := poolSwapTokenForExactTokenNoPathBatchRequest.TokenIn
-	tokenOut := poolSwapTokenForExactTokenNoPathBatchRequest.TokenOut
-	amountOut := poolSwapTokenForExactTokenNoPathBatchRequest.AmountOut
-	amountInMax := poolSwapTokenForExactTokenNoPathBatchRequest.AmountInMax
-	username := poolSwapTokenForExactTokenNoPathBatchRequest.Username
-	projectPartyFeeK := poolSwapTokenForExactTokenNoPathBatchRequest.ProjectPartyFeeK
-	lpAwardFeeK := poolSwapTokenForExactTokenNoPathBatchRequest.LpAwardFeeK
-
-	amountIn, swapRecord, err = pool.CalcSwapTokenForExactTokenNoPath(tokenIn, tokenOut, amountOut, amountInMax, username, projectPartyFeeK, lpAwardFeeK)
+	amountIn, swapRecord, err = pool.CalcSwapTokenForExactTokenNoPath(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.CalcSwapTokenForExactTokenNoPathErr.Code(),
@@ -1416,8 +1400,6 @@ func CalcAmountIn(c *gin.Context) {
 	})
 }
 
-// request
-
 func RequestAddLiquidity(c *gin.Context) {
 	requestUser := c.MustGet("username").(string)
 	var poolAddLiquidityBatchRequest pool.PoolAddLiquidityRequest
@@ -1448,7 +1430,7 @@ func RequestAddLiquidity(c *gin.Context) {
 		})
 		return
 	}
-	// success
+
 	c.JSON(http.StatusOK, Result2{
 		Errno:  0,
 		ErrMsg: models.SUCCESS.Error(),
@@ -1603,8 +1585,6 @@ func RequestWithdrawAward(c *gin.Context) {
 		Data:   nil,
 	})
 }
-
-// batch
 
 func QueryAddLiquidityBatchCount(c *gin.Context) {
 	username := c.MustGet("username").(string)
@@ -2106,12 +2086,20 @@ func QueryWithdrawAwardBatch(c *gin.Context) {
 	})
 }
 
-// Sync
-
 func AddLiquidity(c *gin.Context) {
+
+	if config.GetConfig().PoolFeatureDisable.Add {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.FeatureIsDisabled.Code(),
+			ErrMsg: featureDisabled.Error(),
+			Data:   nil,
+		})
+		return
+	}
+
 	requestUser := c.MustGet("username").(string)
-	var poolAddLiquidityBatchRequest pool.PoolAddLiquidityRequest
-	err := c.ShouldBindJSON(&poolAddLiquidityBatchRequest)
+	var req pool.PoolAddLiquidityRequest
+	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.ShouldBindJsonErr.Code(),
@@ -2121,7 +2109,16 @@ func AddLiquidity(c *gin.Context) {
 		return
 	}
 
-	if !strings.Contains(requestUser, poolAddLiquidityBatchRequest.Username) {
+	if slices.Contains(config.GetConfig().PoolFeatureDisableByAssetId.Withdraw, req.TokenA) || slices.Contains(config.GetConfig().PoolFeatureDisableByAssetId.Withdraw, req.TokenB) {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.FeatureIsDisabled.Code(),
+			ErrMsg: featureDisabled.Error(),
+			Data:   nil,
+		})
+		return
+	}
+
+	if !strings.Contains(requestUser, req.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -2130,7 +2127,7 @@ func AddLiquidity(c *gin.Context) {
 		return
 	}
 
-	result, err := pool.AddLiquidity(&poolAddLiquidityBatchRequest)
+	result, err := pool.AddLiquidity(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.AddLiquidityErr.Code(),
@@ -2148,9 +2145,19 @@ func AddLiquidity(c *gin.Context) {
 }
 
 func RemoveLiquidity(c *gin.Context) {
+
+	if config.GetConfig().PoolFeatureDisable.Remove {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.FeatureIsDisabled.Code(),
+			ErrMsg: featureDisabled.Error(),
+			Data:   nil,
+		})
+		return
+	}
+
 	requestUser := c.MustGet("username").(string)
-	var poolRemoveLiquidityBatchRequest pool.PoolRemoveLiquidityRequest
-	err := c.ShouldBindJSON(&poolRemoveLiquidityBatchRequest)
+	var req pool.PoolRemoveLiquidityRequest
+	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.ShouldBindJsonErr.Code(),
@@ -2160,7 +2167,16 @@ func RemoveLiquidity(c *gin.Context) {
 		return
 	}
 
-	if !strings.Contains(requestUser, poolRemoveLiquidityBatchRequest.Username) {
+	if slices.Contains(config.GetConfig().PoolFeatureDisableByAssetId.Withdraw, req.TokenA) || slices.Contains(config.GetConfig().PoolFeatureDisableByAssetId.Withdraw, req.TokenB) {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.FeatureIsDisabled.Code(),
+			ErrMsg: featureDisabled.Error(),
+			Data:   nil,
+		})
+		return
+	}
+
+	if !strings.Contains(requestUser, req.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -2169,7 +2185,7 @@ func RemoveLiquidity(c *gin.Context) {
 		return
 	}
 
-	result, err := pool.RemoveLiquidity(&poolRemoveLiquidityBatchRequest)
+	result, err := pool.RemoveLiquidity(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.RemoveLiquidityErr.Code(),
@@ -2187,9 +2203,19 @@ func RemoveLiquidity(c *gin.Context) {
 }
 
 func SwapExactTokenForTokenNoPath(c *gin.Context) {
+
+	if config.GetConfig().PoolFeatureDisable.SwapE {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.FeatureIsDisabled.Code(),
+			ErrMsg: featureDisabled.Error(),
+			Data:   nil,
+		})
+		return
+	}
+
 	requestUser := c.MustGet("username").(string)
-	var poolSwapExactTokenForTokenNoPathBatchRequest pool.PoolSwapExactTokenForTokenNoPathRequest
-	err := c.ShouldBindJSON(&poolSwapExactTokenForTokenNoPathBatchRequest)
+	var req pool.PoolSwapExactTokenForTokenNoPathRequest
+	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.ShouldBindJsonErr.Code(),
@@ -2199,7 +2225,16 @@ func SwapExactTokenForTokenNoPath(c *gin.Context) {
 		return
 	}
 
-	if !strings.Contains(requestUser, poolSwapExactTokenForTokenNoPathBatchRequest.Username) {
+	if slices.Contains(config.GetConfig().PoolFeatureDisableByAssetId.Withdraw, req.TokenIn) || slices.Contains(config.GetConfig().PoolFeatureDisableByAssetId.Withdraw, req.TokenOut) {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.FeatureIsDisabled.Code(),
+			ErrMsg: featureDisabled.Error(),
+			Data:   nil,
+		})
+		return
+	}
+
+	if !strings.Contains(requestUser, req.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -2208,7 +2243,7 @@ func SwapExactTokenForTokenNoPath(c *gin.Context) {
 		return
 	}
 
-	result, err := pool.SwapExactTokenForTokenNoPath(&poolSwapExactTokenForTokenNoPathBatchRequest)
+	result, err := pool.SwapExactTokenForTokenNoPath(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.SwapExactTokenForTokenNoPathErr.Code(),
@@ -2226,9 +2261,19 @@ func SwapExactTokenForTokenNoPath(c *gin.Context) {
 }
 
 func SwapTokenForExactTokenNoPath(c *gin.Context) {
+
+	if config.GetConfig().PoolFeatureDisable.SwapT {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.FeatureIsDisabled.Code(),
+			ErrMsg: featureDisabled.Error(),
+			Data:   nil,
+		})
+		return
+	}
+
 	requestUser := c.MustGet("username").(string)
-	var poolSwapTokenForExactTokenNoPathBatchRequest pool.PoolSwapTokenForExactTokenNoPathRequest
-	err := c.ShouldBindJSON(&poolSwapTokenForExactTokenNoPathBatchRequest)
+	var req pool.PoolSwapTokenForExactTokenNoPathRequest
+	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.ShouldBindJsonErr.Code(),
@@ -2238,7 +2283,16 @@ func SwapTokenForExactTokenNoPath(c *gin.Context) {
 		return
 	}
 
-	if !strings.Contains(requestUser, poolSwapTokenForExactTokenNoPathBatchRequest.Username) {
+	if slices.Contains(config.GetConfig().PoolFeatureDisableByAssetId.Withdraw, req.TokenIn) || slices.Contains(config.GetConfig().PoolFeatureDisableByAssetId.Withdraw, req.TokenOut) {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.FeatureIsDisabled.Code(),
+			ErrMsg: featureDisabled.Error(),
+			Data:   nil,
+		})
+		return
+	}
+
+	if !strings.Contains(requestUser, req.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -2247,7 +2301,7 @@ func SwapTokenForExactTokenNoPath(c *gin.Context) {
 		return
 	}
 
-	result, err := pool.SwapTokenForExactTokenNoPath(&poolSwapTokenForExactTokenNoPathBatchRequest)
+	result, err := pool.SwapTokenForExactTokenNoPath(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.SwapTokenForExactTokenNoPathErr.Code(),
@@ -2265,9 +2319,19 @@ func SwapTokenForExactTokenNoPath(c *gin.Context) {
 }
 
 func WithdrawAward(c *gin.Context) {
+
+	if config.GetConfig().PoolFeatureDisable.Withdraw {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.FeatureIsDisabled.Code(),
+			ErrMsg: featureDisabled.Error(),
+			Data:   nil,
+		})
+		return
+	}
+
 	requestUser := c.MustGet("username").(string)
-	var poolWithdrawAwardBatchRequest pool.PoolWithdrawAwardRequest
-	err := c.ShouldBindJSON(&poolWithdrawAwardBatchRequest)
+	var req pool.PoolWithdrawAwardRequest
+	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.ShouldBindJsonErr.Code(),
@@ -2277,7 +2341,16 @@ func WithdrawAward(c *gin.Context) {
 		return
 	}
 
-	if !strings.Contains(requestUser, poolWithdrawAwardBatchRequest.Username) {
+	if slices.Contains(config.GetConfig().PoolFeatureDisableByAssetId.Withdraw, req.TokenA) || slices.Contains(config.GetConfig().PoolFeatureDisableByAssetId.Withdraw, req.TokenB) {
+		c.JSON(http.StatusOK, Result2{
+			Errno:  models.FeatureIsDisabled.Code(),
+			ErrMsg: featureDisabled.Error(),
+			Data:   nil,
+		})
+		return
+	}
+
+	if !strings.Contains(requestUser, req.Username) {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.UsernameNotMatchErr.Code(),
 			ErrMsg: "username not match",
@@ -2286,7 +2359,7 @@ func WithdrawAward(c *gin.Context) {
 		return
 	}
 
-	result, err := pool.WithdrawAward(&poolWithdrawAwardBatchRequest)
+	result, err := pool.WithdrawAward(&req)
 	if err != nil {
 		c.JSON(http.StatusOK, Result2{
 			Errno:  models.WithdrawAwardErr.Code(),

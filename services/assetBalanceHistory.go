@@ -5,19 +5,8 @@ import (
 	"trade/models"
 )
 
-// GetLatestAssetBalanceHistories
-// sub query
 func GetLatestAssetBalanceHistories(username string) (*[]models.AssetBalanceHistoryRecord, error) {
 	var records []models.AssetBalanceHistoryRecord
-
-	// SELECT *
-	// FROM asset_balance_histories
-	// WHERE id IN (
-	//     SELECT MAX(id)
-	//     FROM asset_balance_histories
-	//     WHERE username = ?
-	//     GROUP BY asset_id
-	// );
 
 	subQuery := middleware.DB.Model(&models.AssetBalanceHistory{}).
 		Select("MAX(id)").

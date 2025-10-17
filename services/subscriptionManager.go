@@ -48,14 +48,12 @@ func (sm *SubscriptionManager) Broadcast(key string, message interface{}) {
 	clients := sm.subscriptions[key]
 	sm.mutex.RUnlock()
 
-	// 将消息转换为 JSON 字节数组
 	jsonMessage, err := json.Marshal(message)
 	if err != nil {
 		log.Println("Failed to marshal message:", err)
 		return
 	}
 
-	// 创建一个格式化的 JSON 字符串用于打印
 	var prettyJSON bytes.Buffer
 	err = json.Indent(&prettyJSON, jsonMessage, "", "  ")
 	if err != nil {

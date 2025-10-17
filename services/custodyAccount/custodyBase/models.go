@@ -25,6 +25,7 @@ var (
 	NotEnoughFeeFunds   AssetPacketErr = errors.New("not enough Fee funds")
 	NotEnoughAssetFunds AssetPacketErr = errors.New("not enough Asset funds")
 	DecodeAddressFail   AssetPacketErr = errors.New("decode Address fail")
+	DecodeInvoiceFail   AssetPacketErr = errors.New("decode Invoice fail")
 	GetBalanceErr       AssetPacketErr = errors.New("get balance fail")
 )
 var (
@@ -54,9 +55,9 @@ type PaymentResponse struct {
 	AssetId     *string             `json:"asset_id"`
 	State       models.BalanceState `json:"state"`
 	Fee         uint64              `json:"fee"`
-	//deprecated
+
 	Invoice *string `json:"invoice"`
-	//deprecated
+
 	Address *string `json:"addr"`
 }
 

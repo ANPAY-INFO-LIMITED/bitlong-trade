@@ -4,23 +4,25 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/lightninglabs/taproot-assets/taprpc"
-	"gorm.io/gorm"
 	"trade/btlLog"
 	"trade/middleware"
 	"trade/models"
 	"trade/models/custodyModels"
 	"trade/services/btldb"
-	caccount "trade/services/custodyAccount/account"
 	cBase "trade/services/custodyAccount/custodyBase"
 	"trade/services/custodyAccount/custodyBase/custodyFee"
 	"trade/services/custodyAccount/custodyBase/custodyLimit"
-	"trade/services/custodyAccount/defaultAccount/custodyBtc"
+	"trade/services/custodyAccount/defaultAccount/custodyBalance"
 	"trade/services/custodyAccount/defaultAccount/custodyBtc/mempool"
 	rpc "trade/services/servicesrpc"
+
+	"github.com/lightninglabs/taproot-assets/taprpc"
+	"github.com/lightninglabs/taproot-assets/taprpc/rfqrpc"
+	"github.com/lightninglabs/taproot-assets/taprpc/tapchannelrpc"
+	"github.com/lightningnetwork/lnd/lnrpc"
+	"gorm.io/gorm"
 )
 
-// AssetAddressApplyRequest 资产接收地址申请请求结构体
 type AssetAddressApplyRequest struct {
 	Amount int64
 }
@@ -29,7 +31,6 @@ func (req *AssetAddressApplyRequest) GetPayReqAmount() int64 {
 	return req.Amount
 }
 
-// AssetApplyAddress 资产接收地址申请请求的结构体
 type AssetApplyAddress struct {
 	Addr   *taprpc.Addr
 	Amount int64
@@ -42,43 +43,94 @@ func (a *AssetApplyAddress) GetPayReq() string {
 	return a.Addr.Encoded
 }
 
-// AssetPacket 支付包结构体
+type AssetInvoiceApplyResponse struct {
+	Amount int64
+}
+
+func (r *AssetInvoiceApplyResponse) GetPayReqAmount() int64 {
+	return r.Amount
+}
+
+type AssetApplyInvoice struct {
+	RfqInfo *rfqrpc.PeerAcceptedBuyQuote
+	Invoice *lnrpc.AddInvoiceResponse
+	Amount  int64
+}
+
+func (a *AssetApplyInvoice) GetAmount() int64 {
+	return a.Amount
+}
+func (a *AssetApplyInvoice) GetPayReq() string {
+	return a.Invoice.GetPaymentRequest()
+}
+
 type AssetPacket struct {
 	PayReq          string
-	DecodePayReq    *taprpc.Addr
+	DecodeAddr      *taprpc.Addr
+	DecodeInvoice   *tapchannelrpc.AssetPayReqResponse
 	isInsideMission *isInsideMission
 	err             chan error
 }
 
-func (p *AssetPacket) VerifyPayReq(userinfo *caccount.UserInfo) error {
+func (p *AssetPacket) VerifyPayReq(event *AssetEvent) error {
 	ServerFee := uint64(mempool.GetCustodyAssetFee())
-	//验证是否为本地发票
+
 	i, err := btldb.GetInvoiceByReq(p.PayReq)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		btlLog.CUST.Error("验证本地发票失败", err)
 		return models.ReadDbErr
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		btlLog.CUST.Info("当前费率：%v", ServerFee)
 		p.isInsideMission = nil
 	} else {
+		if i.AssetId != *event.AssetId {
+			return fmt.Errorf("this invoice can only be paid using the %s", i.AssetId)
+		}
 		p.isInsideMission = &isInsideMission{
 			isInside:      true,
 			insideInvoice: i,
 		}
 		ServerFee = custodyFee.AssetInsideFee
 	}
-	//TODO:验证网络
+	var assetId string
+	var amount uint64
 
-	//解码地址
-	p.DecodePayReq, err = rpc.DecodeAddr(p.PayReq)
-	if err != nil {
-		btlLog.CUST.Error("地址解析失败", err)
-		return fmt.Errorf("%w(pay_request=%s)", cBase.DecodeAddressFail, p.PayReq)
+	flag := p.PayReq[0:2]
+	switch flag {
+	case "ln":
+		if i.ID != 0 {
+			if i.Status != models.InvoiceStatusPending {
+				return fmt.Errorf("invoice is paid or canceled(pay_request=%s)", p.PayReq)
+			}
+			assetId = i.AssetId
+			amount = uint64(i.Amount)
+		} else {
+			if event.AssetId == nil || *event.AssetId == "" {
+				return fmt.Errorf("asset_id_is_empty(pay_request=%s)", p.PayReq)
+			}
+			assetId = *event.AssetId
+			p.DecodeInvoice, err = rpc.DecodeAssetInvoice(p.PayReq, assetId)
+			if err != nil {
+				btlLog.CUST.Error("发票解析失败", err)
+				return fmt.Errorf("%w(pay_request=%s)", cBase.DecodeInvoiceFail, p.PayReq)
+			}
+			amount = p.DecodeInvoice.AssetAmount
+		}
+	case "ta":
+		p.DecodeAddr, err = rpc.DecodeAddr(p.PayReq)
+		if err != nil {
+			btlLog.CUST.Error("地址解析失败", err)
+			return fmt.Errorf("%w(pay_request=%s)", cBase.DecodeAddressFail, p.PayReq)
+		}
+		assetId = hex.EncodeToString(p.DecodeAddr.AssetId)
+		if *event.AssetId != "" && *event.AssetId != assetId {
+			return fmt.Errorf("请使用资产%s进行支付", assetId)
+		}
+		amount = p.DecodeAddr.Amount
+	default:
+		return fmt.Errorf("unknown_payreq_type(pay_request=%s)", p.PayReq)
 	}
-	//TODO:验证地址版本
-	//限额检查
-	assetId := hex.EncodeToString(p.DecodePayReq.AssetId)
+
 	limitType := custodyModels.LimitType{
 		AssetId:      assetId,
 		TransferType: custodyModels.LimitTransferTypeLocal,
@@ -86,28 +138,26 @@ func (p *AssetPacket) VerifyPayReq(userinfo *caccount.UserInfo) error {
 	if p.isInsideMission == nil {
 		limitType.TransferType = custodyModels.LimitTransferTypeOutside
 	}
-	err = custodyLimit.CheckLimit(middleware.DB, userinfo, &limitType, float64(p.DecodePayReq.Amount))
+	err = custodyLimit.CheckLimit(middleware.DB, event.UserInfo, &limitType, float64(amount))
 	if err != nil {
 		return err
 	}
-	//验证资产金额
-	if !CheckAssetBalance(middleware.DB, userinfo, assetId, float64(p.DecodePayReq.Amount)) {
+
+	if !custodyBalance.CheckAssetBalance(middleware.DB, event.UserInfo, assetId, float64(amount)) {
 		return cBase.NotEnoughAssetFunds
 	}
-	if !custodyBtc.CheckBtcBalance(middleware.DB, userinfo, float64(ServerFee)) {
+	if !custodyBalance.CheckBtcBalance(middleware.DB, event.UserInfo, float64(ServerFee)) {
 		return cBase.NotEnoughFeeFunds
 	}
 	return nil
 }
 
-// isInsideMission 内部任务结构体
 type isInsideMission struct {
 	isInside      bool
 	insideInvoice *models.Invoice
 	err           chan error
 }
 
-// OutsideMission 外部事件结构体
 type OutsideMission struct {
 	AddrTarget       []*target
 	AssetID          string

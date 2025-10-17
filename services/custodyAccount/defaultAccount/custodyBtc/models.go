@@ -3,8 +3,6 @@ package custodyBtc
 import (
 	"errors"
 	"fmt"
-	"github.com/lightningnetwork/lnd/lnrpc"
-	"gorm.io/gorm"
 	"trade/btlLog"
 	"trade/middleware"
 	"trade/models"
@@ -13,10 +11,13 @@ import (
 	caccount "trade/services/custodyAccount/account"
 	"trade/services/custodyAccount/custodyBase/custodyFee"
 	"trade/services/custodyAccount/custodyBase/custodyLimit"
+	"trade/services/custodyAccount/defaultAccount/custodyBalance"
 	rpc "trade/services/servicesrpc"
+
+	"github.com/lightningnetwork/lnd/lnrpc"
+	"gorm.io/gorm"
 )
 
-// BtcApplyInvoice 申请发票返回的结构体
 type BtcApplyInvoice struct {
 	LnInvoice *lnrpc.AddInvoiceResponse
 	Amount    int64
@@ -29,7 +30,6 @@ func (in *BtcApplyInvoice) GetPayReq() string {
 	return in.LnInvoice.PaymentRequest
 }
 
-// BtcApplyInvoiceRequest 发票申请请求结构体
 type BtcApplyInvoiceRequest struct {
 	Amount int64
 	Memo   string
@@ -46,7 +46,6 @@ var (
 	DecodeInvoiceFail  BtcPacketErr = errors.New("decode invoice fail")
 )
 
-// BtcPacket 支付包结构体
 type BtcPacket struct {
 	PayReq          string
 	FeeLimit        int64
@@ -57,20 +56,20 @@ type BtcPacket struct {
 
 func (p *BtcPacket) VerifyPayReq(userinfo *caccount.UserInfo) error {
 	ServerFee := custodyFee.ChannelBtcServiceFee
-	//验证是否为本地发票
+
 	i, err := btldb.GetInvoiceByReq(p.PayReq)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		btlLog.CUST.Error("验证本地发票失败", err)
 		return models.ReadDbErr
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		if p.FeeLimit == 0 {
-			p.FeeLimit = 10
-		}
 		p.isInsideMission = nil
 	} else {
 		if i.Status != models.InvoiceStatusPending {
 			return fmt.Errorf("发票已被使用")
+		}
+		if i.AssetId != "00" {
+			return fmt.Errorf("该发票不能使用btc支付，请使用资产%s支付", i.AssetId)
 		}
 		p.isInsideMission = &isInsideMission{
 			isInside:      true,
@@ -78,16 +77,21 @@ func (p *BtcPacket) VerifyPayReq(userinfo *caccount.UserInfo) error {
 		}
 		ServerFee = custodyFee.ChannelBtcInsideServiceFee
 	}
-	//解码发票
+
 	p.DecodePayReq, err = rpc.InvoiceDecode(p.PayReq)
 	if err != nil {
 		btlLog.CUST.Error("发票解析失败", err)
 		return fmt.Errorf("(pay_request=%s)", "发票解析失败：", p.PayReq)
 	}
-	//验证金额
+	if p.isInsideMission == nil && p.FeeLimit == 0 {
+		p.FeeLimit = p.DecodePayReq.NumSatoshis / 10
+		if p.FeeLimit < 1 {
+			p.FeeLimit = 1
+		}
+	}
+
 	endAmount := p.DecodePayReq.NumSatoshis + p.FeeLimit + int64(ServerFee)
 
-	//验证限额
 	limitType := custodyModels.LimitType{
 		AssetId:      "00",
 		TransferType: custodyModels.LimitTransferTypeLocal,
@@ -99,13 +103,12 @@ func (p *BtcPacket) VerifyPayReq(userinfo *caccount.UserInfo) error {
 	if err != nil {
 		return err
 	}
-	if !CheckBtcBalance(middleware.DB, userinfo, float64(endAmount)) {
+	if !custodyBalance.CheckBtcBalance(middleware.DB, userinfo, float64(endAmount)) {
 		return NotSufficientFunds
 	}
 	return nil
 }
 
-// isInsideMission 内部任务结构体
 type isInsideMission struct {
 	isInside      bool
 	insideInvoice *models.Invoice
@@ -116,4 +119,5 @@ type InvoiceResponce struct {
 	AssetId string               `json:"asset_id"`
 	Amount  int64                `json:"amount"`
 	Status  models.InvoiceStatus `json:"status"`
+	Time    int64                `json:"time"`
 }

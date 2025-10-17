@@ -6,12 +6,12 @@ import (
 
 type Balance struct {
 	gorm.Model
-	AccountId   uint         `gorm:"column:account_id;type:bigint unsigned" json:"accountId"` // 正确地将unique和column选项放在同一个gorm标签内
+	AccountId   uint         `gorm:"column:account_id;type:bigint unsigned" json:"accountId"`
 	BillType    BalanceType  `gorm:"column:bill_type;type:smallint" json:"billType"`
 	Away        BalanceAway  `gorm:"column:away;type:smallint" json:"away"`
-	Amount      float64      `gorm:"column:amount;type:decimal(10,2)" json:"amount"`
+	Amount      float64      `gorm:"column:amount;type:decimal(25,2)" json:"amount"`
 	Unit        BalanceUnit  `gorm:"column:Unit;type:smallint" json:"unit"`
-	ServerFee   uint64       `gorm:"column:server_fee;type:bigint unsigned" json:"serverFee"`
+	ServerFee   float64      `gorm:"column:server_fee;type:decimal(25,2)" json:"serverFee"`
 	AssetId     *string      `gorm:"column:asset_id;type:varchar(512);default:'00'" json:"assetId"`
 	Invoice     *string      `gorm:"column:invoice;type:varchar(1024)" json:"invoice"`
 	PaymentHash *string      `gorm:"column:payment_hash;type:varchar(100)" json:"paymentHash"`
@@ -37,12 +37,17 @@ const (
 	BillTypePendingOder                 = 8
 	BillTypePoolAccount                 = 9
 
-	BillTypePaymentFee  = 10
-	BillTypeFirLunchFee = 11
-	BillTypeBackFee     = 12
-	BillTypeOfferAward  = 13
+	BillTypePaymentFee   = 10
+	BillTypeFirLunchFee  = 11
+	BillTypeBackFee      = 12
+	BillTypeOfferAward   = 13
+	BillTypePTNS         = 14
+	BillTypePTNSSupplier = 15
 
-	//locked 仅作为查询时的标识，不参与任何业务逻辑
+	BillTypeReplaceAsset = 16
+
+	BillTypeGameWithdraw = 17
+
 	LockedTransfer BalanceType = 1000
 )
 

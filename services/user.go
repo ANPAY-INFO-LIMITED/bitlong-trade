@@ -54,7 +54,7 @@ func IdToName(id int) (string, error) {
 }
 
 func hashPassword(password string) (string, error) {
-	// Passwords are encrypted using the bcrypt algorithm
+
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	if err != nil {
 		return "", err
@@ -62,8 +62,17 @@ func hashPassword(password string) (string, error) {
 	return string(bytes), nil
 }
 
+func hashWeakButFastPassword(password string) (string, error) {
+
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
 func CheckPassword(hashedPassword, password string) bool {
-	// bcrypt.CompareHashAndPassword Compare the hashed password with the password entered by the user. If there is a match, nil is returned.
+
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	return err == nil
 }
@@ -87,8 +96,6 @@ func UpdateUserIpByUsername(username string, ip string) (*models.User, error) {
 	return user, btldb.UpdateUser(user)
 }
 
-// UpdateUserIpByClientIp
-// @Description: Update user ip by client ip
 func UpdateUserIpByClientIp(c *gin.Context) (string, error) {
 	username := c.MustGet("username").(string)
 	ip := c.ClientIP()

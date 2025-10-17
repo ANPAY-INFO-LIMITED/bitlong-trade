@@ -20,7 +20,6 @@ type UserInfoData struct {
 	Username     string    `json:"用户名;NpubKey;Nostr地址"  yaml:"用户名;NpubKey;Nostr地址"`
 	UserId       int       `json:"用户ID"  yaml:"用户ID"`
 	CreatedAt    time.Time `json:"用户创建时间"  yaml:"用户创建时间"`
-	Account      string    `json:"托管账户码"  yaml:"托管账户码"`
 	AccountId    int       `json:"托管账户ID"  yaml:"托管账户ID"`
 	UserRecentIp string    `json:"最近登录IP"  yaml:"最近登录IP"`
 }

@@ -29,12 +29,12 @@ func getPair(token0 string, token1 string) (pair *PoolPair, err error) {
 }
 
 func createPair(token0 string, token1 string, reserve0 string, reserve1 string) (err error) {
-	// sort token
+
 	_token0, _token1, err := sortTokens(token0, token1)
 	if err != nil {
 		return utils.AppendErrorInfo(err, "sortTokens")
 	}
-	// check reserves
+
 	_reserve0, success := new(big.Int).SetString(reserve0, 10)
 	if !success {
 		return errors.New("reserve0 SetString(" + reserve0 + ") " + strconv.FormatBool(success))
@@ -47,7 +47,7 @@ func createPair(token0 string, token1 string, reserve0 string, reserve1 string) 
 		err = errors.New("insufficientLiquidity(" + _reserve0.String() + "," + _reserve1.String() + ")")
 		return err
 	}
-	// cmp with minimum liquidity sat
+
 	if _token0 == TokenSatTag {
 		_minLiquiditySat := new(big.Int).SetUint64(uint64(MinAddLiquiditySat))
 		if _reserve0.Cmp(_minLiquiditySat) < 0 {
@@ -55,8 +55,7 @@ func createPair(token0 string, token1 string, reserve0 string, reserve1 string) 
 			return err
 		}
 	} else {
-		// _token0 != TokenSatTag
-		// TODO: Add MinLiquidity check for pair whose token0 is not sat
+
 		_liquidity := new(big.Int).Sqrt(new(big.Int).Mul(_reserve0, _reserve1))
 		_minLiquidity := new(big.Int).SetUint64(uint64(MinLiquidity))
 		if _liquidity.Cmp(_minLiquidity) < 0 {
@@ -75,7 +74,7 @@ func createPair(token0 string, token1 string, reserve0 string, reserve1 string) 
 		Reserve0:       tokenMapReserve[_token0],
 		Reserve1:       tokenMapReserve[_token1],
 	}
-	// save in db
+
 	return middleware.DB.Create(&pair).Error
 }
 
@@ -96,7 +95,7 @@ func updatePair(token0 string, token1 string, reserve0 string, reserve1 string) 
 		err = errors.New("insufficientLiquidity(" + _reserve0.String() + "," + _reserve1.String() + ")")
 		return err
 	}
-	// cmp with minimum liquidity sat
+
 	if _token0 == TokenSatTag {
 		_minLiquiditySat := new(big.Int).SetUint64(uint64(MinAddLiquiditySat))
 		if _reserve0.Cmp(_minLiquiditySat) < 0 {
@@ -104,8 +103,7 @@ func updatePair(token0 string, token1 string, reserve0 string, reserve1 string) 
 			return err
 		}
 	} else {
-		// _token0 != TokenSatTag
-		// TODO: Add MinLiquidity check for pair whose token0 is not sat
+
 		_liquidity := new(big.Int).Sqrt(new(big.Int).Mul(_reserve0, _reserve1))
 		_minLiquidity := new(big.Int).SetUint64(uint64(MinLiquidity))
 		if _liquidity.Cmp(_minLiquidity) < 0 {
@@ -134,12 +132,12 @@ func updatePair(token0 string, token1 string, reserve0 string, reserve1 string) 
 }
 
 func _newPair(token0 string, token1 string, reserve0 string, reserve1 string) (pair *PoolPair, err error) {
-	// sort token
+
 	_token0, _token1, err := sortTokens(token0, token1)
 	if err != nil {
 		return new(PoolPair), utils.AppendErrorInfo(err, "sortTokens")
 	}
-	// check reserves
+
 	_reserve0, success := new(big.Int).SetString(reserve0, 10)
 	if !success {
 		return new(PoolPair), errors.New("reserve0 SetString(" + reserve0 + ") " + strconv.FormatBool(success))
@@ -152,7 +150,7 @@ func _newPair(token0 string, token1 string, reserve0 string, reserve1 string) (p
 		err = errors.New("insufficientLiquidity(" + _reserve0.String() + "," + _reserve1.String() + ")")
 		return new(PoolPair), err
 	}
-	// cmp with minimum liquidity sat
+
 	if _token0 == TokenSatTag {
 		_minLiquiditySat := new(big.Int).SetUint64(uint64(MinAddLiquiditySat))
 		if _reserve0.Cmp(_minLiquiditySat) < 0 {
@@ -160,8 +158,7 @@ func _newPair(token0 string, token1 string, reserve0 string, reserve1 string) (p
 			return new(PoolPair), err
 		}
 	} else {
-		// _token0 != TokenSatTag
-		// TODO: Add MinLiquidity check for pair whose token0 is not sat
+
 		_liquidity := new(big.Int).Sqrt(new(big.Int).Mul(_reserve0, _reserve1))
 		_minLiquidity := new(big.Int).SetUint64(uint64(MinLiquidity))
 		if _liquidity.Cmp(_minLiquidity) < 0 {
@@ -183,17 +180,17 @@ func _newPair(token0 string, token1 string, reserve0 string, reserve1 string) (p
 }
 
 func newPairBig(token0 string, token1 string, _reserve0 *big.Int, _reserve1 *big.Int) (pair *PoolPair, err error) {
-	// sort token
+
 	_token0, _token1, err := sortTokens(token0, token1)
 	if err != nil {
 		return new(PoolPair), utils.AppendErrorInfo(err, "sortTokens")
 	}
-	// check reserves
+
 	if !((_reserve0.Sign() > 0) && (_reserve1.Sign() > 0)) {
 		err = errors.New("insufficientLiquidity(" + _reserve0.String() + "," + _reserve1.String() + ")")
 		return new(PoolPair), err
 	}
-	// cmp with minimum liquidity sat
+
 	if _token0 == TokenSatTag {
 		_minLiquiditySat := new(big.Int).SetUint64(uint64(MinAddLiquiditySat))
 		if _reserve0.Cmp(_minLiquiditySat) < 0 {
@@ -201,8 +198,7 @@ func newPairBig(token0 string, token1 string, _reserve0 *big.Int, _reserve1 *big
 			return new(PoolPair), err
 		}
 	} else {
-		// _token0 != TokenSatTag
-		// TODO: Add MinLiquidity check for pair whose token0 is not sat
+
 		_liquidity := new(big.Int).Sqrt(new(big.Int).Mul(_reserve0, _reserve1))
 		_minLiquidity := new(big.Int).SetUint64(uint64(MinLiquidity))
 		if _liquidity.Cmp(_minLiquidity) < 0 {

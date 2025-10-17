@@ -10,8 +10,6 @@ import (
 	"trade/services"
 )
 
-// @dev: Get
-
 func GetNftPresaleByAssetId(c *gin.Context) {
 	username := c.MustGet("username").(string)
 	_, err := services.NameToId(username)
@@ -143,16 +141,7 @@ func GetLaunchedNftPresale(c *gin.Context) {
 
 func GetUserBoughtNftPresale(c *gin.Context) {
 	username := c.MustGet("username").(string)
-	//userId, err := services.NameToId(username)
-	//if err != nil {
-	//	c.JSON(http.StatusOK, models.JsonResult{
-	//		Success: false,
-	//		Error:   err.Error(),
-	//		Code:    models.NameToIdErr,
-	//		Data:    nil,
-	//	})
-	//	return
-	//}
+
 	nftPresales, err := services.GetNftPresalesByBuyerUsername(username)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
@@ -265,8 +254,6 @@ func GetNftPresaleNoGroupKeyPurchasable(c *gin.Context) {
 	})
 }
 
-// @dev: Purchase
-
 func BuyNftPresale(c *gin.Context) {
 	username := c.MustGet("username").(string)
 	userId, err := services.NameToId(username)
@@ -308,8 +295,6 @@ func BuyNftPresale(c *gin.Context) {
 	})
 }
 
-// @dev: Query
-
 func QueryNftPresaleGroupKeyPurchasable(c *gin.Context) {
 	username := c.MustGet("username").(string)
 	_, err := services.NameToId(username)
@@ -340,8 +325,6 @@ func QueryNftPresaleGroupKeyPurchasable(c *gin.Context) {
 	})
 }
 
-// @dev: Set
-
 func SetNftPresale(c *gin.Context) {
 	var nftPresaleSetRequest models.NftPresaleSetRequest
 	err := c.ShouldBindJSON(&nftPresaleSetRequest)
@@ -355,7 +338,7 @@ func SetNftPresale(c *gin.Context) {
 		return
 	}
 	nftPresale := services.ProcessNftPresale(&nftPresaleSetRequest)
-	// @dev: Store AssetMeta
+
 	{
 		assetId := nftPresaleSetRequest.AssetId
 		err = services.StoreAssetMetaIfNotExist(assetId)
@@ -394,7 +377,7 @@ func SetNftPresales(c *gin.Context) {
 		return
 	}
 	nftPresales := services.ProcessNftPresales(&nftPresaleSetRequests)
-	// @dev: Store AssetMetas
+
 	{
 		var assetIds []string
 		for _, nftPresaleSetRequest := range nftPresaleSetRequests {
@@ -442,8 +425,6 @@ func ReSetFailOrCanceledNftPresale(c *gin.Context) {
 	})
 }
 
-// @dev: launch batch group
-
 func LaunchNftPresaleBatchGroup(c *gin.Context) {
 	var nftPresaleBatchGroupLaunchRequest models.NftPresaleBatchGroupLaunchRequest
 	err := c.ShouldBindJSON(&nftPresaleBatchGroupLaunchRequest)
@@ -456,7 +437,7 @@ func LaunchNftPresaleBatchGroup(c *gin.Context) {
 		})
 		return
 	}
-	// @dev: Store AssetMetas
+
 	{
 		var assetIds []string
 		for _, nftPresaleSetRequest := range *(nftPresaleBatchGroupLaunchRequest.NftPresaleSetRequests) {
@@ -467,7 +448,7 @@ func LaunchNftPresaleBatchGroup(c *gin.Context) {
 			btlLog.PreSale.Error("api StoreAssetMetasIfNotExist err:%v", err)
 		}
 	}
-	// @dev: Process and create db records
+
 	err = services.ProcessNftPresaleBatchGroupLaunchRequestAndCreate(&nftPresaleBatchGroupLaunchRequest)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
@@ -521,8 +502,6 @@ func QueryNftPresaleBatchGroup(c *gin.Context) {
 		Data:    result,
 	})
 }
-
-// router second
 
 func GetPurchasedNftPresaleInfo(c *gin.Context) {
 	nftPresaleInfos, err := services.GetPurchasedNftPresaleInfo()
@@ -693,8 +672,6 @@ func GetPurchasedNftPresaleInfoPageAndRows(c *gin.Context) {
 		},
 	})
 }
-
-// Offline purchase data
 
 func GetNftPresaleOfflinePurchaseData(c *gin.Context) {
 	nftNo := c.Query("nft_no")

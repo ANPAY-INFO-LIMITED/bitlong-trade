@@ -196,7 +196,7 @@ func GetIdoParticipateInfo(c *gin.Context) {
 }
 
 func QueryIdoParticipateIsAvailable(c *gin.Context) {
-	//TODO
+
 }
 
 func SetIdoPublishInfo(c *gin.Context) {
@@ -239,7 +239,7 @@ func SetIdoPublishInfo(c *gin.Context) {
 	unitPrice := publishIdoRequest.UnitPrice
 	startTime := publishIdoRequest.StartTime
 	endTime := publishIdoRequest.EndTime
-	// @dev: SatPerKw
+
 	feeRate := publishIdoRequest.FeeRate
 	idoPublishInfo, err = services.ProcessIdoPublishInfo(userId, assetID, totalAmount, minimumQuantity, unitPrice, startTime, endTime, feeRate)
 	if err != nil {
@@ -284,7 +284,7 @@ func SetIdoParticipateInfo(c *gin.Context) {
 	}
 	idoPublishInfoID := participateIdoRequest.IdoPublishInfoID
 	boughtAmount := participateIdoRequest.BoughtAmount
-	// @dev: SatPerKw
+
 	feeRate := participateIdoRequest.FeeRate
 	encodedAddr := participateIdoRequest.EncodedAddr
 	isTimeRight, err := services.IsIdoParticipateTimeRight(idoPublishInfoID)

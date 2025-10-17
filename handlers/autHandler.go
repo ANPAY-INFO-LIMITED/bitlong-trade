@@ -56,23 +56,34 @@ func GetDeviceIdHandler(c *gin.Context) {
 }
 
 func LoginHandler(c *gin.Context) {
-	var creds models.User
-	if err := c.ShouldBindJSON(&creds); err != nil {
+	var req models.User
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	token, err := services.Login(&creds)
+
+	if req.Username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required"})
+		return
+	}
+
+	if req.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password is required"})
+		return
+	}
+
+	token, err := services.Login(&req)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
-	// @dev: Update user ip by client ip
+
 	ip := c.ClientIP()
 	path := c.Request.URL.Path
-	go middleware.InsertLoginInfo(creds.Username, ip, path)
+	go middleware.InsertLoginInfo(req.Username, ip, path)
 	{
-		go middleware.RecodeDateIpLogin(creds.Username, time.Now().Format(time.DateOnly), ip)
-		go middleware.RecodeDateLogin(creds.Username, time.Now().Format(time.DateOnly))
+		go middleware.RecodeDateIpLogin(req.Username, time.Now().Format(time.DateOnly), ip)
+		go middleware.RecodeDateLogin(req.Username, time.Now().Format(time.DateOnly))
 	}
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
@@ -88,7 +99,7 @@ func ReChangeHandler(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
-	// @dev: Update user ip by client ip
+
 	ip := c.ClientIP()
 	path := c.Request.URL.Path
 	go middleware.InsertLoginInfo(creds.Username, ip, path)

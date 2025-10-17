@@ -9,8 +9,6 @@ import (
 	"trade/services/assetMoreInfo"
 )
 
-//链上持有
-
 func GetAssetBalanceInfoCount(c *gin.Context) {
 	assetId := c.Query("asset_id")
 	if assetId == "" {
@@ -128,8 +126,6 @@ func GetAssetBalanceInfo(c *gin.Context) {
 		Data:   assetBalanceInfos,
 	})
 }
-
-//通道记录
 
 func GetAccountAssetTransferCount(c *gin.Context) {
 	assetId := c.Query("asset_id")
@@ -249,8 +245,6 @@ func GetAccountAssetTransfer(c *gin.Context) {
 	})
 }
 
-//UTXO
-
 func GetAssetManagedUtxoInfoCount(c *gin.Context) {
 	assetId := c.Query("asset_id")
 	if assetId == "" {
@@ -369,8 +363,6 @@ func GetAssetManagedUtxoInfo(c *gin.Context) {
 	})
 }
 
-//交易
-
 func GetAssetTransferCombinedSliceByAssetIdLimit(c *gin.Context) {
 	assetId := c.Query("asset_id")
 	if assetId == "" {
@@ -400,8 +392,6 @@ func GetAssetTransferCombinedSliceByAssetIdLimit(c *gin.Context) {
 		Data:   assetTransfers,
 	})
 }
-
-//销毁
 
 func GetAssetBurnTotal(c *gin.Context) {
 	assetId := c.Query("asset_id")

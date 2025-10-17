@@ -92,7 +92,7 @@ func GetMintedInfo(c *gin.Context) {
 
 func SetFairLaunchInfo(c *gin.Context) {
 	var fairLaunchInfo *models.FairLaunchInfo
-	// @dev: Use MustGet. alice ONLY FOR TEST
+
 	username := c.MustGet("username").(string)
 	userId, err := services.NameToId(username)
 	if err != nil {
@@ -104,7 +104,7 @@ func SetFairLaunchInfo(c *gin.Context) {
 		})
 		return
 	}
-	// @dev: Use SetFairLaunchInfoRequest c.ShouldBind
+
 	var setFairLaunchInfoRequest models.SetFairLaunchInfoRequest
 	err = c.ShouldBindJSON(&setFairLaunchInfoRequest)
 	if err != nil {
@@ -126,8 +126,7 @@ func SetFairLaunchInfo(c *gin.Context) {
 	endTime := setFairLaunchInfoRequest.EndTime
 	description := setFairLaunchInfoRequest.Description
 	feeRate := setFairLaunchInfoRequest.FeeRate
-	// @dev: Process struct, update later
-	// @notice: State is 0 now
+
 	fairLaunchInfo, err = services.ProcessFairLaunchInfo(imageData, name, assetType, amount, reserved, mintQuantity, startTime, endTime, description, feeRate, userId, username)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
@@ -138,7 +137,7 @@ func SetFairLaunchInfo(c *gin.Context) {
 		})
 		return
 	}
-	// @dev: Update db, State models.FairLaunchStateNoPay
+
 	err = services.SetFairLaunchInfo(fairLaunchInfo)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
@@ -160,7 +159,7 @@ func SetFairLaunchInfo(c *gin.Context) {
 func SetFairLaunchMintedInfo(c *gin.Context) {
 	var fairLaunchMintedInfo *models.FairLaunchMintedInfo
 	var mintFairLaunchRequest models.MintFairLaunchRequest
-	// @notice: only receive id and number
+
 	err := c.ShouldBindJSON(&mintFairLaunchRequest)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
@@ -171,7 +170,7 @@ func SetFairLaunchMintedInfo(c *gin.Context) {
 		})
 		return
 	}
-	// @dev: Ensure time is valid
+
 	isTimeRight, err := services.IsFairLaunchMintTimeRight(mintFairLaunchRequest.FairLaunchInfoID)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
@@ -204,9 +203,9 @@ func SetFairLaunchMintedInfo(c *gin.Context) {
 		})
 		return
 	}
-	// @dev: Use MustGet. bob ONLY FOR TEST
+
 	username := c.MustGet("username").(string)
-	// @dev: userId
+
 	userId, err := services.NameToId(username)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
@@ -230,7 +229,7 @@ func SetFairLaunchMintedInfo(c *gin.Context) {
 		})
 		return
 	}
-	// @dev: Update db, State models.FairLaunchMintedStateNoPay
+
 	err = services.SetFairLaunchMintedInfo(fairLaunchMintedInfo)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
@@ -293,7 +292,7 @@ func QueryMintIsAvailable(c *gin.Context) {
 	}
 	fairLaunchInfoID := mintFairLaunchRequest.FairLaunchInfoID
 	mintedNumber := mintFairLaunchRequest.MintedNumber
-	// @dev: calculated FeeRate
+
 	feeRate, err := services.UpdateAndCalculateGasFeeRateByMempool(mintedNumber)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
@@ -309,7 +308,7 @@ func QueryMintIsAvailable(c *gin.Context) {
 	calculatedFee := services.GetMintedTransactionGasFee(calculatedFeeRateSatPerKw)
 	mintedAmount, err := services.GetAmountCouldBeMintByMintedNumber(fairLaunchInfoID, mintedNumber)
 	if err != nil {
-		// @dev: Do not return
+
 	}
 	isMintAvailable := mintedAmount > 0
 	numberAndAmountCouldBeMint, err := services.GetNumberAndAmountCouldBeMint(fairLaunchInfoID)
@@ -425,7 +424,7 @@ func MintFairLaunchReserved(c *gin.Context) {
 		tx.Rollback()
 		return
 	}
-	// @dev: Record paid fee
+
 	txid, _ := utils.OutpointToTransactionAndIndex(outpoint)
 	err = services.CreateFairLaunchIncomeOfServerPaySendReservedFee(tx, fairLaunchInfo.AssetID, int(fairLaunchInfo.ID), txid)
 	if err != nil {
@@ -724,7 +723,7 @@ func GetFairLaunchInfoPlusByAssetId(c *gin.Context) {
 		})
 		return
 	}
-	// @dev: Get holder number
+
 	holderNumber, err := services.GetAssetHolderNumberAssetBalance(assetId)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
@@ -744,7 +743,6 @@ func GetFairLaunchInfoPlusByAssetId(c *gin.Context) {
 	})
 }
 
-// Deprecated
 func RefundUserFirstMintByUsernameAndAssetId(c *gin.Context) {
 	var refundUserFirstMintRequest services.RefundUserFirstMintRequest
 	err := c.BindJSON(&refundUserFirstMintRequest)

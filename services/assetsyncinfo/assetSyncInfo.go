@@ -11,6 +11,7 @@ import (
 	"github.com/lightninglabs/taproot-assets/commitment"
 	"github.com/lightninglabs/taproot-assets/fn"
 	"github.com/lightninglabs/taproot-assets/proof"
+	"github.com/lightninglabs/taproot-assets/rpcutils"
 	"github.com/lightninglabs/taproot-assets/taprpc"
 	"github.com/lightninglabs/taproot-assets/taprpc/universerpc"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -22,6 +23,7 @@ import (
 	"strings"
 	"trade/api"
 	"trade/config"
+	"trade/middleware"
 	"trade/models"
 	"trade/services/btldb"
 	"trade/services/servicesrpc"
@@ -42,9 +44,8 @@ var (
 	SeverError       = errors.New("server error")
 )
 
-// GetAssetSyncInfo returns the asset sync information.
 func GetAssetSyncInfo(req *SyncInfoRequest) (*models.AssetSyncInfo, error) {
-	//  根据资产id查询数据库
+
 	id := req.Id
 	AssetSyncInfo, err := btldb.ReadAssetSyncInfoByAssetID(id)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -53,12 +54,12 @@ func GetAssetSyncInfo(req *SyncInfoRequest) (*models.AssetSyncInfo, error) {
 	if AssetSyncInfo.AssetId != "" {
 		return AssetSyncInfo, nil
 	}
-	// 如果资产同步信息不存在，则调用资产查询接口获取资产同步信息并更新数据库
+
 	assetSyncInfo, err := getAssetInfoFromLeaves(req.Id)
 	if err != nil && !errors.Is(err, AssetNotFoundErr) {
 		return nil, err
 	}
-	// 更新数据库
+
 	if assetSyncInfo != nil {
 		assetSyncInfo.Universe = config.GetConfig().ApiConfig.Tapd.UniverseHost
 		err = btldb.CreateAssetSyncInfo(assetSyncInfo)
@@ -67,7 +68,7 @@ func GetAssetSyncInfo(req *SyncInfoRequest) (*models.AssetSyncInfo, error) {
 		}
 		return assetSyncInfo, nil
 	}
-	// 尝试从其他节点同步资产信息
+
 	Universes := []string{}
 	switch config.GetConfig().NetWork {
 	case "mainnet":
@@ -100,6 +101,43 @@ func GetAssetSyncInfo(req *SyncInfoRequest) (*models.AssetSyncInfo, error) {
 	return nil, AssetNotFoundErr
 }
 
+type AssetDecimal struct {
+	AssetId        string `json:"asset_Id" gorm:"column:asset_id;"`
+	DecimalDisplay uint32 `json:"decimal_display" gorm:"column:decimal_display;"`
+}
+
+func GetAssetsDecimal(assets []string) ([]AssetDecimal, error) {
+	db := middleware.DB
+	var assetDecimals []AssetDecimal
+	sql := "SELECT asset_id, decimal_display FROM asset_sync_info WHERE asset_id IN (?)"
+	result := db.Raw(sql, assets).Scan(&assetDecimals)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if len(assetDecimals) != len(assets) {
+		bElements := make(map[string]bool)
+		for _, assetDecimal := range assetDecimals {
+			bElements[assetDecimal.AssetId] = true
+		}
+
+		for _, assetId := range assets {
+			if _, exists := bElements[assetId]; !exists {
+				info, err := GetAssetSyncInfo(&SyncInfoRequest{
+					Id: assetId,
+				})
+				if err != nil {
+					continue
+				}
+				assetDecimals = append(assetDecimals, AssetDecimal{
+					AssetId:        info.AssetId,
+					DecimalDisplay: info.DecimalDisplay,
+				})
+			}
+		}
+	}
+	return assetDecimals, nil
+}
+
 func getAssetInfoFromLeaves(assetId string) (*models.AssetSyncInfo, error) {
 	root := servicesrpc.QueryAssetRoot(assetId)
 	if root == nil || root.IssuanceRoot.Id == nil {
@@ -124,16 +162,20 @@ func getAssetInfoFromLeaves(assetId string) (*models.AssetSyncInfo, error) {
 	if response.Leaves == nil {
 		return nil, AssetNotFoundErr
 	}
+
+	var assetinfo *taprpc.Asset
 	var blob proof.Blob
 	for index, leaf := range response.Leaves {
 		if hex.EncodeToString(leaf.Asset.AssetGenesis.GetAssetId()) == assetId {
 			blob = response.Leaves[index].Proof
+			assetinfo = leaf.Asset
 			break
 		}
 	}
 	if len(blob) == 0 {
 		return nil, AssetRequestErr
 	}
+
 	p, _ := blob.AsSingleProof()
 	assetName := p.Asset.Tag
 	assetPoint := p.Asset.FirstPrevOut.String()
@@ -162,11 +204,12 @@ func getAssetInfoFromLeaves(assetId string) (*models.AssetSyncInfo, error) {
 		assetSyncInfo.GroupName = &newMeta.GroupName
 		assetSyncInfo.GroupKey = &queryId
 	}
-
+	if assetinfo != nil && assetinfo.DecimalDisplay != nil {
+		assetSyncInfo.DecimalDisplay = assetinfo.DecimalDisplay.DecimalDisplay
+	}
 	return &assetSyncInfo, nil
 }
 
-// isSocketValid checks if the given socket is valid or not.
 func isSocketValid(socket string) bool {
 	host, port, err := net.SplitHostPort(socket)
 
@@ -185,7 +228,6 @@ func isSocketValid(socket string) bool {
 }
 
 type decodeProofOffline struct {
-	//withPrevWitnesses and withMetaReveal need an online node
 	withPrevWitnesses bool
 	withMetaReveal    bool
 }
@@ -246,7 +288,6 @@ func (d *decodeProofOffline) decodeProof(ctx context.Context,
 				req.ProofAtDepth, latestProofIndex)
 		}
 
-		// Default to latest proof.
 		index := latestProofIndex - req.ProofAtDepth
 		p, err := proofFile.ProofAt(index)
 		if err != nil {
@@ -361,22 +402,7 @@ func (d *decodeProofOffline) marshalProof(ctx context.Context, p *proof.Proof,
 	}
 
 	if withMetaReveal {
-		//metaHash := rpcAsset.AssetGenesis.MetaHash
-		//if len(metaHash) == 0 {
-		//	return nil, fmt.Errorf("asset does not contain meta " +
-		//		"data")
-		//}
-		//
-		//rpcMeta, err = r.FetchAssetMeta(
-		//	ctx, &taprpc.FetchAssetMetaRequest{
-		//		Asset: &taprpc.FetchAssetMetaRequest_MetaHash{
-		//			MetaHash: metaHash,
-		//		},
-		//	},
-		//)
-		//if err != nil {
-		//	return nil, err
-		//}
+
 	}
 
 	decodedAssetID := p.Asset.ID()
@@ -396,9 +422,10 @@ func (d *decodeProofOffline) marshalProof(ctx context.Context, p *proof.Proof,
 
 	var GroupKeyReveal taprpc.GroupKeyReveal
 	if rpcGroupKey != nil {
+		rawKey := rpcGroupKey.RawKey()
 		GroupKeyReveal = taprpc.GroupKeyReveal{
-			RawGroupKey:   rpcGroupKey.RawKey[:],
-			TapscriptRoot: rpcGroupKey.TapscriptRoot,
+			RawGroupKey:   rawKey[:],
+			TapscriptRoot: rpcGroupKey.TapscriptRoot(),
 		}
 	}
 
@@ -416,11 +443,10 @@ func (d *decodeProofOffline) marshalProof(ctx context.Context, p *proof.Proof,
 		GroupKeyReveal:      &GroupKeyReveal,
 	}, nil
 }
-
 func (d *decodeProofOffline) marshalChainAsset(ctx context.Context, a *asset.ChainAsset,
 	withWitness bool) (*taprpc.Asset, error) {
 
-	rpcAsset, err := taprpc.MarshalAsset(
+	rpcAsset, err := rpcutils.MarshalAsset(
 		ctx, a.Asset, a.IsSpent, withWitness, nil, fn.None[uint32](),
 	)
 	if err != nil {
@@ -456,7 +482,6 @@ func (d *decodeProofOffline) marshalChainAsset(ctx context.Context, a *asset.Cha
 	return rpcAsset, nil
 }
 
-// InsertIssuanceProof 向本地数据库插入资产所有证明
 func InsertIssuanceProof(id string) error {
 	Id := asset.ID{}
 	copy(Id[:], id)
@@ -483,9 +508,7 @@ func FetchProofs(id asset.ID) ([]*proof.AnnotatedProof, error) {
 	}
 	proofs := make([]*proof.AnnotatedProof, len(entries))
 	for idx := range entries {
-		// We'll skip any files that don't end with our suffix, this
-		// will include directories as well, so we don't need to check
-		// for those.
+
 		fileName := entries[idx].Name()
 		if !strings.HasSuffix(fileName, proof.TaprootAssetsFileSuffix) {
 			continue

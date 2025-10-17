@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"trade/models"
 	"trade/services"
@@ -117,4 +119,47 @@ func GetAllAssetBurnSimplified(c *gin.Context) {
 		Code:    models.SUCCESS,
 		Data:    assetBurnSimplified,
 	})
+}
+
+func GetAssetBurnAmount(c *gin.Context) {
+	var req struct {
+		AssetId string `json:"asset_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logrus.Errorln(errors.Wrap(err, "c.ShouldBindJSON"))
+		c.JSON(http.StatusOK, models.RespInt{
+			Code: models.ToCode(models.ShouldBindJsonErr),
+			Msg:  err.Error(),
+			Data: 0,
+		})
+		return
+	}
+
+	if req.AssetId == "" {
+		c.JSON(http.StatusOK, models.RespInt{
+			Code: models.ToCode(models.InvalidReq),
+			Msg:  invalidReq.Error(),
+			Data: 0,
+		})
+		return
+	}
+
+	assetBurnTotal, err := services.GetAssetBurnTotal(req.AssetId)
+
+	if err != nil {
+		c.JSON(http.StatusOK, models.RespInt{
+			Code: models.ToCode(models.GetAssetBurnTotalErr),
+			Msg:  err.Error(),
+			Data: 0,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.RespInt{
+		Code: models.ToCode(models.SUCCESS),
+		Msg:  models.NullStr,
+		Data: assetBurnTotal.TotalAmount,
+	})
+	return
+
 }

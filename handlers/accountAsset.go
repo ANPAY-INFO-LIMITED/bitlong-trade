@@ -1,8 +1,9 @@
 package handlers
 
 import (
-	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
 	"trade/btlLog"
@@ -68,9 +69,9 @@ func GetAccountAssetBalanceLimitAndOffset(c *gin.Context) {
 	offset := getAccountAssetBalanceLimitAndOffsetRequest.Offset
 
 	{
-		// @dev: total page number
+
 		number, err := services.GetAccountAssetBalancePageNumberByPageSize(assetId, limit)
-		// @dev: limit is pageSize
+
 		pageNumber := offset/limit + 1
 		if pageNumber > number {
 			err = errors.New("page number must be greater than max value " + strconv.Itoa(number))
@@ -160,9 +161,9 @@ func GetAccountAssetTransferLimitAndOffset(c *gin.Context) {
 	offset := getAccountAssetTransferLimitAndOffsetRequest.Offset
 
 	{
-		// @dev: total page number
+
 		number, err := services.GetAccountAssetTransferPageNumberByPageSize(assetId, limit)
-		// @dev: limit is pageSize
+
 		pageNumber := offset/limit + 1
 		if pageNumber > number {
 			err = errors.New("page number must be greater than max value " + strconv.Itoa(number))
@@ -236,7 +237,7 @@ func GetAccountAssetTransferPageNumberByPageSize(c *gin.Context) {
 }
 
 func GetAllAccountAssetBalanceSimplified(c *gin.Context) {
-	//	 TODO
+
 }
 
 func GetAccountAssetBalanceUserHoldTotalAmount(c *gin.Context) {
@@ -288,4 +289,144 @@ func GetCustodyAssetRankList(c *gin.Context) {
 		Total: total,
 	}
 	c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "", list))
+}
+
+func GetAccountAssetBalancePc(c *gin.Context) {
+
+	var req struct {
+		AssetId string `json:"asset_id"`
+		Limit   int    `json:"limit"`
+		Offset  int    `json:"offset"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logrus.Errorln(errors.Wrap(err, "c.ShouldBindJSON"))
+		c.JSON(http.StatusOK, models.RespLnc[*services.AccountAssetBalanceExtend]{
+			Code: models.ToCode(models.ShouldBindJsonErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*services.AccountAssetBalanceExtend]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	if req.AssetId == "" || req.Limit < 0 || req.Offset < 0 {
+		c.JSON(http.StatusOK, models.RespLnc[*services.AccountAssetBalanceExtend]{
+			Code: models.ToCode(models.InvalidReq),
+			Msg:  invalidReq.Error(),
+			Data: models.LncT[*services.AccountAssetBalanceExtend]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	count, err := services.GetAccountAssetBalanceCount(req.AssetId)
+	if err != nil {
+		c.JSON(http.StatusOK, models.RespLnc[*services.AccountAssetBalanceExtend]{
+			Code: models.ToCode(models.GetAccountAssetBalanceCountErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*services.AccountAssetBalanceExtend]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	balances, err := services.GetAccountAssetBalance(req.AssetId, req.Limit, req.Offset)
+	if err != nil {
+		c.JSON(http.StatusOK, models.RespLnc[*services.AccountAssetBalanceExtend]{
+			Code: models.ToCode(models.GetAccountAssetBalanceErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*services.AccountAssetBalanceExtend]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.RespLnc[*services.AccountAssetBalanceExtend]{
+		Code: models.ToCode(models.SUCCESS),
+		Msg:  models.NullStr,
+		Data: models.LncT[*services.AccountAssetBalanceExtend]{
+			List:  balances,
+			Count: count,
+		},
+	})
+	return
+
+}
+
+func GetAccountAssetTransferPc(c *gin.Context) {
+
+	var req struct {
+		AssetId string `json:"asset_id"`
+		Limit   int    `json:"limit"`
+		Offset  int    `json:"offset"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logrus.Errorln(errors.Wrap(err, "c.ShouldBindJSON"))
+		c.JSON(http.StatusOK, models.RespLnc[*services.AccountAssetTransfer]{
+			Code: models.ToCode(models.ShouldBindJsonErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*services.AccountAssetTransfer]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	if req.AssetId == "" || req.Limit < 0 || req.Offset < 0 {
+		c.JSON(http.StatusOK, models.RespLnc[*services.AccountAssetTransfer]{
+			Code: models.ToCode(models.InvalidReq),
+			Msg:  invalidReq.Error(),
+			Data: models.LncT[*services.AccountAssetTransfer]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	count, err := services.GetAccountAssetTransferCount(req.AssetId)
+	if err != nil {
+		c.JSON(http.StatusOK, models.RespLnc[*services.AccountAssetTransfer]{
+			Code: models.ToCode(models.GetAccountAssetBalanceCountErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*services.AccountAssetTransfer]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	transfers, err := services.GetAccountAssetTransfer(req.AssetId, req.Limit, req.Offset)
+	if err != nil {
+		c.JSON(http.StatusOK, models.RespLnc[*services.AccountAssetTransfer]{
+			Code: models.ToCode(models.GetAccountAssetBalanceErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*services.AccountAssetTransfer]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.RespLnc[*services.AccountAssetTransfer]{
+		Code: models.ToCode(models.SUCCESS),
+		Msg:  models.NullStr,
+		Data: models.LncT[*services.AccountAssetTransfer]{
+			List:  transfers,
+			Count: count,
+		},
+	})
+	return
+
 }

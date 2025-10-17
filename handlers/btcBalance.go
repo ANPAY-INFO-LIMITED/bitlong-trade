@@ -48,6 +48,7 @@ func SetBtcBalance(c *gin.Context) {
 		ConfirmedBalance:   btcBalanceSetRequest.ConfirmedBalance,
 		UnconfirmedBalance: btcBalanceSetRequest.UnconfirmedBalance,
 		LockedBalance:      btcBalanceSetRequest.LockedBalance,
+		DeviceID:           btcBalanceSetRequest.DeviceID,
 	}
 	err = services.CreateOrUpdateBtcBalance(&btcBalance)
 	if err != nil {

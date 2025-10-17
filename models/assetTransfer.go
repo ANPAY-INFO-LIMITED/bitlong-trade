@@ -12,8 +12,6 @@ const (
 	AssetTransferTypeIn
 )
 
-// @dev: Combined data
-
 type AssetTransferProcessedCombined struct {
 	gorm.Model
 	Txid               string                         `json:"txid" gorm:"type:varchar(255)"`
@@ -29,8 +27,6 @@ type AssetTransferProcessedCombined struct {
 	Username           string                         `json:"username" gorm:"type:varchar(255)"`
 	Status             int                            `json:"status" gorm:"default:1"`
 }
-
-// @dev: DB
 
 type AssetTransferProcessedDb struct {
 	gorm.Model
@@ -85,8 +81,6 @@ type AssetTransferProcessedOutputDb struct {
 	Status                 int    `json:"status" gorm:"default:1"`
 }
 
-// @dev: Request
-
 type AssetTransferProcessedSetRequest struct {
 	Txid               string                         `json:"txid" gorm:"type:varchar(255)"`
 	AssetID            string                         `json:"asset_id" gorm:"type:varchar(255)"`
@@ -123,8 +117,6 @@ type AssetTransferProcessedOutput struct {
 	OutputType             string `json:"output_type" gorm:"type:varchar(255)"`
 	AssetVersion           string `json:"asset_version" gorm:"type:varchar(255)"`
 }
-
-// @dev: These models may be deprecated.
 
 type AssetTransfer struct {
 	gorm.Model

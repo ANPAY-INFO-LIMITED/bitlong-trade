@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"trade/models"
 	"trade/services"
@@ -54,7 +56,7 @@ func SetAssetTransfer(c *gin.Context) {
 		})
 		return
 	}
-	// @dev: Store inputs and outputs in db
+
 	err = services.CreateOrUpdateAssetTransferProcessedInputSlice(assetTransferProcessedInputsSlice)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
@@ -238,4 +240,59 @@ func GetAssetTransferByTxid(c *gin.Context) {
 		Code:    models.SUCCESS,
 		Data:    assetTransfer,
 	})
+}
+
+func GetAssetTransferPc(c *gin.Context) {
+
+	var req struct {
+		AssetId string `json:"asset_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logrus.Errorln(errors.Wrap(err, "c.ShouldBindJSON"))
+		c.JSON(http.StatusOK, models.RespLnc[*models.AssetTransferProcessedCombined]{
+			Code: models.ToCode(models.ShouldBindJsonErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*models.AssetTransferProcessedCombined]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	if req.AssetId == "" {
+		c.JSON(http.StatusOK, models.RespLnc[*models.AssetTransferProcessedCombined]{
+			Code: models.ToCode(models.InvalidReq),
+			Msg:  invalidReq.Error(),
+			Data: models.LncT[*models.AssetTransferProcessedCombined]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	transfers, err := services.PcGetAssetTransferCombinedSliceByAssetIdLimit(req.AssetId, 50)
+	if err != nil {
+		c.JSON(http.StatusOK, models.RespLnc[*models.AssetTransferProcessedCombined]{
+			Code: models.ToCode(models.GetAssetHolderBalanceErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*models.AssetTransferProcessedCombined]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.RespLnc[*models.AssetTransferProcessedCombined]{
+		Code: models.ToCode(models.SUCCESS),
+		Msg:  models.NullStr,
+		Data: models.LncT[*models.AssetTransferProcessedCombined]{
+			List:  transfers,
+			Count: 0,
+		},
+	})
+	return
+
 }

@@ -23,7 +23,7 @@ type Job struct {
 
 func LoadJobs() ([]Job, error) {
 	var jobs []Job
-	// Use the GORM method for querying
+
 	err := middleware.DB.Table("scheduled_tasks").Where("status = ?", 1).Select("name, cron_expression, function_name, package").Scan(&jobs).Error
 	if err != nil {
 		log.Fatal("Failed to load tasks:", err)
@@ -38,7 +38,6 @@ func LoadJobs() ([]Job, error) {
 			}
 			RegisterTask(job.Name, taskFunc)
 
-			jobs = append(jobs, job)
 		} else {
 			log.Printf("Function %s not found in package %s", job.FunctionName, job.Package)
 		}
@@ -48,21 +47,29 @@ func LoadJobs() ([]Job, error) {
 
 func ExecuteWithLock(taskName string) {
 	lockKey := "lock:" + taskName
-	expiration := 10 * time.Second
-	// Try to get the lock
+
+	var expiration time.Duration
+	switch taskName {
+	case "PushBoxAsset":
+		expiration = 6 * time.Minute
+	default:
+		expiration = 1 * time.Minute
+	}
+
 	identifier, acquired := middleware.AcquireLock(lockKey, expiration)
 	if !acquired {
-		//log.Println("Failed to acquire lock" + lockKey)
+		log.Printf("任务 %s 获取锁失败，可能正在执行中", taskName)
 		return
 	}
-	defer middleware.ReleaseLock(lockKey, identifier) //
+	defer middleware.ReleaseLock(lockKey, identifier)
+
 	ExecuteTask(taskName)
 }
 func getFunction(pkgName, funcName string) reflect.Value {
 	switch pkgName {
 	case "services":
-		// Assuming there is a struct that encapsulates the methods
-		manager := services.CronService{} // You need to define this struct
+
+		manager := services.CronService{}
 		return reflect.ValueOf(&manager).MethodByName(funcName)
 	default:
 		return reflect.Value{}

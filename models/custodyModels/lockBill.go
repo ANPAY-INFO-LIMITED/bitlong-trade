@@ -8,7 +8,7 @@ type LockBill struct {
 	LockId    string       `gorm:"column:lock_id;type:varchar(100);not null;unique;index:idx_lock_id" json:"lockId"`
 	BillType  LockBillType `gorm:"column:bill_type;type:smallint" json:"billType"`
 	AssetId   string       `gorm:"column:asset_id;default:00;varchar(100)" json:"assetId"`
-	Amount    float64      `gorm:"type:decimal(15,2);column:amount" json:"amount"`
+	Amount    float64      `gorm:"type:decimal(25,2);column:amount" json:"amount"`
 }
 
 func (LockBill) TableName() string {

@@ -14,7 +14,8 @@ import (
 	"trade/services/custodyAccount/custodyBase/custodyFee"
 	"trade/services/custodyAccount/custodyBase/custodyLimit"
 	"trade/services/custodyAccount/custodyBase/custodyRpc"
-	"trade/services/custodyAccount/defaultAccount/custodyBtc/mempool"
+	"trade/services/custodyAccount/defaultAccount/custodyBalance"
+	"trade/services/dingding"
 	"trade/services/servicesrpc"
 )
 
@@ -34,8 +35,8 @@ func RunOutsideSteps(usr *account.UserInfo, mission *custodyModels.AccountOutsid
 		switch {
 		case mission.State == custodyModels.AOMStateSuccess:
 			db.Model(&models.Balance{}).
-				Where("id = ?", mission.BalanceId). // 根据需要的条件
-				Updates(models.Balance{ServerFee: uint64(mission.Fee), State: models.STATE_SUCCESS})
+				Where("id = ?", mission.BalanceId).
+				Updates(models.Balance{ServerFee: mission.Fee, State: models.STATE_SUCCESS})
 
 			limitType := custodyModels.LimitType{
 				AssetId:      "00",
@@ -58,7 +59,7 @@ func OutsideSteps(usr *account.UserInfo, mission *custodyModels.AccountOutsideMi
 	case custodyModels.AOMStatePending:
 		tx, back := middleware.GetTx()
 		defer back()
-		_, err = LessBtcBalance(tx, usr, mission.Amount, mission.BalanceId, custodyModels.ChangeTypeBtcPayOutside)
+		_, err = custodyBalance.LessBtcBalance(tx, usr, mission.Amount, mission.BalanceId, custodyModels.ChangeTypeBtcPayOutside)
 		if err != nil {
 			btlLog.CUST.Error("PayBtcInvoice error:%s", err)
 			mission.State = custodyModels.AOMStateDone
@@ -78,7 +79,6 @@ func OutsideSteps(usr *account.UserInfo, mission *custodyModels.AccountOutsideMi
 		tx.Commit()
 		go subscriptionLndBalance(float64(payment.ValueSat + payment.FeeSat))
 
-		//todo 检查如果发票已被使用，则需要查询发票以获取相关信息
 		mission.Fee = float64(payment.FeeSat)
 		mission.FeeType = "00"
 		mission.State = custodyModels.AOMStateNotPayFee
@@ -87,7 +87,7 @@ func OutsideSteps(usr *account.UserInfo, mission *custodyModels.AccountOutsideMi
 	case custodyModels.AOMStateNotPayFee:
 		db := middleware.DB
 		mission.Fee += float64(custodyFee.ChannelBtcServiceFee)
-		err := PayFee(db, usr, mission.Fee, mission.BalanceId, &mission.Target, &mission.Hash)
+		err := custodyBalance.PayFee(db, usr, mission.Fee, mission.BalanceId, &mission.Target, &mission.Hash)
 		if err != nil {
 			btlLog.CUST.Error("PayBtcFeeError:%s", err)
 			mission.Retries += 1
@@ -100,7 +100,7 @@ func OutsideSteps(usr *account.UserInfo, mission *custodyModels.AccountOutsideMi
 
 func LoadAOMMission() {
 	var missions []custodyModels.AccountOutsideMission
-	middleware.DB.Where("state =? OR state =?", custodyModels.AOMStatePending, custodyModels.AOMStateNotPayFee).Find(&missions)
+	middleware.DB.Where("type = 'btc' AND (state =? OR state =?)", custodyModels.AOMStatePending, custodyModels.AOMStateNotPayFee).Find(&missions)
 	for _, m := range missions {
 		_ = RunOutsideSteps(nil, &m)
 	}
@@ -115,8 +115,8 @@ func subscriptionLndBalance(amount float64) {
 		return
 	}
 	time.Sleep(time.Second * 10)
-	d := mempool.NewDingding()
-	var balances []mempool.Balance
+	d := dingding.NewDingding()
+	var balances []dingding.Balance
 
 	channels, err := servicesrpc.GetChannelInfo()
 	if err != nil {
@@ -125,7 +125,7 @@ func subscriptionLndBalance(amount float64) {
 	}
 	for _, c := range channels {
 		if c.LocalBalance >= 0 {
-			balances = append(balances, mempool.Balance{
+			balances = append(balances, dingding.Balance{
 				Name:  c.PeerAlias,
 				Value: float64(c.LocalBalance),
 			})
@@ -138,11 +138,11 @@ func subscriptionLndBalance(amount float64) {
 		return
 	}
 	if balance != nil && len(balance.AccountBalance) > 0 {
-		balances = append(balances, mempool.Balance{
+		balances = append(balances, dingding.Balance{
 			Name:  "链上余额",
 			Value: float64(balance.AccountBalance["default"].ConfirmedBalance),
 		})
-		balances = append(balances, mempool.Balance{
+		balances = append(balances, dingding.Balance{
 			Name:  "链上未确认余额",
 			Value: float64(balance.AccountBalance["default"].UnconfirmedBalance),
 		})
@@ -156,7 +156,7 @@ func subscriptionLndBalance(amount float64) {
 	if abalance != nil && len(abalance.AssetBalances) > 0 {
 		for _, b := range abalance.AssetBalances {
 			if b.AssetGenesis.Name == "Phenix" {
-				balances = append(balances, mempool.Balance{
+				balances = append(balances, dingding.Balance{
 					Name:  "Phenix",
 					Value: float64(b.Balance),
 				})

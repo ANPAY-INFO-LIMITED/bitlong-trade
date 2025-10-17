@@ -26,7 +26,6 @@ func CreatePoolAccount(tx *gorm.DB, pairId uint, poolType uint, allowTokens []st
 	return poolAccount.CreatePoolAccount(tx, pairId, poolType, transTokens)
 }
 
-// @Description: token is the asset_id or the "sat"
 func PoolAccountTransfer(tx *gorm.DB, pairId uint, poolType uint, username string, token string, _amount *big.Int, transferDescription string) (recordId uint, err error) {
 	if token == TokenSatTag {
 		token = "00"
@@ -60,18 +59,18 @@ func GetPoolAccountInfo(pairId uint, poolType uint) (info *poolAccount.PAccountI
 	return poolAccount.GetPoolAccountInfo(pairId, poolType)
 }
 
-// TODO 6.LockPoolAccount
+func CleanPoolAccount(pairId uint, poolType uint) {
+	poolAccount.CleanPoolAccount(pairId, poolType)
+}
+
 func LockPoolAccount(tx *gorm.DB, pairId uint, poolType uint) (err error) {
 	return poolAccount.LockPoolAccount(tx, pairId, poolType)
 }
 
-// TODO 7.UnLockPoolAccount
 func UnLockPoolAccount(tx *gorm.DB, pairId uint, poolType uint) (err error) {
 	return poolAccount.UnlockPoolAccount(tx, pairId, poolType)
 }
 
-// Deprecated
-// @Note: Transfer Sats only
 func TransferWithdrawReward(username string, _amount *big.Int, transferDescription string) (recordId uint, err error) {
 	return poolAccount.AwardSat(username, _amount, transferDescription)
 }

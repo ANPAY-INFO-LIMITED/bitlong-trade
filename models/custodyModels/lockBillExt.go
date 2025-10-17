@@ -10,7 +10,7 @@ type LockBillExt struct {
 	PayAccId   uint                  `gorm:"column:pay_acc_id;type:bigint unsigned;" json:"payAccId"`
 	RevAccId   uint                  `gorm:"column:rev_acc_id;type:bigint unsigned;" json:"revAccId"`
 	AssetId    string                `gorm:"column:asset_id;default:00;varchar(100)" json:"assetId"`
-	Amount     float64               `gorm:"type:decimal(15,2);column:amount" json:"amount"`
+	Amount     float64               `gorm:"type:decimal(25,2);column:amount" json:"amount"`
 	Status     LockBillExtStatus     `gorm:"column:status;type:tinyint unsigned;default:0" json:"status"`
 }
 

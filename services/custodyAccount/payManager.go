@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"gorm.io/gorm"
 	"log"
+	"math"
+	"time"
 	"trade/btlLog"
 	"trade/config"
 	"trade/middleware"
@@ -14,12 +16,12 @@ import (
 	"trade/services/btldb"
 	"trade/services/custodyAccount/account"
 	cBase "trade/services/custodyAccount/custodyBase"
-	"trade/services/custodyAccount/custodyBase/control"
+	"trade/services/custodyAccount/defaultAccount/costodyRecive"
 	"trade/services/custodyAccount/defaultAccount/custodyAssets"
+	"trade/services/custodyAccount/defaultAccount/custodyBalance"
 	"trade/services/custodyAccount/defaultAccount/custodyBtc"
-	"trade/services/custodyAccount/defaultAccount/other"
+	"trade/services/custodyAccount/defaultAccount/custodyGame"
 	"trade/services/custodyAccount/lockPayment"
-	"trade/services/servicesrpc"
 )
 
 var (
@@ -32,8 +34,7 @@ type ApplyRequest struct {
 }
 
 type PayInvoiceRequest struct {
-	Invoice  string `json:"invoice"`
-	FeeLimit int64  `json:"feeLimit"`
+	Invoice string `json:"invoice"`
 }
 
 type PaymentRequest struct {
@@ -47,38 +48,45 @@ type DecodeInvoiceRequest struct {
 }
 
 func CustodyStart(ctx context.Context, cfg *config.Config) bool {
-	// Check the admin account
+	timestart := time.Now()
+
 	if !checkAdminAccount() {
 		btlLog.CUST.Error("Admin account is not set")
 		return false
 	}
-	// Check the custody account MacaroonDir
-	if cfg.ApiConfig.CustodyAccount.MacaroonDir == "" {
-		log.Println("Custody account MacaroonDir is not set")
-		return false
-	}
-	fmt.Println("Custody account MacaroonDir is set:", cfg.ApiConfig.CustodyAccount.MacaroonDir)
 	{
-		//收款地址监听
-		custodyBtc.InvoiceServer.Start(ctx)
-		// 加载pending mission
+
+		costodyRecive.InvoiceServer.Start(ctx)
+
 		custodyBtc.LoadAOMMission()
 		custodyBtc.LoadAIMMission()
+
+		custodyBtc.BtcRechargeOnChainDaemon()
 	}
+	timeend := time.Now()
+	log.Printf("btcServer time:%v\n", timeend.Sub(timestart))
 
 	{
-		//收款地址监听
-		custodyAssets.AddressServer.Start(ctx)
-		//asset 转账监听
+
+		costodyRecive.AddressServer.Start(ctx)
+
 		custodyAssets.GoOutsideMission()
-		// 加载pending mission
+
 		custodyAssets.LoadAIMMission()
+		custodyAssets.LoadAOMAssetMission()
+	}
+	timeend = time.Now()
+	log.Printf("assetServer time:%v\n", timeend.Sub(timestart))
+	{
+
+		custodyGame.StartGamePushTxRecordDaemon()
 	}
 	if cfg.CustodyConfig.ClearBlockAccountBalance {
-		go ClearLockUserBalance()
-	}
 
-	go control.ControlTest()
+	}
+	timeend = time.Now()
+	log.Printf("CustodyStart time:%v\n", timeend.Sub(timestart))
+
 	return true
 }
 
@@ -89,7 +97,7 @@ func checkAdminAccount() bool {
 			btlLog.CUST.Error("CheckAdminAccount failed:%s", err)
 			return false
 		}
-		// 创建管理员USER
+
 		adminUser.Username = "admin"
 		adminUser.Password = "admin"
 		err = btldb.CreateUser(adminUser)
@@ -98,11 +106,7 @@ func checkAdminAccount() bool {
 			return false
 		}
 	}
-	//err = AutoMargeBalance()
-	//if err != nil {
-	//	btlLog.CUST.Error("AutoMargeBalance failed:%s", err)
-	//	return false
-	//}
+
 	adminAccount, err := account.GetUserInfo("admin")
 	if err != nil {
 		btlLog.CUST.Error("CheckAdminAccount failed:%s", err)
@@ -114,66 +118,6 @@ func checkAdminAccount() bool {
 	btlLog.CUST.Info("admin account id:%d", AdminUserInfo.Account.ID)
 	btlLog.CUST.Info("admin lockAccount id:%d", AdminUserInfo.LockAccount.ID)
 	return true
-}
-
-// PayAmountToAdmin
-// 托管账户划扣费用
-func PayAmountToAdmin(payUserId uint, gasFee uint64) (uint, error) {
-	e, err := custodyBtc.NewBtcChannelEventByUserId(payUserId)
-	if err != nil {
-		btlLog.CUST.Error("PayAmountToAdmin failed:%s", err)
-		return 0, err
-	}
-	id, err := other.PayFirLunchFee(e, gasFee)
-	if err != nil {
-		btlLog.CUST.Error("PayAmountToAdmin failed:%s", err)
-		return 0, err
-	}
-	return id, nil
-}
-
-// CheckPayInsideStatus
-// 检查内部转账任务状态是否成功
-func CheckPayInsideStatus(id uint) (bool, error) {
-	return other.CheckFirLunchFee(id)
-}
-
-func BackAmount(payInsideId uint) (uint, error) {
-	return other.BackFirLunchFee(payInsideId)
-}
-
-func CheckBackFeeMission(missionId uint) bool {
-	return false
-}
-
-// IsAccountBalanceEnoughByUserId
-// 判断账户余额是否足够
-func IsAccountBalanceEnoughByUserId(userId uint, value uint64) bool {
-	e, err := custodyBtc.NewBtcChannelEventByUserId(userId)
-	if err != nil {
-		btlLog.CUST.Error("PayAmountToAdmin failed:%s", err)
-		return false
-	}
-	balance, err := e.GetBalance()
-	if err != nil {
-		return false
-	}
-
-	return balance[0].Amount >= int64(value)
-}
-
-// GetAccountBalance
-// @Description: Get account balance
-func GetAccountBalance(userId uint) (int64, error) {
-	e, err := custodyBtc.NewBtcChannelEventByUserId(userId)
-	if err != nil {
-		return 0, err
-	}
-	balance, err := e.GetBalance()
-	if err != nil {
-		return 0, err
-	}
-	return balance[0].Amount, nil
 }
 
 func LockPaymentToPaymentList(usr *account.UserInfo, assetId string, pageNum, pageSize, away int) (*cBase.PaymentList, error) {
@@ -203,8 +147,9 @@ func LockPaymentToPaymentList(usr *account.UserInfo, assetId string, pageNum, pa
 			r.Away = models.AWAY_OUT
 		}
 		r.BillType = models.LockedTransfer
-		r.Invoice = &v.LockId
-		r.Address = &v.LockId
+		empty := ""
+		r.Invoice = &empty
+		r.Address = &empty
 		r.Target = &v.LockId
 		r.PaymentHash = &v.LockId
 		r.Amount = v.Amount
@@ -216,133 +161,148 @@ func LockPaymentToPaymentList(usr *account.UserInfo, assetId string, pageNum, pa
 	return &list, nil
 }
 
-func AutoMargeBalance() error {
-	accounts, err := servicesrpc.ListAccounts()
+func ClearBtcToAsset() {
+	db := middleware.DB
+	var btcs []custodyModels.AccountBtcBalance
+	err := db.Where("Amount > 0").Find(&btcs).Error
 	if err != nil {
-		return err
+		btlLog.CUST.Error("ClearBtcToAsset failed:%s", err)
+		return
 	}
-	for _, acc := range accounts {
-		if acc.CurrentBalance > 100 {
-			db := middleware.DB
-			var a models.Account
-			err := db.Where("user_account_code =?", acc.Id).First(&a).Error
-			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-				return err
-			}
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				continue
-			}
-			var balance custodyModels.AccountBtcBalance
-			err = db.Where("account_id =?", a.ID).First(&balance).Error
-			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-				return err
-			}
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				balance.AccountId = a.ID
-				balance.Amount = float64(acc.CurrentBalance)
-				db.Create(&balance)
-			}
+	adminacc, err = account.GetUserInfo("admin")
+	if err != nil {
+		btlLog.CUST.Error("ClearBtcToAsset failed:%s", err)
+		return
+	}
+
+	for _, v := range btcs {
+		for account.GetUserNum() > 1500 {
+			time.Sleep(time.Second * 30)
 		}
+		if v.AccountId == 1 || v.AccountId == 2 || v.AccountId == 188740 || v.AccountId == 178821 {
+			continue
+		}
+		acc := models.Account{}
+		err := db.Where("id =?", v.AccountId).First(&acc).Error
+		if err != nil {
+			btlLog.CUST.Error("ClearBtcToAsset failed:%s", err)
+			continue
+		}
+		userinfo, err := account.GetUserInfo(acc.UserName)
+		if err != nil {
+			btlLog.CUST.Error("ClearBtcToAsset failed:%s", err)
+			continue
+		}
+		runReplace(userinfo, v.Amount)
 	}
-	return nil
 }
 
-func ClearLockUserBalance() {
-	db := middleware.DB
+var adminacc *account.UserInfo
 
-	getUser := func(accountId uint) (*account.UserInfo, error) {
-		var acc models.Account
-		err := db.Where("id =?", accountId).First(&acc).Error
-		if err != nil {
-			return nil, err
-		}
-		return account.GetLockedUser(acc.UserName)
+func runReplace(userinfo *account.UserInfo, amount float64) {
+	tx, back := middleware.GetTx()
+	defer back()
+	assetId := "47ed120d4b173eb79ba46cd1959bb9c881cb69332cf8a21336110bda05402308"
+
+	Invoice := "ReplaceAssetToPhinx"
+	btcHash := fmt.Sprintf("ReplaceAssetToPhinx/btc/%v", userinfo.Account.ID)
+	BtcBalance := models.Balance{
+		AccountId:   userinfo.Account.ID,
+		BillType:    models.BillTypeReplaceAsset,
+		Away:        models.AWAY_OUT,
+		Amount:      amount,
+		Unit:        models.UNIT_SATOSHIS,
+		ServerFee:   0,
+		Invoice:     &Invoice,
+		PaymentHash: &btcHash,
+		State:       models.STATE_SUCCESS,
+		TypeExt: &models.BalanceTypeExt{
+			Type: models.BTEReplace,
+		},
 	}
-
-	var assetAalances []custodyModels.AccountBalance
-	err := db.Where("amount > 0").Find(&assetAalances).Error
-	if err != nil {
+	if err := tx.Create(&BtcBalance).Error; err != nil {
+		btlLog.CUST.Error("runReplace failed:%s", err)
 		return
 	}
-	for _, balance := range assetAalances {
-		usr, err := getUser(balance.AccountID)
-		if err != nil {
-			continue
-		}
-		tx, back := middleware.GetTx()
-		_, err = custodyAssets.LessAssetBalance(tx, usr, balance.Amount, 0, balance.AssetId, custodyModels.ClearLimitUser)
-		if err != nil {
-			btlLog.CUST.Error("ClearLockUserBalance Asset failed:%s ,balance:%v", err, balance.ID)
-			back()
-			continue
-		}
-		tx.Commit()
-	}
-
-	var btcAalances []custodyModels.AccountBtcBalance
-	err = db.Where("amount > 0").Find(&btcAalances).Error
+	_, err := custodyBalance.LessBtcBalance(tx, userinfo, amount, BtcBalance.ID, custodyModels.ChangeTypeReplaceAsset)
 	if err != nil {
+		btlLog.CUST.Error("runReplace failed:%s", err)
 		return
 	}
-	for _, balance := range btcAalances {
-		usr, err := getUser(balance.AccountId)
-		if err != nil {
-			continue
-		}
-		tx, back := middleware.GetTx()
-		_, err = custodyBtc.LessBtcBalance(tx, usr, balance.Amount, 0, custodyModels.ClearLimitUser)
-		if err != nil {
-			btlLog.CUST.Error("ClearLockUserBalance btc failed:%s ,balance:%v", err, balance.ID)
-			back()
-			continue
-		}
-		tx.Commit()
+	adminBtcbalance := models.Balance{
+		AccountId:   adminacc.Account.ID,
+		BillType:    models.BillTypeReplaceAsset,
+		Away:        models.AWAY_IN,
+		Amount:      amount,
+		Unit:        models.UNIT_SATOSHIS,
+		ServerFee:   0,
+		Invoice:     &Invoice,
+		PaymentHash: &btcHash,
+		State:       models.STATE_SUCCESS,
+		TypeExt: &models.BalanceTypeExt{
+			Type: models.BTEReplace,
+		},
 	}
-
-	getUserByLock := func(accountId uint) (*account.UserInfo, error) {
-		var acc custodyModels.LockAccount
-		err := db.Where("id =?", accountId).First(&acc).Error
-		if err != nil {
-			return nil, err
-		}
-		return account.GetLockedUser(acc.UserName)
-	}
-
-	var lockBalances []custodyModels.LockBalance
-	err = db.Where("amount > 0").Find(&lockBalances).Error
-	if err != nil {
+	if err := tx.Create(&adminBtcbalance).Error; err != nil {
+		btlLog.CUST.Error("runReplace failed:%s", err)
 		return
 	}
-	for _, balance := range lockBalances {
-		usr, err := getUserByLock(balance.AccountID)
-		if err != nil {
-			continue
-		}
-		if balance.Tag1 > 0 {
-			if balance.Amount < balance.Tag1 {
-				continue
-			}
-			var lockedId string
-			if len(balance.AssetId) < 5 {
-				lockedId = fmt.Sprintf("/clearLockUserBalance/tag1/%v/%d", balance.AssetId, balance.AccountID)
-			} else {
-				lockedId = fmt.Sprintf("/clearLockUserBalance/tag1/%v/%d", balance.AssetId[0:5], balance.AccountID)
-			}
-			err = lockPayment.TransferByLockIsLockId(lockedId, usr, lockPayment.FeeNpubkey, balance.AssetId, balance.Tag1, 1)
-			if err != nil {
-				btlLog.CUST.Error("ClearLockUserBalance failed:%s ,balance:%v", err, balance.ID)
-			}
-		}
-		var lockedId string
-		if len(balance.AssetId) < 5 {
-			lockedId = fmt.Sprintf("/clearLockUserBalance/%v/%d", balance.AssetId, balance.AccountID)
-		} else {
-			lockedId = fmt.Sprintf("/clearLockUserBalance/%v/%d", balance.AssetId[0:5], balance.AccountID)
-		}
-		err = lockPayment.TransferByLockIsLockId(lockedId, usr, lockPayment.FeeNpubkey, balance.AssetId, balance.Amount-balance.Tag1, 0)
-		if err != nil {
-			btlLog.CUST.Error("ClearLockUserBalance failed:%s ,balance:%v", err, balance.ID)
-		}
+	_, err = custodyBalance.AddBtcBalance(tx, adminacc, amount, adminBtcbalance.ID, custodyModels.ChangeTypeReplaceAsset)
+	if err != nil {
+		btlLog.CUST.Error("runReplace failed:%s", err)
+		return
 	}
-	return
+
+	assetHash := fmt.Sprintf("ReplaceAssetToPhinx/asset/%v", userinfo.Account.ID)
+	assetAmount := math.Floor(amount / 2)
+	AssetBalance := models.Balance{
+		AccountId:   userinfo.Account.ID,
+		BillType:    models.BillTypeReplaceAsset,
+		Away:        models.AWAY_IN,
+		Amount:      assetAmount,
+		Unit:        models.UNIT_ASSET_NORMAL,
+		ServerFee:   0,
+		AssetId:     &assetId,
+		Invoice:     &Invoice,
+		PaymentHash: &assetHash,
+		State:       models.STATE_SUCCESS,
+		TypeExt: &models.BalanceTypeExt{
+			Type: models.BTEReplace,
+		},
+	}
+	if err := tx.Create(&AssetBalance).Error; err != nil {
+		btlLog.CUST.Error("runReplace failed:%s", err)
+		return
+	}
+	_, err = custodyBalance.AddAssetBalance(tx, userinfo, assetAmount, AssetBalance.ID, assetId, custodyModels.ChangeTypeReplaceAsset)
+	if err != nil {
+		btlLog.CUST.Error("runReplace failed:%s", err)
+		return
+	}
+
+	adminAssetBalance := models.Balance{
+		AccountId:   adminacc.Account.ID,
+		BillType:    models.BillTypeReplaceAsset,
+		Away:        models.AWAY_OUT,
+		Amount:      assetAmount,
+		Unit:        models.UNIT_ASSET_NORMAL,
+		ServerFee:   0,
+		AssetId:     &assetId,
+		Invoice:     &Invoice,
+		PaymentHash: &assetHash,
+		State:       models.STATE_SUCCESS,
+		TypeExt: &models.BalanceTypeExt{
+			Type: models.BTEReplace,
+		},
+	}
+	if err := tx.Create(&adminAssetBalance).Error; err != nil {
+		btlLog.CUST.Error("runReplace failed:%s", err)
+		return
+	}
+	_, err = custodyBalance.LessAssetBalance(tx, adminacc, assetAmount, adminAssetBalance.ID, assetId, custodyModels.ChangeTypeReplaceAsset)
+	if err != nil {
+		btlLog.CUST.Error("runReplace failed:%s", err)
+		return
+	}
+	tx.Commit()
 }

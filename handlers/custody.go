@@ -49,11 +49,16 @@ func GetAssetBalanceList(c *gin.Context) {
 		return
 	}
 	if list == nil {
-		c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.DefaultErr, fmt.Sprintf("GetAssetBalanceList failed"), nil))
+		c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.DefaultErr, "GetAssetBalanceList failed", nil))
 		return
 	}
+	if len(*list) == 0 {
+		c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "no any balance found", nil))
+		return
+	}
+	btlLog.CUST.Info("GetAssetBalanceList: %v", *list)
 	request := DealBalance(*list)
-	if request == nil {
+	if request == nil || len(*request) == 0 {
 		c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "", list))
 	} else {
 		c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "", request))

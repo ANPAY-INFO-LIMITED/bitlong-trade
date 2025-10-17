@@ -23,3 +23,5 @@ config.yaml
 *.log
 *.csv
 *.png
+confs/*
+lit.conf

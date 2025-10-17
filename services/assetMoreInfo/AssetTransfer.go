@@ -90,12 +90,10 @@ func CombineAssetTransfers(transfers *[]models.AssetTransferProcessedDb, transfe
 	return &transferCombinedSlice, nil
 }
 
-// 交易
-
 func GetAssetTransferCombinedSliceByAssetIdLimit(assetId string, limit int) ([]models.AssetTransferProcessedCombined, error) {
 	var err error
 	var transferCombinedSlice *[]models.AssetTransferProcessedCombined
-	// @dev: Use limit only here
+
 	transfers, err := GetAssetTransferProcessedSliceByAssetIdLimit(assetId, limit)
 	if err != nil {
 		return nil, err

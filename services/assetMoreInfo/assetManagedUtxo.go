@@ -15,8 +15,6 @@ type AssetManagedUtxoInfo struct {
 	Username            string `json:"username" gorm:"type:varchar(255)"`
 }
 
-// UTXO
-
 func GetAssetManagedUtxoInfoCount(assetId string) (count int64, err error) {
 	err = middleware.DB.Table("asset_managed_utxos").
 		Where("asset_genesis_asset_id = ?", assetId).

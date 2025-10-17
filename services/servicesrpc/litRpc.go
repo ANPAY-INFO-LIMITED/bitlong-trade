@@ -72,7 +72,7 @@ func LitdInfo() string {
 	return response.String()
 }
 
-func LitdStatus() string {
+func LitdStatus() (*litrpc.SubServerStatusResp, error) {
 	litdconf := config.GetConfig().ApiConfig.Litd
 
 	grpcHost := litdconf.Host + ":" + strconv.Itoa(litdconf.Port)
@@ -86,9 +86,9 @@ func LitdStatus() string {
 	client := litrpc.NewStatusClient(conn)
 	response, err := client.SubServerStatus(context.Background(), request)
 	if err != nil {
-		return "Error: " + err.Error()
+		return nil, err
 	}
-	return response.String()
+	return response, nil
 }
 
 func ListAccounts() ([]*litrpc.Account, error) {

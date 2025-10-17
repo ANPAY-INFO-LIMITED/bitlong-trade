@@ -9,8 +9,6 @@ type FeeRateInfoStore struct {
 	DB *gorm.DB
 }
 
-// FeeRateInfo
-
 func (f *FeeRateInfoStore) CreateFeeRateInfo(feeRateInfo *models.FeeRateInfo) error {
 	return f.DB.Create(feeRateInfo).Error
 }

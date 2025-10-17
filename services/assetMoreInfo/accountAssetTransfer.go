@@ -119,8 +119,6 @@ func BalanceScansToAccountAssetTransfers(balanceScans []BalanceScan) []AccountAs
 	return accountAssetTransfers
 }
 
-// 通道记录
-
 func GetAccountAssetTransferCount(assetId string) (count int64, err error) {
 	err = middleware.DB.
 		Table("bill_balance").

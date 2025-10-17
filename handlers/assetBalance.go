@@ -1,12 +1,17 @@
 package handlers
 
 import (
-	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
 	"trade/models"
 	"trade/services"
+)
+
+var (
+	invalidReq = errors.New("invalid request")
 )
 
 func GetAssetBalance(c *gin.Context) {
@@ -201,9 +206,9 @@ func GetAssetHolderBalanceLimitAndOffset(c *gin.Context) {
 	}
 
 	{
-		// @dev: total page number
+
 		number, err := services.GetAssetHolderBalancePageNumberByPageSize(assetId, limit)
-		// @dev: limit is pageSize
+
 		pageNumber := offset/limit + 1
 		if pageNumber > number {
 			err = errors.New("page number must be greater than max value " + strconv.Itoa(number))
@@ -237,7 +242,7 @@ func GetAssetHolderBalanceLimitAndOffset(c *gin.Context) {
 
 func GetAssetHolderBalanceRecordsNumber(c *gin.Context) {
 	assetId := c.Param("asset_id")
-	// @dev: Query total records number
+
 	recordsNum, err := services.GetAssetBalanceByAssetIdNonZeroLength(assetId)
 	if err != nil {
 		c.JSON(http.StatusOK, models.JsonResult{
@@ -382,4 +387,74 @@ func GetAssetHolderBalancePageNumberByPageSize(c *gin.Context) {
 		Code:    models.SUCCESS,
 		Data:    pageNumber,
 	})
+}
+
+func GetAssetHolderBalancePc(c *gin.Context) {
+
+	var req struct {
+		AssetId string `json:"asset_id"`
+		Limit   int    `json:"limit"`
+		Offset  int    `json:"offset"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logrus.Errorln(errors.Wrap(err, "c.ShouldBindJSON"))
+		c.JSON(http.StatusOK, models.RespLnc[*models.AssetBalance]{
+			Code: models.ToCode(models.ShouldBindJsonErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*models.AssetBalance]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	if req.AssetId == "" || req.Limit < 0 || req.Offset < 0 {
+		c.JSON(http.StatusOK, models.RespLnc[*models.AssetBalance]{
+			Code: models.ToCode(models.InvalidReq),
+			Msg:  invalidReq.Error(),
+			Data: models.LncT[*models.AssetBalance]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	count, err := services.GetAssetHolderBalanceCount(req.AssetId)
+	if err != nil {
+		c.JSON(http.StatusOK, models.RespLnc[*models.AssetBalance]{
+			Code: models.ToCode(models.GetAssetHolderBalanceCountErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*models.AssetBalance]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	balances, err := services.GetAssetHolderBalance(req.AssetId, req.Limit, req.Offset)
+	if err != nil {
+		c.JSON(http.StatusOK, models.RespLnc[*models.AssetBalance]{
+			Code: models.ToCode(models.GetAssetHolderBalanceErr),
+			Msg:  err.Error(),
+			Data: models.LncT[*models.AssetBalance]{
+				List:  nil,
+				Count: 0,
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.RespLnc[*models.AssetBalance]{
+		Code: models.ToCode(models.SUCCESS),
+		Msg:  models.NullStr,
+		Data: models.LncT[*models.AssetBalance]{
+			List:  balances,
+			Count: count,
+		},
+	})
+	return
+
 }

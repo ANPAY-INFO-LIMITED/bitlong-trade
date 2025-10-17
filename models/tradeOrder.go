@@ -15,7 +15,7 @@ type TradeOrder struct {
 	OrderType     string  `gorm:"column:order_type"  json:"order_type"`
 	Seller        string  `gorm:"column:seller" json:"seller"`
 	Buyer         string  `gorm:"column:buyer"  json:"buyer,omitempty"`
-	Online        bool    `gorm:"column:online"  json:"online"` // true for online orders, false for offline orders
+	Online        bool    `gorm:"column:online"  json:"online"`
 	PSBTSeller    string  `gorm:"column:psbt_seller" json:"psbt_seller,omitempty"`
 	PSBTBuyer     string  `gorm:"column:psbt_buyer" json:"psbt_buyer,omitempty"`
 	Type          string  `gorm:"column:Type" json:"type"`

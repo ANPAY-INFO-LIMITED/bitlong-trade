@@ -11,14 +11,15 @@ import (
 	"trade/config"
 	"trade/middleware"
 	"trade/models"
+	"trade/services/lntOfficial"
 	"trade/services/pool"
+	"trade/services/psbtTlSwap"
 	"trade/services/satBackQueue"
 	"trade/utils"
 )
 
 type CronService struct{}
 
-// @dev: Auto
 func CheckIfAutoUpdateScheduledTask() {
 	if config.GetLoadConfig().IsAutoUpdateScheduledTask {
 		err := CreateFairLaunchProcessions()
@@ -45,11 +46,21 @@ func CheckIfAutoUpdateScheduledTask() {
 		if err != nil {
 			btlLog.ScheduledTask.Info("%v", err)
 		}
+		err = CreatePsbtTlSwapProcessPendingTx()
+		if err != nil {
+			btlLog.ScheduledTask.Info("%v", err)
+		}
+		err = CreateBoxAssetPushProcessions()
+		if err != nil {
+			btlLog.ScheduledTask.Info("%v", err)
+		}
+		err = CreateLoDataHistory()
+		if err != nil {
+			btlLog.ScheduledTask.Info("%v", err)
+		}
 	}
 }
 
-// CreateFairLaunchProcessions
-// @dev: Use this to update scheduled task table
 func CreateFairLaunchProcessions() (err error) {
 	return CreateOrUpdateScheduledTasks(&[]models.ScheduledTask{
 		{
@@ -83,6 +94,11 @@ func CreateFairLaunchProcessions() (err error) {
 			FunctionName:   "FairLaunchMint",
 			Package:        "services",
 		}, {
+			Name:           "FairLaunchMintSentPendingCheck",
+			CronExpression: "0 */3 * * * *",
+			FunctionName:   "FairLaunchMintSentPendingCheck",
+			Package:        "services",
+		}, {
 			Name:           "SendFairLaunchAsset",
 			CronExpression: "0 */5 * * * *",
 			FunctionName:   "SendFairLaunchAsset",
@@ -109,7 +125,7 @@ func TaskCountRecordByRedis(name string) error {
 	var err error
 	record, err = middleware.RedisGet(name)
 	if err != nil {
-		// @dev: no value has been set
+
 		err = middleware.RedisSet(name, "1"+","+utils.GetTimeNow(), 6*time.Minute)
 		if err != nil {
 			return err
@@ -213,15 +229,26 @@ func (cs *CronService) FairLaunchMint() {
 	tx.Commit()
 }
 
+func (cs *CronService) FairLaunchMintSentPendingCheck() {
+	tx := middleware.DB.Begin()
+	FairLaunchMintSentPendingCheck(tx)
+	err := TaskCountRecordByRedis("FairLaunchMintSentPendingCheck")
+	if err != nil {
+		tx.Rollback()
+		return
+	}
+	tx.Commit()
+}
+
 func (cs *CronService) SendFairLaunchAsset() {
-	//tx := middleware.DB.Begin()
+
 	SendFairLaunchAsset()
 	err := TaskCountRecordByRedis("SendFairLaunchAsset")
 	if err != nil {
-		//tx.Rollback()
+
 		return
 	}
-	//tx.Commit()
+
 }
 
 func (cs *CronService) RemoveMintedInventories() {
@@ -277,7 +304,7 @@ func CreateSetTransfersAndReceives() (err error) {
 	return CreateOrUpdateScheduledTasks(&[]models.ScheduledTask{
 		{
 			Name:           "ListAndSetAssetTransfers",
-			CronExpression: "0 */3 * * * *",
+			CronExpression: "0 */5 * * * *",
 			FunctionName:   "ListAndSetAssetTransfers",
 			Package:        "services",
 		},
@@ -382,6 +409,12 @@ func CreatePushQueueProcessions() (err error) {
 			FunctionName:   "GetAndPushSwapTrs",
 			Package:        "services",
 		},
+		{
+			Name:           "GetAndPushGenLiquidity",
+			CronExpression: "*/30 * * * * *",
+			FunctionName:   "GetAndPushGenLiquidity",
+			Package:        "services",
+		},
 	})
 }
 
@@ -397,11 +430,15 @@ func (cs *CronService) GetAndPushSwapTrs() {
 	satBackQueue.GetAndPushSwapTrs()
 }
 
+func (cs *CronService) GetAndPushGenLiquidity() {
+	satBackQueue.GetAndPushGenLiquidity()
+}
+
 func CreatePoolPairTokenAccountBalanceProcessions() (err error) {
 	return CreateOrUpdateScheduledTasks(&[]models.ScheduledTask{
 		{
 			Name:           "UpdatePoolPairTokenAccountBalance",
-			CronExpression: "* */2 * * * *",
+			CronExpression: "0 */2 * * * *",
 			FunctionName:   "UpdatePoolPairTokenAccountBalance",
 			Package:        "services",
 		},
@@ -412,6 +449,181 @@ func (cs *CronService) UpdatePoolPairTokenAccountBalance() {
 	err := pool.UpdateAllPoolPairTokenAccountBalances()
 	if err != nil {
 		btlLog.PoolPairTokenAccountBalance.Error("%v", err)
+		return
+	}
+}
+
+func CreatePsbtTlSwapProcessPendingTx() (err error) {
+	return CreateOrUpdateScheduledTasks(&[]models.ScheduledTask{
+		{
+			Name:           "ProcessPendingTx",
+			CronExpression: "0 */2 * * * *",
+			FunctionName:   "ProcessPendingTx",
+			Package:        "services",
+		},
+	})
+}
+
+func (cs *CronService) ProcessPendingTx() {
+	err := psbtTlSwap.ProcessPendingTx()
+	if err != nil {
+		btlLog.PsbtTlSwap.Error("ProcessPendingTx error: %v", err)
+		return
+	}
+}
+
+func CreateBoxAssetPushProcessions() (err error) {
+	return CreateOrUpdateScheduledTasks(&[]models.ScheduledTask{
+		{
+			Name:           "OpenBoxAssetChannels",
+			CronExpression: "0 */8 * * * *",
+			FunctionName:   "OpenBoxAssetChannels",
+			Package:        "services",
+		},
+		{
+			Name:           "PushBoxAsset",
+			CronExpression: "0 */10 * * * *",
+			FunctionName:   "PushBoxAsset",
+			Package:        "services",
+		},
+		{
+			Name:           "SetTradeChannelsInfo",
+			CronExpression: "0 */2 * * * *",
+			FunctionName:   "SetTradeChannelsInfo",
+			Package:        "services",
+		},
+	})
+}
+
+func (cs *CronService) OpenBoxAssetChannels() {
+	btlLog.BoxAssetPush.Info("OpenBoxAssetChannelsStart")
+	cfg := config.GetLoadConfig()
+	if cfg.NetWork != "mainnet" {
+		return
+	}
+	err := OpenBoxAssetChannels()
+	if err != nil {
+		btlLog.BoxAssetPush.Error("EndOpenBoxAssetChannels error: %v", err)
+		return
+	}
+	btlLog.BoxAssetPush.Info("EndOpenBoxAssetChannels")
+}
+
+func (cs *CronService) PushBoxAsset() {
+	btlLog.BoxAssetPush.Info("PushBoxAssetStart")
+	cfg := config.GetLoadConfig()
+	if cfg.NetWork != "mainnet" {
+		return
+	}
+	startTime := time.Now()
+
+	err := PushBoxAsset()
+	if err != nil {
+		btlLog.BoxAssetPush.Error("EndPushBoxAsset error: %v, 耗时: %v", err, time.Since(startTime))
+		return
+	}
+	btlLog.BoxAssetPush.Info("EndPushBoxAsset - 执行成功，耗时: %v", time.Since(startTime))
+}
+
+func (cs *CronService) SetTradeChannelsInfo() {
+	cfg := config.GetLoadConfig()
+	if cfg.NetWork != "mainnet" {
+		return
+	}
+	btlLog.BoxChannelInfos.Info("SetTradeChannelsInfoStart")
+	err := SetTradeChannelsInfo()
+	if err != nil {
+		btlLog.BoxChannelInfos.Error("SetTradeChannelsInfo error: %v", err)
+		return
+	}
+	btlLog.BoxChannelInfos.Info("SetTradeChannelsInfoEnd")
+}
+
+func CreateLoDataHistory() (err error) {
+	return CreateOrUpdateScheduledTasks(&[]models.ScheduledTask{
+		{
+			Name:           "RecordChannelCount",
+			CronExpression: "0 */10 * * * *",
+			FunctionName:   "RecordChannelCount",
+			Package:        "services",
+		},
+		{
+			Name:           "RecordTotalCapacity",
+			CronExpression: "0 */10 * * * *",
+			FunctionName:   "RecordTotalCapacity",
+			Package:        "services",
+		},
+		{
+			Name:           "RecordNodeCount",
+			CronExpression: "0 */10 * * * *",
+			FunctionName:   "RecordNodeCount",
+			Package:        "services",
+		},
+		{
+			Name:           "UpdateBoxDeviceLocation",
+			CronExpression: "1 * * * * *",
+			FunctionName:   "UpdateBoxDeviceLocation",
+			Package:        "services",
+		},
+		{
+			Name:           "UpdateBoxDeviceLocationEn",
+			CronExpression: "31 * * * * *",
+			FunctionName:   "UpdateBoxDeviceLocationEn",
+			Package:        "services",
+		},
+		{
+			Name:           "UpdateTradeChannelsInfoTime",
+			CronExpression: "31 * * * * *",
+			FunctionName:   "UpdateTradeChannelsInfoTime",
+			Package:        "services",
+		},
+	})
+}
+
+func (cs *CronService) RecordChannelCount() {
+	err := lntOfficial.RecordChannelCount()
+	if err != nil {
+		btlLog.Lnt.Error("RecordChannelCount error: %v", err)
+		return
+	}
+}
+
+func (cs *CronService) RecordTotalCapacity() {
+	err := lntOfficial.RecordTotalCapacity()
+	if err != nil {
+		btlLog.Lnt.Error("RecordTotalCapacity error: %v", err)
+		return
+	}
+}
+
+func (cs *CronService) RecordNodeCount() {
+	err := lntOfficial.RecordNodeCount()
+	if err != nil {
+		btlLog.Lnt.Error("RecordNodeCount error: %v", err)
+		return
+	}
+}
+
+func (cs *CronService) UpdateBoxDeviceLocation() {
+	err := lntOfficial.UpdateBoxDeviceLocation()
+	if err != nil {
+		btlLog.Lnt.Error("UpdateBoxDeviceLocation error: %v", err)
+		return
+	}
+}
+
+func (cs *CronService) UpdateBoxDeviceLocationEn() {
+	err := lntOfficial.UpdateBoxDeviceLocationEn()
+	if err != nil {
+		btlLog.Lnt.Error("UpdateBoxDeviceLocationEn error: %v", err)
+		return
+	}
+}
+
+func (cs *CronService) UpdateTradeChannelsInfoTime() {
+	err := lntOfficial.UpdateTradeChannelsInfoTime()
+	if err != nil {
+		btlLog.Lnt.Error("UpdateTradeChannelsInfoTime error: %v", err)
 		return
 	}
 }

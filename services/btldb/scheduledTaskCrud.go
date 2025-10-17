@@ -9,8 +9,6 @@ type ScheduledTaskStore struct {
 	DB *gorm.DB
 }
 
-// ScheduledTask
-
 func (s *ScheduledTaskStore) CreateScheduledTask(scheduledTask *models.ScheduledTask) error {
 	return s.DB.Create(scheduledTask).Error
 }

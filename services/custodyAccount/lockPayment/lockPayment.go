@@ -31,7 +31,7 @@ const (
 	InvoiceLocked         = "locked"
 	InvoiceUnlocked       = "unlocked"
 	InvoicePendingOderPay = "pendingOderPay"
-	//InvoicePendingOderPayByLock   = "pendingOderPayByLock"
+
 	InvoicePendingOderReceive = "pendingOderPayReceive"
 	InvoicePendingOderAward   = "PENDING_ORDER_AWARD"
 )
@@ -55,7 +55,7 @@ func GetErrorCode(err error) int {
 	case errors.Is(err, RepeatedLockId):
 		return 10007
 	default:
-		return 10005
+		return 10008
 	}
 }
 
@@ -89,7 +89,7 @@ func GetBalances(npubkey string) (*[]cModels.LockBalance, error) {
 	if err != nil {
 		return nil, GetAccountError
 	}
-	//获取所有资产余额
+
 	var balances []cModels.LockBalance
 	if err = middleware.DB.Where("account_id = ? and asset_id != '00'", usr.LockAccount.ID).
 		Find(&balances).Error; err != nil {
@@ -317,7 +317,6 @@ func GetLockPaymentMutex(userId uint) *sync.Mutex {
 	return custodyMutex.GetCustodyMutex(mutexKey)
 }
 
-// ListTransferBTC 列出转账记录
 func ListTransferBTC(usr *caccount.UserInfo, assetId string, page, pageSize, away int) ([]cModels.LockBill, error) {
 	var err error
 	var bills []cModels.LockBill

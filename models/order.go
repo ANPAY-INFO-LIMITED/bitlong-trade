@@ -12,7 +12,7 @@ type Order struct {
 	Status        int     `json:"status"`
 	Seller        string  `json:"seller"`
 	Buyer         string  `json:"buyer,omitempty"`
-	Online        bool    `json:"online"` // true for online orders, false for offline orders
+	Online        bool    `json:"online"`
 	PSBTSeller    string  `json:"psbt_seller,omitempty"`
 	PSBTBuyer     string  `json:"psbt_buyer,omitempty"`
 	Type          string  `json:"type"`

@@ -26,7 +26,7 @@ func PrintUrl() {
 }
 
 func GetUrl() string {
-	return "https://bitlong.gitbook.io/api-doc"
+	return ""
 }
 
 func GetVersion() string {

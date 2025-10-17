@@ -21,7 +21,7 @@ func GetUserInfo(userName string) (*UserInfo, error) {
 	}
 	user, err := pool.CreateUser(userName)
 	if err != nil {
-		//todo :分析usr是否存在于数据库
+
 		return nil, fmt.Errorf("create user %s failed: %w", userName, err)
 	}
 	return user, nil

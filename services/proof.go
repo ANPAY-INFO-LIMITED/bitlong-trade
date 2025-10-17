@@ -4,13 +4,11 @@ import (
 	"errors"
 	"path"
 	"strings"
+	"trade/api"
 	"trade/config"
 	"trade/utils"
 )
 
-// ValidateAndGetProofFilePath
-// @dev: Only return nil error when dest is exists
-// @notice: Config Tapd's Dir later
 func ValidateAndGetProofFilePath(assetId string, proof string) (string, error) {
 	var err error
 	if strings.Contains(proof, "/") || strings.Contains(proof, "\\") || strings.Contains(proof, "..") {
@@ -36,4 +34,8 @@ func ValidateAndGetProofFilePath(assetId string, proof string) (string, error) {
 		return "", err
 	}
 	return dest, nil
+}
+
+func GetLastProof(scriptKey string, outpoint string, assetId string) (lastProofB64Str string, err error) {
+	return api.GetLastProof(scriptKey, outpoint, assetId)
 }

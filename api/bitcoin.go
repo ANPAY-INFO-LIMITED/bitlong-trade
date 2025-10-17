@@ -4,12 +4,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/wire"
+	"log"
 	"strconv"
 	"strings"
+	"trade/config"
 	"trade/models"
 	"trade/utils"
+
+	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/wire"
 )
 
 type Verbosity int
@@ -140,8 +143,6 @@ func GetTransactionByOutpoint(network models.Network, outpoint string) (transact
 	return GetTransactionByTxid(network, txid)
 }
 
-// GetAddressesByOutpointSlice
-// @Description: Get addresses by outpoint slice
 func GetAddressesByOutpointSlice(network models.Network, outpoints []string) (addresses map[string]string, err error) {
 	return GetAddressesBatchProcess(network, outpoints)
 }
@@ -235,8 +236,6 @@ func GetTransactionsBatchProcess(network models.Network, outpoints []string) (*[
 	return response, nil
 }
 
-// GetTransactionsByOutpointSlice
-// Handlers call
 func GetTransactionsByOutpointSlice(network models.Network, outpoints []string) (*[]PostGetRawTransactionResponse, error) {
 	return GetTransactionsBatchProcess(network, outpoints)
 }
@@ -261,8 +260,6 @@ func PostDecodeRawTransactions(network models.Network, rawTransactions []string)
 	return result, nil
 }
 
-// DecodeRawTransactionSlice
-// Handlers call
 func DecodeRawTransactionSlice(network models.Network, rawTransactions []string) (*[]PostDecodeRawTransactionResponse, error) {
 	return PostDecodeRawTransactions(network, rawTransactions)
 }
@@ -324,6 +321,33 @@ func GetTimesBatchProcess(network models.Network, outpoints []string) (outpointT
 	return outpointTime, nil
 }
 
+type OpTime struct {
+	Outpoint string `json:"outpoint"`
+	Time     int    `json:"time"`
+}
+
+func GetTimesBatchProcessSlice(network models.Network, outpoints []string) (outpointTime []*OpTime, err error) {
+	response, err := PostGetRawTransactionsWithFeeAndPrevoutByOutpoints(network, outpoints)
+	if err != nil {
+		return nil, err
+	}
+	for _, transaction := range *response {
+		if transaction.Result == nil || transaction.Error != nil {
+			continue
+		}
+		outpoint := transaction.ID
+		txid, _ := utils.OutpointToTransactionAndIndex(outpoint)
+		if txid == "" {
+			continue
+		}
+		outpointTime = append(outpointTime, &OpTime{
+			Outpoint: outpoint,
+			Time:     transaction.Result.Time,
+		})
+	}
+	return outpointTime, nil
+}
+
 func GetTimesByOutpointSlice(network models.Network, outpoints []string) (outpointTime map[string]int, err error) {
 	return GetTimesBatchProcess(network, outpoints)
 }
@@ -350,4 +374,27 @@ func GetBlockchainInfo(network models.Network) (*PostGetBlockchainInfoResult, er
 		return nil, err
 	}
 	return response.Result, nil
+}
+
+func IsTxConfirmed(network models.Network, txid string) (isConfirmed bool) {
+	getTransactionResult, err := PostGetRawTransaction(network, txid, int(VerbosityJson))
+	if err != nil {
+		log.Printf("GetTransaction error: %v\n", err)
+		return false
+	}
+	return getTransactionResult.Confirmations > 0
+}
+
+func GetConfigNetwork() (network models.Network, err error) {
+	switch config.GetLoadConfig().NetWork {
+	case "mainnet":
+		network = models.Mainnet
+	case "testnet":
+		network = models.Testnet
+	case "regtest":
+		network = models.Regtest
+	default:
+		return 0, errors.New(" config.GetLoadConfig().NetWork: unknown network")
+	}
+	return network, nil
 }

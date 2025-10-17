@@ -12,9 +12,8 @@ import (
 	"trade/services/btldb"
 )
 
-const interval = 20 * time.Second // 交易间隔
+const interval = 20 * time.Second
 
-// 定义用户池相关的错误信息
 var (
 	ErrMaxUserPoolReached = fmt.Errorf("用户池已满，无法添加新用户")
 	ErrUserNotFound       = fmt.Errorf("用户不存在")
@@ -23,16 +22,15 @@ var (
 
 var pool *UserPool
 
-// UserInfo 定义用户结构体
 type UserInfo struct {
 	User          *models.User
 	Account       *models.Account
 	LockAccount   *cModels.LockAccount
-	PaymentMux    sync.Mutex // 支付锁
-	LastPayTime   time.Time  // 记录上次支付时间
-	RpcMux        sync.Mutex // RPC 锁
-	LastActiveMux sync.Mutex // 上次活跃时间锁
-	LastActive    time.Time  // 记录上次活跃时间
+	PaymentMux    sync.Mutex
+	LastPayTime   time.Time
+	RpcMux        sync.Mutex
+	LastActiveMux sync.Mutex
+	LastActive    time.Time
 }
 
 func (u *UserInfo) PayLock() bool {
@@ -49,24 +47,21 @@ func (u *UserInfo) PayUnlock() {
 	u.PaymentMux.Unlock()
 }
 
-// UserPool 定义用户池结构体
 type UserPool struct {
-	users            map[string]*UserInfo // 存储用户信息的映射
-	mutex            sync.RWMutex         // 读写锁，确保并发安全
-	maxCapacity      int                  // 用户池最大容量
-	inactiveDuration time.Duration        // 不活跃用户的最大持续时间
+	users            map[string]*UserInfo
+	mutex            sync.RWMutex
+	maxCapacity      int
+	inactiveDuration time.Duration
 }
 
-// 初始化用户池
 func init() {
 	pool = NewUserPool(2000, 3*time.Minute)
 	pool.StartCleanupScheduler(5 * time.Minute)
 }
 
-// NewUserPool 创建新的用户池
 func NewUserPool(maxCapacity int, inactiveDuration time.Duration) *UserPool {
 	if maxCapacity <= 0 {
-		maxCapacity = 2000 // 默认容量
+		maxCapacity = 2000
 	}
 	return &UserPool{
 		users:            make(map[string]*UserInfo),
@@ -75,7 +70,6 @@ func NewUserPool(maxCapacity int, inactiveDuration time.Duration) *UserPool {
 	}
 }
 
-// RemoveUser 从用户池中删除用户
 func (pool *UserPool) RemoveUser(userName string) {
 	pool.mutex.Lock()
 	defer pool.mutex.Unlock()
@@ -88,7 +82,6 @@ func (pool *UserPool) RemoveUser(userName string) {
 	}
 }
 
-// GetUser 根据用户ID获取用户
 func (pool *UserPool) GetUser(userName string) (*UserInfo, bool) {
 	pool.mutex.RLock()
 	defer pool.mutex.RUnlock()
@@ -97,12 +90,10 @@ func (pool *UserPool) GetUser(userName string) (*UserInfo, bool) {
 	return user, exists
 }
 
-// CreateUser 创建新用户
 func (pool *UserPool) CreateUser(userName string) (*UserInfo, error) {
 	pool.mutex.Lock()
 	defer pool.mutex.Unlock()
 
-	// 再次检查用户是否存在
 	if existingUser, exists := pool.users[userName]; exists {
 		return existingUser, nil
 	}
@@ -128,7 +119,10 @@ func (pool *UserPool) CreateUser(userName string) (*UserInfo, error) {
 	return newUser, nil
 }
 
-// ListUsers 列出所有用户
+func GetUserNum() int {
+	return len(pool.users)
+}
+
 func (pool *UserPool) ListUsers() []*UserInfo {
 	pool.mutex.RLock()
 	defer pool.mutex.RUnlock()
@@ -140,7 +134,6 @@ func (pool *UserPool) ListUsers() []*UserInfo {
 	return users
 }
 
-// CleanupInactiveUsers 清理不活跃用户
 func (pool *UserPool) CleanupInactiveUsers() {
 	pool.mutex.Lock()
 	defer pool.mutex.Unlock()
@@ -157,7 +150,6 @@ func (pool *UserPool) CleanupInactiveUsers() {
 	}
 }
 
-// StartCleanupScheduler 启动定期清理不活跃用户的调度器
 func (pool *UserPool) StartCleanupScheduler(interval time.Duration) {
 	go func() {
 		for {
@@ -167,7 +159,6 @@ func (pool *UserPool) StartCleanupScheduler(interval time.Duration) {
 	}()
 }
 
-// UpdateUserActivity 更新用户活动时间
 func (pool *UserPool) UpdateUserActivity(userName string) {
 	pool.mutex.Lock()
 	defer pool.mutex.Unlock()
@@ -180,13 +171,12 @@ func (pool *UserPool) UpdateUserActivity(userName string) {
 	}
 }
 
-// GetUserInfoFromDb 获取用户信息
 func GetUserInfoFromDb(username string) (*models.User, *models.Account, *cModels.LockAccount, error) {
-	// 获取用户信息
+
 	user, err := btldb.ReadUserByUsername(username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// todo 读取虚拟用户
+
 			return nil, nil, nil, ErrUserNotFound
 		}
 		return nil, nil, nil, fmt.Errorf("%w: %w", models.ReadDbErr, err)
@@ -194,25 +184,25 @@ func GetUserInfoFromDb(username string) (*models.User, *models.Account, *cModels
 	if user.Status != 0 {
 		return nil, nil, nil, ErrUserLocked
 	}
-	// 获取Lit账户信息
+
 	account := &models.Account{}
 	account, err = GetAccountByUserName(username)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil, nil, fmt.Errorf("%w: %w", models.ReadDbErr, err)
 	} else if errors.Is(err, gorm.ErrRecordNotFound) {
-		// 如果账户不存在，则创建账户
-		account, err = CreateAccount(user)
+
+		account, err = CreateAccount(user, models.NormalAccount)
 		if err != nil {
 			return nil, nil, nil, CustodyAccountCreateErr
 		}
 	}
-	// 获取冻结账户信息
+
 	lockAccount := &cModels.LockAccount{}
 	lockAccount, err = GetLockAccountByUserName(username)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil, nil, fmt.Errorf("%w: %w", models.ReadDbErr, err)
 	} else if errors.Is(err, gorm.ErrRecordNotFound) {
-		// 如果账户不存在，则创建账户
+
 		lockAccount, err = CreateLockAccount(user)
 		if err != nil {
 			return nil, nil, nil, CustodyAccountCreateErr
@@ -223,7 +213,7 @@ func GetUserInfoFromDb(username string) (*models.User, *models.Account, *cModels
 }
 
 func GetLockedUser(username string) (*UserInfo, error) {
-	// 获取用户信息
+
 	user, err := btldb.ReadUserByUsername(username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -237,7 +227,7 @@ func GetLockedUser(username string) (*UserInfo, error) {
 	userInfo := UserInfo{
 		User: user,
 	}
-	// 获取Lit账户信息
+
 	account := &models.Account{}
 	account, err = GetAccountByUserName(username)
 	if err != nil {
@@ -245,7 +235,7 @@ func GetLockedUser(username string) (*UserInfo, error) {
 	} else {
 		userInfo.Account = account
 	}
-	// 获取冻结账户信息
+
 	lockAccount := &cModels.LockAccount{}
 	lockAccount, err = GetLockAccountByUserName(username)
 	if err != nil {

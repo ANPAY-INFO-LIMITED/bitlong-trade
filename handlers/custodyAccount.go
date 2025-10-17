@@ -2,18 +2,19 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"trade/models"
 	"trade/services/custodyAccount"
+	"trade/services/custodyAccount/account"
 	"trade/services/custodyAccount/custodyBase"
 	"trade/services/custodyAccount/defaultAccount/custodyBtc"
 	rpc "trade/services/servicesrpc"
+
+	"github.com/gin-gonic/gin"
 )
 
-// ApplyInvoice CustodyAccount开具发票
 func ApplyInvoice(c *gin.Context) {
-	// 获取登录用户信息
+
 	userName := c.MustGet("username").(string)
 	e, err := custodyBtc.NewBtcChannelEvent(userName)
 	if err != nil {
@@ -38,7 +39,7 @@ func ApplyInvoice(c *gin.Context) {
 }
 
 func QueryInvoice(c *gin.Context) {
-	// 获取登录用户信息
+
 	userName := c.MustGet("username").(string)
 	e, err := custodyBtc.NewBtcChannelEvent(userName)
 	if err != nil {
@@ -52,8 +53,8 @@ func QueryInvoice(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Request is erro"})
 		return
 	}
-	// 查询账户发票
-	invoices, err := e.QueryPayReq()
+
+	invoices, err := e.QueryPayReq(invoiceRequest.AssetId)
 	if err != nil {
 		fmt.Println(err.Error())
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "service error"})
@@ -62,9 +63,8 @@ func QueryInvoice(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"invoices": invoices})
 }
 
-// PayInvoice CustodyAccount付款发票
 func PayInvoice(c *gin.Context) {
-	// 获取登录用户信息
+
 	userName := c.MustGet("username").(string)
 	e, err := custodyBtc.NewBtcChannelEvent(userName)
 	if err != nil {
@@ -77,15 +77,13 @@ func PayInvoice(c *gin.Context) {
 	}
 	defer e.UserInfo.PayUnlock()
 
-	//获取支付发票请求
 	pay := custodyAccount.PayInvoiceRequest{}
 	if err := c.ShouldBindJSON(&pay); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error() + "请求参数错误"})
 		return
 	}
 	a := custodyBtc.BtcPacket{
-		PayReq:   pay.Invoice,
-		FeeLimit: pay.FeeLimit,
+		PayReq: pay.Invoice,
 	}
 	err2 := e.SendPayment(&a)
 	if err2 != nil {
@@ -95,7 +93,7 @@ func PayInvoice(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"payment": "success"})
 }
 func PayUserBtc(c *gin.Context) {
-	// 获取登录用户信息
+
 	userName := c.MustGet("username").(string)
 	e, err := custodyBtc.NewBtcChannelEvent(userName)
 	if err != nil {
@@ -108,7 +106,6 @@ func PayUserBtc(c *gin.Context) {
 	}
 	defer e.UserInfo.PayUnlock()
 
-	//获取支付请求
 	pay := struct {
 		NpubKey string  `json:"npub_key"`
 		Amount  float64 `json:"amount"`
@@ -131,9 +128,44 @@ func PayUserBtc(c *gin.Context) {
 	c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "", result))
 }
 
-// QueryBalance CustodyAccount查询发票
+func PayBtcOnchain(c *gin.Context) {
+
+	pay := struct {
+		Address string  `json:"address"`
+		Amount  float64 `json:"amount"`
+	}{}
+	if err := c.ShouldBindJSON(&pay); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error() + "请求参数错误"})
+		return
+	}
+
+	userName := c.MustGet("username").(string)
+	e, err := custodyBtc.NewBtcChannelEvent(userName)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error() + "用户不存在"})
+		return
+	}
+	if !e.UserInfo.PayLock() {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "当前用户正在支付中，请勿频繁操作"})
+		return
+	}
+	defer e.UserInfo.PayUnlock()
+
+	err = e.PayToOutsideOnChain(pay.Address, pay.Amount)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"error": "SendPayment error:" + err.Error()})
+		return
+	}
+	result := struct {
+		Success string `json:"success"`
+	}{
+		Success: "success",
+	}
+	c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "", result))
+}
+
 func QueryBalance(c *gin.Context) {
-	// 获取登录用户信息
+
 	userName := c.MustGet("username").(string)
 	e, err := custodyBtc.NewBtcChannelEvent(userName)
 	if err != nil {
@@ -148,16 +180,15 @@ func QueryBalance(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"balance": getBalance[0].Amount})
 }
 
-// QueryPayment  查询支付记录
 func QueryPayment(c *gin.Context) {
-	// 获取登录用户信息
+
 	userName := c.MustGet("username").(string)
 	e, err := custodyBtc.NewBtcChannelEvent(userName)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error() + "用户不存在"})
 		return
 	}
-	//获取交易查询请求
+
 	query := custodyBase.PaymentRequest{}
 	if err := c.ShouldBindJSON(&query); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -179,17 +210,9 @@ func QueryPayment(c *gin.Context) {
 	}
 	p.Sort()
 
-	//p2, err := custodyAccount.LockPaymentToPaymentList(e.UserInfo, "00")
-	//if err != nil {
-	//	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	//	return
-	//}
-	//result := custodyAccount.MergePaymentList(p, p2)
-
 	c.JSON(http.StatusOK, gin.H{"payments": p.PaymentList})
 }
 
-// DecodeInvoice  解析发票
 func DecodeInvoice(c *gin.Context) {
 	query := custodyAccount.DecodeInvoiceRequest{}
 	if err := c.ShouldBindJSON(&query); err != nil {
@@ -211,6 +234,51 @@ func DecodeInvoice(c *gin.Context) {
 		Timestamp: q.Timestamp,
 		Expiry:    q.Expiry,
 		Memo:      q.Description,
+	}
+	c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "", result))
+}
+
+func GetRechargeBtcOnChainAddress(c *gin.Context) {
+	address, err := custodyBtc.GetRechargeBtcAddress()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"error": "GetRechargeBtcAddress error:" + err.Error()})
+		return
+	}
+	result := struct {
+		Addr string `json:"addr"`
+	}{
+		Addr: address,
+	}
+	c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "", result))
+}
+
+func RechargeBtcOnChain(c *gin.Context) {
+
+	userName := c.MustGet("username").(string)
+	usr, err := account.GetUserInfo(userName)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error() + "用户不存在"})
+		return
+	}
+
+	recharge := struct {
+		TxHash  string `json:"tx_hash"`
+		Address string `json:"address"`
+	}{}
+	if err := c.ShouldBindJSON(&recharge); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error() + "请求参数错误"})
+		return
+	}
+
+	err = custodyBtc.PutBtcOnChainMission(usr, recharge.TxHash, recharge.Address)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"error": "RechargeBtcOnChain error:" + err.Error()})
+		return
+	}
+	result := struct {
+		Success string `json:"success"`
+	}{
+		Success: "success",
 	}
 	c.JSON(http.StatusOK, models.MakeJsonErrorResultForHttp(models.SUCCESS, "", result))
 }

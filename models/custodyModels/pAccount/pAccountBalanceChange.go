@@ -5,9 +5,9 @@ type PAccountBalanceChange struct {
 	PoolAccountId uint    `gorm:"index;column:pool_account_id;not null"`
 	AssetId       string  `gorm:"column:asset_id;varchar(128);not null"`
 	BillId        uint    `gorm:"column:bill_id;unique;"`
-	Amount        float64 `gorm:"column:amount;type:decimal(15,2);"`
-	FinalBalance  float64 `gorm:"column:final_balance;type:decimal(15,2);not null"`
-	// 外键关联
+	Amount        float64 `gorm:"column:amount;type:decimal(25,2);"`
+	FinalBalance  float64 `gorm:"column:final_balance;type:decimal(25,2);not null"`
+
 	PoolAccount *PoolAccount `gorm:"foreignkey:PoolAccountId"`
 }
 

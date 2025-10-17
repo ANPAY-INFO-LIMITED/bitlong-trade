@@ -25,7 +25,7 @@ func EstimateFee() *responseTransformed {
 		updateFeeRateByMempool()
 	})
 	currentTime := time.Now()
-	// 检查距离上次执行的时间
+
 	if currentTime.Sub(lastExecutedTime) >= 10*time.Minute {
 		lastExecutedTime = currentTime
 		updateFeeRateByMempool()
@@ -52,7 +52,7 @@ func getFeeRateResponseTransformed() (*responseTransformed, error) {
 		for _, name := range names {
 			feeRateInfo, err := getFeeRateInfoByNameAndUnit(name, unit)
 			if err != nil {
-				// @dev: Do not return
+
 				return nil, err
 			}
 			feeRateInfos = append(feeRateInfos, *feeRateInfo)
@@ -110,7 +110,7 @@ func checkIfUpdateFeeRateInfoByMempool() (err error) {
 }
 
 func updateFeeRateInfoByMempool() error {
-	//var feeRateInfos []models.FeeRateInfo
+
 	feeRateResponse, err := getFeeRateResponseTransformedByMempool()
 	if err != nil {
 		return utils.AppendErrorInfo(err, "getFeeRateResponseTransformedByMempool")
@@ -123,7 +123,7 @@ func updateFeeRateInfoByMempool() error {
 			feeRate, err = feeRateResponse.GetFeeRateByNameAndUnit(unit, name)
 			err = updateFeeRateInfoByNameAndUnitIfNotExistThenCreate(name, unit, feeRate)
 			if err != nil {
-				// @dev: Do not return
+
 			}
 		}
 	}
@@ -166,8 +166,6 @@ type mempoolFeeRate struct {
 	MinimumFee  int `json:"minimum_fee"`
 }
 
-// satPerBToSatPerKw
-// @Description: sat/b to sat/kw
 func satPerBToSatPerKw(feeRateSatPerB int) (feeRateSatPerKw int) {
 	return int(math.Ceil(float64(feeRateSatPerB) * 1000 / 4))
 }

@@ -67,7 +67,6 @@ func (n NftPresaleState) String() string {
 }
 
 type NftPresaleSetRequest struct {
-	// not been used
 	BatchGroupId int    `json:"batch_group_id" gorm:"index"`
 	AssetId      string `json:"asset_id"`
 	Price        int    `json:"price"`

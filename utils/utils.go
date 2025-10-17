@@ -8,17 +8,19 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/lightninglabs/taproot-assets/taprpc"
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/proto"
 	"log"
 	"math"
 	"math/rand"
+	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -152,8 +154,8 @@ func GetConn(grpcHost, tlsCertPath, macaroonPath string) (*grpc.ClientConn, func
 		macaroon := GetMacaroon(macaroonPath)
 		conn, err = grpc.NewClient(grpcHost, grpc.WithTransportCredentials(creds),
 			grpc.WithPerRPCCredentials(NewMacaroonCredential(macaroon)), grpc.WithDefaultCallOptions(
-				grpc.MaxCallRecvMsgSize(10*1024*1024), // 10 MB
-				grpc.MaxCallSendMsgSize(10*1024*1024), // 10 MB
+				grpc.MaxCallRecvMsgSize(10*1024*1024),
+				grpc.MaxCallSendMsgSize(10*1024*1024),
 			))
 	} else {
 		conn, err = grpc.NewClient(grpcHost, grpc.WithTransportCredentials(creds))
@@ -206,6 +208,23 @@ func LogError(description string, err error) {
 	fmt.Printf("%s %s :%v\n", GetTimeNow(), description, err)
 }
 
+func CreateFile2(path, content string) error {
+	dir := filepath.Dir(path)
+	if dir != "." {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			err = os.MkdirAll(dir, 0644)
+			if err != nil {
+				return errors.Wrap(err, "os.MkdirAll")
+			}
+		}
+	}
+	err := os.WriteFile(path, []byte(content), 0644)
+	if err != nil {
+		return errors.Wrap(err, "os.WriteFile")
+	}
+	return nil
+}
+
 func CreateFile(filePath, content string) bool {
 	dir := filepath.Dir(filePath)
 	if dir != "." {
@@ -228,6 +247,10 @@ func CreateFile(filePath, content string) bool {
 
 func GetTimestamp() int {
 	return int(time.Now().Unix())
+}
+
+func GetTimestampInt64() int64 {
+	return time.Now().Unix()
 }
 
 func Gcd(a, b int) int {
@@ -469,8 +492,6 @@ func GetFunctionName(i any) string {
 	return s[len(s)-1]
 }
 
-// GetTransactionAndIndexByOutpoint
-// @dev: Split outpoint
 func GetTransactionAndIndexByOutpoint(outpoint string) (transaction string, index string) {
 	result := strings.Split(outpoint, ":")
 	return result[0], result[1]
@@ -489,8 +510,6 @@ func OutpointToTransactionAndIndex(outpoint string) (transaction string, index s
 	return result[0], result[1]
 }
 
-// GetFilesNameInPathWithoutDir
-// @Description: Get name slice of files in specific path
 func GetFilesNameInPathWithoutDir(path string) ([]string, error) {
 	var fileSlice []string
 	files, err := os.ReadDir(path)
@@ -505,8 +524,6 @@ func GetFilesNameInPathWithoutDir(path string) ([]string, error) {
 	return fileSlice, nil
 }
 
-// GetFilesNameInPathRecursive
-// @Description: Get name slice of files in specific path and recursive folders
 func GetFilesNameInPathRecursive(path string) ([]string, error) {
 	var fileSlice []string
 	files, err := os.ReadDir(path)
@@ -516,7 +533,7 @@ func GetFilesNameInPathRecursive(path string) ([]string, error) {
 	for _, file := range files {
 		if file.IsDir() {
 			var pathFiles []string
-			// @dev: Recursive fetch
+
 			pathFiles, err = GetFilesNameInPathRecursive(filepath.Join(path, file.Name()))
 			if err != nil {
 				return nil, err
@@ -542,8 +559,6 @@ func RemoveStringInNameForFileSlice(fileSlice []string, s string) ([]string, err
 	return newSlice, nil
 }
 
-// GetRandomNumber
-// @Description: Return a random number whose range is (0,maxValue).
 func GetRandomNumber(maxValue int) int {
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 	var randNumber int
@@ -553,16 +568,8 @@ func GetRandomNumber(maxValue int) int {
 	return randNumber
 }
 
-// GetRandomNumberSlice
-// @Description: Use this to generate a slice of random number
 func GetRandomNumberSlice(maxValue int, n int) ([]int, error) {
-	// @dev: If the number of times the same random number is obtained exceeds this value,
-	// add this random number to the slice of random number results,
-	// so that duplicates can be obtained relatively randomly
-	// when the range of random numbers is small
-	// (the number of random numbers that can be obtained is less than
-	// the number of random numbers that need to be generated).
-	// The third time when a random number duplicates, it will be accepted.
+
 	const retryTimes = 2
 	if maxValue < 1 || n < 0 {
 		return nil, errors.New("max value or slice length is negative")
@@ -570,14 +577,14 @@ func GetRandomNumberSlice(maxValue int, n int) ([]int, error) {
 	var slice []int
 	randNumberMapGeneratedTimes := make(map[int]int)
 	for len(slice) < n {
-		// @dev: Return a random number whose range is (0,maxValue].
+
 		randNumber := GetRandomNumber(maxValue + 1)
 		randNumberMapGeneratedTimes[randNumber]++
 		if randNumberMapGeneratedTimes[randNumber] == 1 || randNumberMapGeneratedTimes[randNumber] > 1+retryTimes {
 			slice = append(slice, randNumber)
 			randNumberMapGeneratedTimes[randNumber] = 1
 		} else {
-			// @dev: length of slice will not add
+
 			continue
 		}
 	}
@@ -672,6 +679,18 @@ func RandString(r *rand.Rand, length int) string {
 	return string(b)
 }
 
+func RandStr(length int) string {
+	const (
+		chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+	)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	var b strings.Builder
+	for i := 0; i < length; i++ {
+		b.WriteByte(chars[r.Intn(len(chars))])
+	}
+	return b.String()
+}
+
 func Sha256(data any) (string, error) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
@@ -680,4 +699,46 @@ func Sha256(data any) (string, error) {
 	hash := sha256.Sum256(jsonData)
 	hashString := fmt.Sprintf("%x", hash)
 	return hashString, nil
+}
+
+func EncodeDataToBase64(data any) (string, error) {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(jsonData), nil
+}
+
+func DecodeBase64ToData(encoded string, v any) error {
+	byteData, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(byteData, v)
+}
+
+func PathExist(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, errors.Wrap(err, "os.Stat")
+}
+
+func AvailablePort() (int, error) {
+	listener, err := net.Listen("tcp", "0.0.0.0:0")
+	if err != nil {
+		return 0, errors.Wrap(err, "net.Listen")
+	}
+	defer func(listener net.Listener) {
+		err := listener.Close()
+		if err != nil {
+			logrus.Errorln(errors.Wrap(err, "listener.Close"))
+		}
+	}(listener)
+	port := listener.Addr().(*net.TCPAddr).Port
+	return port, nil
 }

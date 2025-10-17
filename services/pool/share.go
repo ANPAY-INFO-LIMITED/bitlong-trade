@@ -1,15 +1,13 @@
 package pool
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"gorm.io/gorm"
 	"math/big"
 	"strconv"
 	"trade/middleware"
 	"trade/utils"
 )
-
-// PoolShare
 
 type PoolShare struct {
 	gorm.Model
@@ -80,7 +78,7 @@ func _newShare(pairId uint, totalSupply string) (share *PoolShare, err error) {
 func _mintBig(_amount0 *big.Int, _amount1 *big.Int, _reserve0 *big.Int, _reserve1 *big.Int, _totalSupply *big.Int, isTokenZeroSat bool) (_liquidity *big.Int, err error) {
 
 	if isTokenZeroSat {
-		// cmp with minimum liquidity sat
+
 		_minLiquiditySat := new(big.Int).SetUint64(uint64(MinAddLiquiditySat))
 		if _amount0.Cmp(_minLiquiditySat) < 0 {
 			err = errors.New("insufficient amount0 Sat(" + _reserve0.String() + "), need " + _minLiquiditySat.String())
@@ -89,15 +87,15 @@ func _mintBig(_amount0 *big.Int, _amount1 *big.Int, _reserve0 *big.Int, _reserve
 	}
 
 	if _totalSupply.Sign() == 0 {
-		// @dev: Make sure that liquidity is not completely removed
+
 		_minLiquidity := new(big.Int).SetUint64(uint64(MinLiquidity))
 		_liquidity = new(big.Int).Sub(new(big.Int).Sqrt(new(big.Int).Mul(_amount0, _amount1)), _minLiquidity)
-		//fmt.Printf("[_mintBig] _liquidity: %v;(sqrt(_amount0:%v * _amount1:%v) - _minLiquidity:%v)\n", _liquidity, _amount0, _amount1, _minLiquidity)
+
 	} else {
 		_liquidity0 := new(big.Int).Div(new(big.Int).Mul(_amount0, _totalSupply), _reserve0)
-		//fmt.Printf("[_mintBig] _liquidity0: %v;(_amount0:%v * _totalSupply:%v / _reserve0:%v)\n", _liquidity0, _amount0, _totalSupply, _reserve0)
+
 		_liquidity1 := new(big.Int).Div(new(big.Int).Mul(_amount1, _totalSupply), _reserve1)
-		//fmt.Printf("[_mintBig] _liquidity1: %v;(_amount1:%v * _totalSupply:%v / _reserve1:%v)\n", _liquidity1, _amount1, _totalSupply, _reserve1)
+
 		_liquidity = minBigInt(_liquidity0, _liquidity1)
 	}
 	if _liquidity.Sign() <= 0 {
@@ -107,7 +105,7 @@ func _mintBig(_amount0 *big.Int, _amount1 *big.Int, _reserve0 *big.Int, _reserve
 }
 
 func _burnBig(_reserve0 *big.Int, _reserve1 *big.Int, _totalSupply *big.Int, _liquidity *big.Int, feeK uint16) (_amount0 *big.Int, _amount1 *big.Int, err error) {
-	// @dev: consider if allow user to burn all liquidity, now it's allowed
+
 	if _liquidity.Cmp(_totalSupply) > 0 {
 		return new(big.Int), new(big.Int), errors.New("insufficientLiquidityBurned _liquidity(" + _liquidity.String() + ") _totalSupply(" + _totalSupply.String() + ")")
 	}
@@ -115,18 +113,16 @@ func _burnBig(_reserve0 *big.Int, _reserve1 *big.Int, _totalSupply *big.Int, _li
 	k := new(big.Int).SetUint64(uint64(feeK))
 	oneThousand := new(big.Int).SetUint64(1000)
 
-	// x_0 * S * (1000 - k)
 	_amount0Numerator := new(big.Int).Mul(new(big.Int).Mul(_liquidity, _reserve0), new(big.Int).Sub(oneThousand, k))
-	// T * 1000
+
 	_amount0Denominator := new(big.Int).Mul(_totalSupply, oneThousand)
 	_amount0 = new(big.Int).Div(_amount0Numerator, _amount0Denominator)
 	if !(_amount0.Sign() > 0) {
 		return new(big.Int), new(big.Int), errors.New("insufficientAmount0Burned _amount0(" + _amount0.String() + ")")
 	}
 
-	// y_0 * S * (1000 - k)
 	_amount1Numerator := new(big.Int).Mul(new(big.Int).Mul(_liquidity, _reserve1), new(big.Int).Sub(oneThousand, k))
-	// T * 1000
+
 	_amount1Denominator := new(big.Int).Mul(_totalSupply, oneThousand)
 	_amount1 = new(big.Int).Div(_amount1Numerator, _amount1Denominator)
 	if !(_amount1.Sign() > 0) {
@@ -137,22 +133,20 @@ func _burnBig(_reserve0 *big.Int, _reserve1 *big.Int, _totalSupply *big.Int, _li
 }
 
 func _burnBigWithoutFee(_reserve0 *big.Int, _reserve1 *big.Int, _totalSupply *big.Int, _liquidity *big.Int) (_amount0 *big.Int, _amount1 *big.Int, err error) {
-	if _liquidity.Cmp(_totalSupply) >= 0 {
+	if _liquidity.Cmp(_totalSupply) > 0 {
 		return new(big.Int), new(big.Int), errors.New("insufficientLiquidityBurned _liquidity(" + _liquidity.String() + ") _totalSupply(" + _totalSupply.String() + ")")
 	}
 
-	// x_0 * S
 	_amount0Numerator := new(big.Int).Mul(_liquidity, _reserve0)
-	// T
+
 	_amount0Denominator := _totalSupply
 	_amount0 = new(big.Int).Div(_amount0Numerator, _amount0Denominator)
 	if !(_amount0.Sign() > 0) {
 		return new(big.Int), new(big.Int), errors.New("insufficientAmount0Burned _amount0(" + _amount0.String() + ")")
 	}
 
-	// y_0 * S
 	_amount1Numerator := new(big.Int).Mul(_liquidity, _reserve1)
-	// T
+
 	_amount1Denominator := _totalSupply
 	_amount1 = new(big.Int).Div(_amount1Numerator, _amount1Denominator)
 	if !(_amount1.Sign() > 0) {
@@ -162,7 +156,26 @@ func _burnBigWithoutFee(_reserve0 *big.Int, _reserve1 *big.Int, _totalSupply *bi
 	return _amount0, _amount1, nil
 }
 
-// PoolShareBalance
+func _mintBigForPureAddLiquidity(_amount0 *big.Int, _amount1 *big.Int, _reserve0 *big.Int, _reserve1 *big.Int, _totalSupply *big.Int) (_liquidity *big.Int, err error) {
+
+	if _totalSupply.Sign() == 0 {
+		return new(big.Int), errors.New("totalSupply can not be 0")
+	} else {
+		oldK2 := new(big.Int).Mul(_reserve0, _reserve1)
+		newK2 := new(big.Int).Mul(new(big.Int).Add(_reserve0, _amount0), new(big.Int).Add(_reserve1, _amount1))
+		oldShare2 := new(big.Int).Mul(_totalSupply, _totalSupply)
+
+		newShare2 := new(big.Int).Div(new(big.Int).Mul(newK2, oldShare2), oldK2)
+
+		newShare := new(big.Int).Sqrt(newShare2)
+
+		_liquidity = new(big.Int).Sub(newShare, _totalSupply)
+	}
+	if _liquidity.Sign() <= 0 {
+		return new(big.Int), errors.New("insufficientLiquidityMinted(" + _liquidity.String() + ")")
+	}
+	return _liquidity, nil
+}
 
 type PoolShareBalance struct {
 	gorm.Model
@@ -289,7 +302,7 @@ func createOrUpdateShareBalance(tx *gorm.DB, shareId uint, username string, _liq
 	var shareBalance *PoolShareBalance
 	err = tx.Model(&PoolShareBalance{}).Where("share_id = ? AND username = ?", shareId, username).First(&shareBalance).Error
 	if err != nil {
-		// @dev: no shareBalance
+
 		shareBalance, err = newShareBalance(shareId, username, _liquidity.String())
 		if err != nil {
 			return ZeroValue, utils.AppendErrorInfo(err, "newShareBalance")
@@ -322,7 +335,7 @@ func updateShareBalanceBurn(tx *gorm.DB, shareId uint, username string, _liquidi
 	var shareBalance *PoolShareBalance
 	err = tx.Model(&PoolShareBalance{}).Where("share_id = ? AND username = ?", shareId, username).First(&shareBalance).Error
 	if err != nil {
-		// @dev: no shareBalance
+
 		return ZeroValue, errors.New("no shareBalance")
 	}
 
@@ -391,17 +404,15 @@ func QueryUserShareBalance(tokenA string, tokenB string, username string) (poolS
 	return poolShareBalanceInfo, nil
 }
 
-// PoolShareRecord
-
 type ShareRecordType int64
 
 const (
 	AddLiquidityShareMint ShareRecordType = iota
 	RemoveLiquidityShareBurn
 	ShareTransfer
+	PureAddLiquidity
 )
 
-// TODO: record token transfer Id
 type PoolShareRecord struct {
 	gorm.Model
 	ShareId                uint   `json:"share_id" gorm:"index"`
@@ -517,7 +528,21 @@ func updateShareBalanceAndRecordBurn(tx *gorm.DB, shareId uint, username string,
 	return nil
 }
 
-// calc
+func updateShareBalanceAndRecordPureAddLiquidity(tx *gorm.DB, shareId uint, username string, _liquidity *big.Int, token0TransferRecordId uint, token1TransferRecordId uint, reserve0 string, reserve1 string, amount0 string, amount1 string, shareSupply string, isFirstMint bool) (err error) {
+
+	if shareId <= 0 {
+		return errors.New("invalid shareId(" + strconv.FormatUint(uint64(shareId), 10) + ")")
+	}
+
+	previousShare := big.NewInt(0).String()
+
+	err = createShareRecord(tx, shareId, username, _liquidity, token0TransferRecordId, token1TransferRecordId, 0, 0, ZeroValue, ZeroValue, reserve0, reserve1, amount0, amount1, shareSupply, previousShare, isFirstMint, PureAddLiquidity)
+	if err != nil {
+		return errors.Wrap(err, "createShareRecord")
+	}
+
+	return nil
+}
 
 func calcNewShareRecord(shareId uint, username string, liquidity string, amount0Fee string, amount1Fee string, reserve0 string, reserve1 string, amount0 string, amount1 string, shareSupply string, shareAmt string, isFirstMint bool, recordType ShareRecordType) (shareRecord *PoolShareRecord, err error) {
 	return &PoolShareRecord{
@@ -570,7 +595,7 @@ func calcUpdateShareBalanceBurn(tx *gorm.DB, shareId uint, username string, _liq
 	var shareBalance *PoolShareBalance
 	err = tx.Model(&PoolShareBalance{}).Where("share_id = ? AND username = ?", shareId, username).First(&shareBalance).Error
 	if err != nil {
-		// @dev: no shareBalance
+
 		return ZeroValue, errors.New("no shareBalance")
 	}
 

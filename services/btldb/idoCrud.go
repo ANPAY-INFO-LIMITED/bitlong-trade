@@ -5,8 +5,6 @@ import (
 	"trade/models"
 )
 
-// IdoPublishInfo
-
 func CreateIdoPublishInfo(idoPublishInfo *models.IdoPublishInfo) error {
 	return middleware.DB.Create(idoPublishInfo).Error
 }
@@ -52,8 +50,6 @@ func DeleteIdoPublishInfo(id uint) error {
 	return middleware.DB.Delete(&idoPublishInfo, id).Error
 }
 
-// IdoParticipateInfo
-
 func CreateIdoParticipateInfo(idoParticipateInfo *models.IdoParticipateInfo) error {
 	return middleware.DB.Create(idoParticipateInfo).Error
 }
@@ -92,8 +88,6 @@ func DeleteIdoParticipateInfo(id uint) error {
 	var idoParticipateInfo models.IdoParticipateInfo
 	return middleware.DB.Delete(&idoParticipateInfo, id).Error
 }
-
-// IdoParticipateUserInfo
 
 func CreateParticipateIdoUserInfo(participateIdoUserInfo *models.IdoParticipateUserInfo) error {
 	return middleware.DB.Create(participateIdoUserInfo).Error

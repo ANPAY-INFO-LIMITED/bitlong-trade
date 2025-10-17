@@ -17,9 +17,6 @@ const (
 	AssetIdLength = 64
 )
 
-// FeeK is 1000 * Fee Rate
-// i.e. Fee Rate = FeeK / 1000
-
 const (
 	AddLiquidityFeeK    uint16 = 0
 	RemoveLiquidityFeeK uint16 = 3
@@ -34,7 +31,6 @@ const (
 	SwapFeeK uint16 = ProjectPartyFeeK + LpAwardFeeK
 )
 
-// 3334
 var MinSwapSat = func() uint {
 	minSwapSat := MinSwapSatFee * 1000 / uint(SwapFeeK)
 	if MinSwapSatFee*1000%uint(SwapFeeK) != 0 {

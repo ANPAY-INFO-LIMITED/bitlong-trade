@@ -4,18 +4,35 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+	"trade/config"
+	"trade/utils"
+
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/lightninglabs/taproot-assets/fn"
 	"github.com/lightninglabs/taproot-assets/proof"
+	"github.com/lightninglabs/taproot-assets/rfq"
+	"github.com/lightninglabs/taproot-assets/rpcutils"
 	"github.com/lightninglabs/taproot-assets/taprpc"
+	"github.com/lightninglabs/taproot-assets/taprpc/tapchannelrpc"
 	"github.com/lightninglabs/taproot-assets/taprpc/universerpc"
-	"strconv"
-	"strings"
-	"trade/config"
-	"trade/utils"
+	"github.com/lightningnetwork/lnd/cmd/commands"
+	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
+	"google.golang.org/grpc"
 )
 
+func getTapdCoon() (*grpc.ClientConn, func()) {
+	tapdconf := config.GetConfig().ApiConfig.Tapd
+	grpcHost := tapdconf.Host + ":" + strconv.Itoa(tapdconf.Port)
+	tlsCertPath := tapdconf.TlsCertPath
+	macaroonPath := tapdconf.MacaroonPath
+	return utils.GetConn(grpcHost, tlsCertPath, macaroonPath)
+}
 func GetAssetLeaves(ID string, isGroup bool, proofType string) (*universerpc.AssetLeafResponse, error) {
 	requset := universerpc.ID{}
 	var p universerpc.ProofType
@@ -108,14 +125,13 @@ func SyncAsset(universe string, id string, isGroupKey bool, proofType string) (*
 }
 
 func InsertProof(annotatedProof *proof.AnnotatedProof) error {
-	// Decode annotated proof into proof file.
+
 	proofFile := &proof.File{}
 	err := proofFile.Decode(bytes.NewReader(annotatedProof.Blob))
 	if err != nil {
 		return err
 	}
-	// Iterate over each proof in the proof file and submit to the courier
-	// service.
+
 	for i := 0; i < proofFile.NumProofs(); i++ {
 		transitionProof, err := proofFile.ProofAt(uint32(i))
 		if err != nil {
@@ -123,8 +139,7 @@ func InsertProof(annotatedProof *proof.AnnotatedProof) error {
 		}
 		proofAsset := transitionProof.Asset
 
-		// Construct asset leaf.
-		rpcAsset, err := taprpc.MarshalAsset(
+		rpcAsset, err := rpcutils.MarshalAsset(
 			context.Background(), &proofAsset, true, true, nil, fn.None[uint32](),
 		)
 		if err != nil {
@@ -141,9 +156,8 @@ func InsertProof(annotatedProof *proof.AnnotatedProof) error {
 			Proof: proofBuf.Bytes(),
 		}
 
-		// Construct universe key.
 		outPoint := transitionProof.OutPoint()
-		assetKey := universerpc.MarshalAssetKey(
+		assetKey := rpcutils.MarshalAssetKey(
 			outPoint, proofAsset.ScriptKey.PubKey,
 		)
 		assetID := proofAsset.ID()
@@ -157,14 +171,14 @@ func InsertProof(annotatedProof *proof.AnnotatedProof) error {
 			groupPubKeyBytes = groupPubKey.SerializeCompressed()
 		}
 
-		universeID := universerpc.MarshalUniverseID(
+		universeID := rpcutils.MarshalUniverseID(
 			assetID[:], groupPubKeyBytes,
 		)
 		universeKey := universerpc.UniverseKey{
 			Id:      universeID,
 			LeafKey: assetKey,
 		}
-		// Submit proof to courier.
+
 		err = insertProof(&universerpc.AssetProof{
 			Key:       &universeKey,
 			AssetLeaf: &assetLeaf,
@@ -247,19 +261,19 @@ func NewAddr(assetId string, amt int, proofCourierAddr string) (*taprpc.Addr, er
 
 	client := taprpc.NewTaprootAssetsClient(conn)
 	_assetIdByteSlice, _ := hex.DecodeString(assetId)
-	if !strings.HasPrefix(proofCourierAddr, "universerpc://") {
-		proofCourierAddr = "universerpc://" + proofCourierAddr
-	}
-	request := &taprpc.NewAddrRequest{
-		AssetId:          _assetIdByteSlice,
-		Amt:              uint64(amt),
-		ProofCourierAddr: proofCourierAddr,
-	}
-	response, err := client.NewAddr(context.Background(), request)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
+	if !strings.HasPrefix(proofCourierAddr, "universerpc: 
+		proofCourierAddr = "universerpc: 
+}
+request := &taprpc.NewAddrRequest{
+AssetId:          _assetIdByteSlice,
+Amt:              uint64(amt),
+ProofCourierAddr: proofCourierAddr,
+}
+response, err := client.NewAddr(context.Background(), request)
+if err != nil {
+return nil, err
+}
+return response, nil
 }
 
 func DecodeAddr(addr string) (*taprpc.Addr, error) {
@@ -380,4 +394,107 @@ func ListAssetsBalance() (*taprpc.ListBalancesResponse, error) {
 		return nil, err
 	}
 	return response, nil
+}
+
+func AddAssetChannelInvoice(assetId string, assetAmount uint64, PeerPubkey string, memo string) (*tapchannelrpc.AddInvoiceResponse, error) {
+	conn, closeConn := getTapdCoon()
+	defer closeConn()
+	if conn == nil {
+		return nil, errors.New("connection is nil")
+	}
+	assetIDBytes, err := hex.DecodeString(assetId)
+	if err != nil {
+		return nil, err
+	}
+	expirySeconds := int64(rfq.DefaultInvoiceExpiry.Seconds())
+	rfqPeerKey, err := hex.DecodeString(PeerPubkey)
+	if err != nil {
+		return nil, err
+	}
+	channelsClient := tapchannelrpc.NewTaprootAssetChannelsClient(conn)
+	resp, err := channelsClient.AddInvoice(context.Background(), &tapchannelrpc.AddInvoiceRequest{
+		AssetId:     assetIDBytes,
+		AssetAmount: assetAmount,
+		PeerPubkey:  rfqPeerKey,
+		InvoiceRequest: &lnrpc.Invoice{
+			Memo:   memo,
+			Expiry: expirySeconds,
+		},
+	})
+	return resp, err
+}
+
+func PayAssetInvoice(payReq string, assetIDStr string, peerPubkey string) (*lnrpc.Payment, error) {
+
+	ctx := context.Background()
+
+	conn, closeConn := getTapdCoon()
+	defer closeConn()
+
+	assetIDBytes, err := hex.DecodeString(assetIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode assetID: %v", err)
+	}
+
+	rfqPeerKey, err := hex.DecodeString(peerPubkey)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode RFQ peer public key: "+
+			"%w", err)
+	}
+
+	req := &routerrpc.SendPaymentRequest{
+		PaymentRequest: commands.StripPrefix(payReq),
+	}
+
+	pmtTimeout := 60 * time.Second
+
+	req.TimeoutSeconds = int32(pmtTimeout.Seconds())
+
+	req.FeeLimitSat = 1000
+
+	tchrpcClient := tapchannelrpc.NewTaprootAssetChannelsClient(
+		conn,
+	)
+
+	stream, err := tchrpcClient.SendPayment(
+		ctx, &tapchannelrpc.SendPaymentRequest{
+			AssetId:        assetIDBytes,
+			PeerPubkey:     rfqPeerKey,
+			PaymentRequest: req,
+			AllowOverpay:   true,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		resp1, err := stream.Recv()
+		if err != nil {
+			return nil, err
+		} else if resp1 != nil {
+			payment := resp1.GetPaymentResult()
+			if payment != nil {
+				if payment.Status != lnrpc.Payment_IN_FLIGHT &&
+					payment.Status != lnrpc.Payment_INITIATED {
+					return payment, nil
+				}
+			}
+		}
+	}
+}
+
+func DecodeAssetInvoice(payReq string, assetIDStr string) (*tapchannelrpc.AssetPayReqResponse, error) {
+	assetIDBytes, err := hex.DecodeString(assetIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode assetID: %v", err)
+	}
+
+	conn, closeConn := getTapdCoon()
+	defer closeConn()
+
+	channelsClient := tapchannelrpc.NewTaprootAssetChannelsClient(conn)
+	return channelsClient.DecodeAssetPayReq(context.Background(), &tapchannelrpc.AssetPayReq{
+		AssetId:      assetIDBytes,
+		PayReqString: payReq,
+	})
 }

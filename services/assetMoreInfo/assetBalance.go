@@ -9,8 +9,6 @@ type AssetBalanceInfo struct {
 	Username string `json:"username"`
 }
 
-//链上持有
-
 func GetAssetBalanceInfoCount(assetId string) (count int64, err error) {
 	err = middleware.DB.Table("asset_balances").
 		Where("asset_id = ? and balance > 0", assetId).

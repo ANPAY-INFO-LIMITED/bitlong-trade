@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-sql-driver/mysql"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"net/http"
@@ -19,7 +19,7 @@ import (
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Check if the request is for the mini
+
 		ClientType := c.GetHeader("ClientType")
 		if ClientType == "mini" {
 			authHeader := c.GetHeader("Authorization")
@@ -27,14 +27,14 @@ func AuthMiddleware() gin.HandlerFunc {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
 				return
 			}
-			// 获取 Base64 编码的部分
+
 			encodedCredentials := strings.TrimPrefix(authHeader, "Basic ")
 			decodedCredentials, err := base64.StdEncoding.DecodeString(encodedCredentials)
 			if err != nil {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header"})
 				return
 			}
-			// 分割用户名和密码
+
 			credentials := strings.SplitN(string(decodedCredentials), ":", 2)
 			if len(credentials) != 2 {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
@@ -46,12 +46,12 @@ func AuthMiddleware() gin.HandlerFunc {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Illegal login"})
 				return
 			}
-			err = ValidateMiniUser(username, password)
+			err = ValidateMiniUserByWbf(username, password)
 			if err != nil {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 				return
 			}
-			// Update user's recent IP address
+
 			ip := c.ClientIP()
 			path := c.Request.URL.Path
 			go InsertLoginInfo(username, ip, path)
@@ -59,13 +59,12 @@ func AuthMiddleware() gin.HandlerFunc {
 				go RecodeDateIpLogin(username, time.Now().Format(time.DateOnly), ip)
 				go RecodeDateLogin(username, time.Now().Format(time.DateOnly))
 			}
-			// Store the username in the context of the request
+
 			c.Set("username", username)
 			c.Next()
 			return
 		}
 
-		// Check if the request is authorized
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
@@ -92,7 +91,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Illegal login"})
 			return
 		}
-		// Update user's recent IP address
+
 		ip := c.ClientIP()
 		path := c.Request.URL.Path
 		go InsertLoginInfo(claims.Username, ip, path)
@@ -100,19 +99,19 @@ func AuthMiddleware() gin.HandlerFunc {
 			go RecodeDateIpLogin(claims.Username, time.Now().Format(time.DateOnly), ip)
 			go RecodeDateLogin(claims.Username, time.Now().Format(time.DateOnly))
 		}
-		// Store the username in the context of the request
+
 		c.Set("username", claims.Username)
 		c.Next()
 	}
 }
 
 func ValidateMiniUser(username, password string) error {
-	// Check if the username and password are correct
+
 	var user models.User
 	result := DB.Where("user_name = ?", username).First(&user)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			// If there are other database errors, an error is returned
+
 			return result.Error
 		} else {
 			user.Username = username
@@ -133,15 +132,83 @@ func ValidateMiniUser(username, password string) error {
 	return nil
 }
 
+func ValidateMiniUserByWbf(username, password string) error {
+	var u models.User
+	err := DB.Model(&models.User{}).Where("user_name = ?", username).First(&u).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+
+			var wbfPass string
+			wbfPass, err = hashWeakButFastPassword(password)
+			if err != nil {
+				return errors.Wrap(err, "hashWeakButFastPassword")
+			}
+
+			u.Password = password
+			err = DB.Model(&models.User{}).Create(&models.User{
+				Username:        username,
+				Password:        "",
+				WeakButFastPass: wbfPass,
+			}).Error
+
+			if err != nil {
+				return errors.New("DB.Model(&models.User{}).Create")
+			}
+
+		} else {
+			return errors.New("DB.Model(&models.User{}).First")
+
+		}
+	}
+
+	if u.WeakButFastPass == "" {
+
+		err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+		if err != nil {
+			return errors.Wrap(err, "bcrypt.CompareHashAndPassword")
+		}
+
+		var wbfPass string
+		wbfPass, err = hashWeakButFastPassword(password)
+		if err != nil {
+			return errors.Wrap(err, "hashWeakButFastPassword")
+		}
+
+		err = DB.Model(&models.User{}).Where("id = ?", u.ID).Update("weak_but_fast_pass", wbfPass).Error
+		if err != nil {
+			return errors.Wrap(err, "middleware.DB.Model(&models.User{}).Update")
+		}
+
+	} else {
+
+		err = bcrypt.CompareHashAndPassword([]byte(u.WeakButFastPass), []byte(password))
+		if err != nil {
+			return errors.Wrap(err, "bcrypt.CompareHashAndPassword")
+		}
+
+	}
+
+	return nil
+}
+
 func CheckPassword(hashedPassword, password string) bool {
-	// bcrypt.CompareHashAndPassword Compare the hashed password with the password entered by the user. If there is a match, nil is returned.
+
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	return err == nil
 }
 
 func hashPassword(password string) (string, error) {
-	// Passwords are encrypted using the bcrypt algorithm
+
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
+func hashWeakButFastPassword(password string) (string, error) {
+
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	if err != nil {
 		return "", err
 	}
@@ -150,7 +217,6 @@ func hashPassword(password string) (string, error) {
 
 var LoginInfoMutex = sync.Mutex{}
 
-// InsertLoginInfo 记录登录信息
 func InsertLoginInfo(userName, ip, path string) {
 	LoginInfoMutex.Lock()
 	defer LoginInfoMutex.Unlock()
@@ -181,7 +247,6 @@ func InsertLoginInfo(userName, ip, path string) {
 	}
 }
 
-// RecodeDateIpLogin
 func RecodeDateIpLogin(username string, date string, ip string) {
 	dateIpLogin := models.DateIpLogin{
 		Username: username,

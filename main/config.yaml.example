@@ -66,6 +66,12 @@ router_disable:
     btc_utxo: false
     asset_balance_info: false
     asset_more_info: false
+    asset_channel_node: false
+    asset_or_btc_channel: false
+    confs: false
+    psbt_tl_swap: false
+    box_device: false
+    box_asset_push: false
 api_config:
     lnd:
         host: ""
@@ -86,6 +92,28 @@ api_config:
         dir: ""
         tls_cert_path: ""
         macaroon_path: ""
+        start_command: ""
+        close_command: ""
+    box_lit:
+        lnd:
+            host: ""
+            port: 0
+            dir: ""
+            tls_cert_path: ""
+            macaroon_path: ""
+        tapd:
+            host: ""
+            port: 0
+            dir: ""
+            tls_cert_path: ""
+            macaroon_path: ""
+            universe_host: ""
+        litd:
+            host: ""
+            port: 0
+            dir: ""
+            tls_cert_path: ""
+            macaroon_path: ""
     bitcoind:
         mainnet:
             ip: ""
@@ -111,8 +139,6 @@ api_config:
             rpc_passwd: ""
             http_post_mode: false
             disable_tls: false
-    custody_account:
-        macaroon_dir: ""
 fair_launch_config:
     estimate_smart_fee_rate_blocks: 0
     is_auto_update_fee_rate: false
@@ -123,3 +149,15 @@ admin_user:
 frps_server: ""
 is_auto_migrate: false
 is_auto_update_scheduled_task: false
+pool_feature_disable:
+    add: false
+    remove: false
+    swap_e: false
+    swap_t: false
+    withdraw: false
+pool_feature_disable_by_asset_id:
+    add: []
+    remove: []
+    swap_e: []
+    swap_t: []
+    withdraw: []

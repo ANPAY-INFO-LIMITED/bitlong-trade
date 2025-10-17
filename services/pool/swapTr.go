@@ -10,14 +10,14 @@ import (
 
 type SwapTr struct {
 	ID uint `json:"id"`
-	// amount of sat / amount of asset; float string
+
 	Price string `json:"price"`
-	// amount of asset; int string
+
 	Number string `json:"number"`
-	// amount of sat; int string
+
 	TotalPrice string `json:"total_price"`
 	NpubKey    string `json:"npub_key"`
-	// microsecond
+
 	TrUnixtimeMs int64  `json:"tr_unixtime_ms"`
 	AssetsID     string `json:"assets_id"`
 	Type         string `json:"type"`
@@ -44,12 +44,12 @@ func SwapRecordInfoToSwapTr(swapRecordInfo SwapRecordInfo) (swapTr SwapTr, err e
 		var AmountSat, AmountAsset string
 
 		if token0 == swapRecordInfo.TokenIn {
-			// sat In, asset Out
+
 			AmountSat = swapRecordInfo.AmountIn
 			AmountAsset = swapRecordInfo.AmountOut
 
 		} else {
-			//	sat Out, asset In
+
 			AmountSat = swapRecordInfo.AmountOut
 			AmountAsset = swapRecordInfo.AmountIn
 
@@ -176,13 +176,13 @@ func SwapTrsScanToSwapTr(swapTrsScan SwapTrsScan) (swapTr SwapTr, err error) {
 		var AmountSat, AmountAsset, _type string
 
 		if token0 == swapTrsScan.TokenIn {
-			// sat In, asset Out
+
 			AmountSat = swapTrsScan.AmountIn
 			AmountAsset = swapTrsScan.AmountOut
 			_type = SwapTrTypeBuy
 
 		} else {
-			//	sat Out, asset In
+
 			AmountSat = swapTrsScan.AmountOut
 			AmountAsset = swapTrsScan.AmountIn
 			_type = SwapTrTypeSell

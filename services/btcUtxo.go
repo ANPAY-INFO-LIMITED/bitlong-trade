@@ -99,8 +99,6 @@ func SetBtcUtxo(username string, requests *[]models.UnspentUtxo) (err error) {
 		return utils.AppendErrorInfo(err, "UnspentUtxosToBtcUtxos")
 	}
 
-	//fmt.Printf("btcUtxos: %v\n", utils.ValueJsonString(btcUtxos))
-
 	var opDelete []string
 	for op := range opDeleteMap {
 		opDelete = append(opDelete, op)
@@ -114,8 +112,6 @@ func SetBtcUtxo(username string, requests *[]models.UnspentUtxo) (err error) {
 	if len(*btcUtxos) == 0 {
 		return nil
 	}
-
-	//fmt.Printf("opDelete: %v\n", utils.ValueJsonString(opDelete))
 
 	btcUtxoHistories := BtcUtxosToBtcUtxoHistories(btcUtxos)
 

@@ -49,8 +49,6 @@ func DeleteNftPresaleWhitelist(id uint) error {
 	return btldb.DeleteNftPresaleWhitelist(id)
 }
 
-// @dev: Get
-
 func GetNftPresaleWhitelistsByAssetId(assetId string) (*[]models.NftPresaleWhitelist, error) {
 	return ReadNftPresaleWhitelistsByAssetId(assetId)
 }
@@ -63,8 +61,6 @@ func GetNftPresaleWhitelistsByAssetIdOrBatchGroupId(assetId string, batchGroupId
 	return ReadNftPresaleWhitelistsByAssetIdOrBatchGroupId(assetId, batchGroupId)
 }
 
-// GetNftPresaleWhitelistsOnlyByAssetId
-// @Description: Get nftPresale Whitelists
 func GetNftPresaleWhitelistsOnlyByAssetId(assetId string) (*[]string, error) {
 	nftPresale, err := GetNftPresaleByAssetId(assetId)
 	if err != nil {
@@ -87,8 +83,6 @@ func GetNftPresaleWhitelistsOnlyByAssetId(assetId string) (*[]string, error) {
 	return &whitelists, nil
 }
 
-// GetNftPresaleWhitelistsByNftPresale
-// @Description: Get nftPresale Whitelists
 func GetNftPresaleWhitelistsByNftPresale(nftPresale *models.NftPresale) (*[]string, error) {
 	if nftPresale == nil {
 		return nil, errors.New("nftPresale is nil")
@@ -110,8 +104,6 @@ func GetNftPresaleWhitelistsByNftPresale(nftPresale *models.NftPresale) (*[]stri
 	}
 	return &whitelists, nil
 }
-
-// @dev: Process
 
 func ProcessNftPresaleWhitelistSetRequest(nftPresaleWhitelistSetRequest *models.NftPresaleWhitelistSetRequest) (*models.NftPresaleWhitelist, error) {
 	if nftPresaleWhitelistSetRequest == nil {
@@ -169,8 +161,6 @@ func ProcessNftPresaleWhitelistSetRequests(nftPresaleWhitelistSetRequests *[]mod
 	}
 	return &nftPresaleWhitelists, nil
 }
-
-// @dev: Add whitelist
 
 func AddWhitelistByRequest(nftPresaleWhitelistSetRequest *models.NftPresaleWhitelistSetRequest) error {
 	if nftPresaleWhitelistSetRequest == nil {

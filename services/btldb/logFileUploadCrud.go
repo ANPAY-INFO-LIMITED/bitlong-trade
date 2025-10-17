@@ -29,7 +29,8 @@ func ReadLogFileUpload(id uint) (*models.LogFileUpload, error) {
 
 func ReadAllLogFileUploads() (*[]models.LogFileUpload, error) {
 	var logFileUploads []models.LogFileUpload
-	err := middleware.DB.Order("updated_at desc").Find(&logFileUploads).Error
+
+	err := middleware.DB.Order("updated_at desc").Limit(50).Find(&logFileUploads).Error
 	return &logFileUploads, err
 }
 

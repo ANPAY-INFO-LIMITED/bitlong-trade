@@ -11,8 +11,6 @@ type FairLaunchStore struct {
 	DB *gorm.DB
 }
 
-// FairLaunchInfo
-
 func (f *FairLaunchStore) CreateFairLaunchInfo(fairLaunchInfo *models.FairLaunchInfo) error {
 	return f.DB.Create(fairLaunchInfo).Error
 }
@@ -39,8 +37,7 @@ func ReadNotStartedFairLaunchInfo() (*[]models.FairLaunchInfo, error) {
 
 func ReadIssuedFairLaunchInfos() (*[]models.FairLaunchInfo, error) {
 	var fairLaunchInfos []models.FairLaunchInfo
-	// @dev: Add more condition
-	// @dev: Remove `AND is_mint_all = ?`
+
 	err := middleware.DB.Where("state >= ?", models.FairLaunchStateIssued).Order("set_time").Find(&fairLaunchInfos).Error
 	if err != nil {
 		return nil, utils.AppendErrorInfo(err, "Find fairLaunchInfos")
@@ -57,8 +54,6 @@ func ReadNotIssuedFairLaunchInfos() (*[]models.FairLaunchInfo, error) {
 	return &fairLaunchInfos, nil
 }
 
-// ReadIssuedAndTimeValidFairLaunchInfos
-// @Description: Order by MintedNumber desc, SetTime
 func ReadIssuedAndTimeValidFairLaunchInfos() (*[]models.FairLaunchInfo, error) {
 	var fairLaunchInfos []models.FairLaunchInfo
 	now := utils.GetTimestamp()
@@ -86,8 +81,6 @@ func DeleteFairLaunchInfo(id uint) error {
 	var fairLaunchInfo models.FairLaunchInfo
 	return middleware.DB.Delete(&fairLaunchInfo, id).Error
 }
-
-// FairLaunchMintedInfo
 
 func (f *FairLaunchStore) CreateFairLaunchMintedInfo(fairLaunchMintedInfo *models.FairLaunchMintedInfo) error {
 	return f.DB.Create(fairLaunchMintedInfo).Error
@@ -175,8 +168,6 @@ func ReadUserFirstFairLaunchMintedInfoByUsernameAndAssetId(username string, asse
 	return &fairLaunchMintedInfo, nil
 }
 
-// FairLaunchInventoryInfo
-
 func (f *FairLaunchStore) CreateFairLaunchInventoryInfo(fairLaunchInventoryInfo *models.FairLaunchInventoryInfo) error {
 	return f.DB.Create(fairLaunchInventoryInfo).Error
 }
@@ -204,8 +195,6 @@ func (f *FairLaunchStore) DeleteFairLaunchInventoryInfo(id uint) error {
 	return f.DB.Delete(&fairLaunchInventoryInfo, id).Error
 }
 
-// FairLaunchMintedUserInfo
-
 func (f *FairLaunchStore) CreateFairLaunchMintedUserInfo(tx *gorm.DB, fairLaunchMintedUserInfo *models.FairLaunchMintedUserInfo) error {
 	return tx.Create(fairLaunchMintedUserInfo).Error
 }
@@ -230,8 +219,6 @@ func GetFairLaunchInfosByIds(fairLaunchInfoIds *[]int) (*[]models.FairLaunchInfo
 	err := middleware.DB.Where(fairLaunchInfoIds).Find(&fairLaunchInfos).Error
 	return &fairLaunchInfos, err
 }
-
-// FairLaunchMintedAndAvailableInfo
 
 func CreateFairLaunchMintedAndAvailableInfo(tx *gorm.DB, fairLaunchMintedAndAvailableInfo *models.FairLaunchMintedAndAvailableInfo) error {
 	return tx.Create(fairLaunchMintedAndAvailableInfo).Error

@@ -36,21 +36,14 @@ func GenerateToken(username string) (string, error) {
 	}
 	validateToken, err := RedisGet(username)
 	if validateToken != "" {
-		//err := RedisDel(validateToken)
-		//if err != nil {
-		//	return "", err
-		//}
-		//err1 := RedisDel(username)
-		//if err1 != nil {
-		//	return "", err1
-		//}
+
 		return validateToken, nil
 	}
 
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return "", err
 	}
-	// Store the token in Redis
+
 	redisSetTimeMinute := config.GetLoadConfig().Redis.RedisSetTimeMinute
 	err = RedisSet(username, tokenString, time.Duration(redisSetTimeMinute)*time.Minute)
 	if err != nil {
@@ -64,7 +57,7 @@ func GenerateToken(username string) (string, error) {
 }
 
 func ValidateToken(tokenString string) (*Claims, error) {
-	// Get the token from Redis
+
 	_, err := RedisGet(tokenString)
 	if err != nil {
 		return nil, errors.New("invalid token")

@@ -108,8 +108,6 @@ func CreateOrUpdateFairLaunchFollows(transfers *[]models.FairLaunchFollow) (err 
 	return btldb.UpdateFairLaunchFollows(&fairLaunchFollows)
 }
 
-// SetFairLaunchFollow
-// @dev: Set
 func SetFairLaunchFollow(fairLaunchFollow *models.FairLaunchFollow) error {
 	return btldb.CreateFairLaunchFollow(fairLaunchFollow)
 }
